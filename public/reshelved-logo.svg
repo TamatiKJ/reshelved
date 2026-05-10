@@ -1,0 +1,6 @@
+<svg width="172" height="40" viewBox="0 0 172 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="40" height="40" rx="12" fill="#D54215"/>
+  <path d="M12 11.5C16.25 10.25 20 11 20 14.5V29C20 25.5 16.25 24.75 12 26V11.5Z" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M28 11.5C23.75 10.25 20 11 20 14.5V29C20 25.5 23.75 24.75 28 26V11.5Z" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="52" y="27" font-family="Work Sans, Arial, sans-serif" font-size="24" font-weight="700" fill="#111827">Reshelved</text>
+</svg>
