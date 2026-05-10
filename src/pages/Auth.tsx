@@ -3,6 +3,23 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { KENYAN_CITIES } from '../types';
 
+const getAuthErrorMessage = (error: any, fallback: string) => {
+  switch (error?.code) {
+    case 'auth/email-already-in-use':
+      return 'This email is already registered. Please log in instead.';
+    case 'auth/invalid-email':
+      return 'Please enter a valid email address.';
+    case 'auth/weak-password':
+      return 'Password must be at least 6 characters.';
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+      return 'Invalid email or password.';
+    default:
+      return error?.message || fallback;
+  }
+};
+
 export const Login: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -17,9 +34,9 @@ export const Login: React.FC = () => {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/');
+      navigate('/browse');
     } catch (err: any) {
-      setError(err.message || 'Failed to log in');
+      setError(getAuthErrorMessage(err, 'Failed to log in'));
     } finally {
       setLoading(false);
     }
@@ -111,9 +128,9 @@ export const Register: React.FC = () => {
     setLoading(true);
     try {
       await register(email, password, displayName, location);
-      navigate('/');
+      navigate('/browse');
     } catch (err: any) {
-      setError(err.message || 'Failed to create account');
+      setError(getAuthErrorMessage(err, 'Failed to create account'));
     } finally {
       setLoading(false);
     }
