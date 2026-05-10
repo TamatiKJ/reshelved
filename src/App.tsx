@@ -9,6 +9,7 @@ import ListingDetail from './pages/ListingDetail';
 import Messages from './pages/Messages';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+import Notifications from './pages/Notifications';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, loading } = useAuth();
@@ -103,6 +104,14 @@ const AppContent: React.FC = () => {
                 element={
                   <ProtectedRoute>
                     <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notifications"
+                element={
+                  <ProtectedRoute>
+                    <Notifications />
                   </ProtectedRoute>
                 }
               />
