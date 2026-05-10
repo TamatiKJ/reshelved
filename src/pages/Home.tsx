@@ -126,17 +126,13 @@ const Home: React.FC = () => {
             </Link>
           </div>
 
-          <div className="relative min-h-[360px] lg:min-h-[420px]">
-            <div className="absolute right-4 top-0 w-[300px] sm:w-[380px] h-[210px] rounded-2xl bg-gradient-to-br from-stone-200 via-stone-100 to-primary-100 overflow-hidden">
-              <div className="absolute inset-0 flex items-center justify-center text-stone-400 text-7xl"><i className="las la-user" /></div>
-            </div>
-            <div className="absolute left-0 bottom-8 w-[270px] sm:w-[340px] h-[185px] rounded-2xl bg-gradient-to-br from-stone-300 to-stone-100 overflow-hidden">
-              <div className="absolute inset-0 flex items-center justify-center text-stone-500 text-7xl"><i className="las la-wallet" /></div>
-            </div>
-            <div className="absolute left-10 top-20 bg-[#ffb19f] text-black font-bold text-lg px-5 py-3 rounded-xl shadow-sm">Sellers Feel Risky</div>
-            <div className="absolute left-[45%] top-[46%] w-10 h-10 rounded-full bg-[#ffbc59] text-primary-700 font-black text-3xl flex items-center justify-center shadow-sm">+</div>
-            <div className="absolute right-0 top-[38%] bg-[#ffd98b] text-black font-bold text-lg px-5 py-3 rounded-xl shadow-sm">Hard to Find Titles</div>
-            <div className="absolute right-0 bottom-0 bg-[#c9ffb9] text-black font-bold text-lg px-5 py-3 rounded-xl shadow-sm">New Books Cost Too Much</div>
+          <div className="relative min-h-[360px] lg:min-h-[420px] flex items-center justify-center">
+            <img
+              src="/home-pain-points-composition.svg"
+              alt="Book hunting pain points: sellers feel risky, hard to find titles, and new books cost too much"
+              className="w-full max-w-[560px] h-auto object-contain"
+              loading="lazy"
+            />
           </div>
         </div>
       </section>
