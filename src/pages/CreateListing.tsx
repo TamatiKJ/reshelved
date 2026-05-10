@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { CATEGORIES, KENYAN_CITIES, CONDITIONS } from '../types';
 import type { Listing } from '../types';
 
-const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+const TEN_DAYS = 10 * 24 * 60 * 60 * 1000;
 
 const listingTypes = [
   { value: 'swap', label: 'Swap', icon: 'las la-sync', desc: 'Trade for another book' },
@@ -25,7 +25,7 @@ const CreateListing: React.FC = () => {
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [type, setType] = useState<Listing['type']>('swap');
   const [price, setPrice] = useState('');
-  const [location, setLocation] = useState(userProfile?.location || 'Nairobi');
+  const [location, setLocation] = useState(userProfile?.location || 'Lavington');
   const [images, setImages] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,9 +38,7 @@ const CreateListing: React.FC = () => {
       return;
     }
     const validFiles = files.filter(f => f.type.startsWith('image/') && f.size < 5 * 1024 * 1024);
-    if (validFiles.length !== files.length) {
-      setError('Some files were skipped. Images must be under 5MB.');
-    }
+    if (validFiles.length !== files.length) setError('Some files were skipped. Images must be under 5MB.');
     setImages(prev => [...prev, ...validFiles]);
     validFiles.forEach(file => {
       const reader = new FileReader();
@@ -54,6 +52,21 @@ const CreateListing: React.FC = () => {
     setPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
+  const uploadListingImages = async (listingId: string, files: File[]) => {
+    if (!currentUser || files.length === 0) return;
+    try {
+      const imageUrls: string[] = [];
+      for (const file of files) {
+        const storageRef = ref(storage, `listings/${currentUser.uid}/${listingId}_${Date.now()}_${file.name}`);
+        const snap = await uploadBytes(storageRef, file);
+        imageUrls.push(await getDownloadURL(snap.ref));
+      }
+      await updateDoc(doc(db, 'listings', listingId), { images: imageUrls });
+    } catch (err) {
+      console.error('Image upload failed after publishing listing:', err);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !userProfile) return;
@@ -61,15 +74,8 @@ const CreateListing: React.FC = () => {
     setLoading(true);
 
     try {
-      const imageUrls: string[] = [];
-      for (const file of images) {
-        const storageRef = ref(storage, `listings/${currentUser.uid}/${Date.now()}_${file.name}`);
-        const snap = await uploadBytes(storageRef, file);
-        imageUrls.push(await getDownloadURL(snap.ref));
-      }
-
       const now = Date.now();
-      await addDoc(collection(db, 'listings'), {
+      const docRef = await addDoc(collection(db, 'listings'), {
         title,
         author,
         description,
@@ -77,21 +83,24 @@ const CreateListing: React.FC = () => {
         category,
         type,
         price: type === 'sell' ? parseFloat(price) || 0 : null,
-        images: imageUrls,
+        images: [],
+        imageUploadPending: images.length > 0,
         userId: currentUser.uid,
         userName: userProfile.displayName,
         userPhoto: userProfile.photoURL || '',
         location,
         createdAt: now,
-        expiresAt: now + SEVEN_DAYS,
+        expiresAt: now + TEN_DAYS,
         active: true,
         flagged: false,
         flagCount: 0
       });
+
+      const filesToUpload = [...images];
       navigate('/browse');
+      uploadListingImages(docRef.id, filesToUpload);
     } catch (err: any) {
       setError(err.message || 'Failed to create listing');
-    } finally {
       setLoading(false);
     }
   };
@@ -185,12 +194,12 @@ const CreateListing: React.FC = () => {
             <i className="las la-info-circle text-2xl text-accent-600" />
             <div className="text-sm text-accent-800">
               <p className="font-medium">Your listing will publish immediately</p>
-              <p className="text-accent-600 mt-0.5">It will show on the browse page and stay active for 7 days.</p>
+              <p className="text-accent-600 mt-0.5">It will show on the browse page and stay active for 10 days.</p>
             </div>
           </div>
 
           <button type="submit" disabled={loading} className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
-            {loading ? 'Uploading...' : 'Publish Listing'}
+            {loading ? 'Publishing...' : 'Publish Listing'}
           </button>
         </form>
       </div>
