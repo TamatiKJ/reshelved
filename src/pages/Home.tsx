@@ -117,7 +117,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section id="how-it-works" className="max-w-7xl mx-auto px-4 sm:px-6 py-24">
+      <section id="how-it-works" className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-44">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div className="max-w-xl">
             <h2 className="text-4xl sm:text-5xl font-bold text-stone-950 leading-tight">Book Hunting Should Not Be This Hard</h2>
@@ -143,7 +143,7 @@ const Home: React.FC = () => {
       <section className="relative bg-[#121212] text-white pt-28 pb-0">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 -mt-48 mb-28">
           <div className="bg-[#f5eee3] text-stone-950 rounded-[28px] sm:rounded-[36px] px-6 sm:px-16 py-16 sm:py-24 text-center">
-            <h2 className="text-4xl sm:text-6xl font-bold leading-tight">Don’t let your books<br />sit unused</h2>
+            <h2 className="text-4xl sm:text-6xl font-bold leading-tight">Don’t let your books sit unused</h2>
             <p className="mt-8 text-stone-700">Someone needs what you already have.</p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link to="/create" className="px-5 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-md transition">List a Book</Link>
