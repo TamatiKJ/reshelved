@@ -11,6 +11,8 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import type { UserProfile } from '../types';
 
+const ADMIN_EMAIL = 'tamatikraido@gmail.com';
+
 interface AuthContextType {
   currentUser: User | null;
   userProfile: UserProfile | null;
@@ -25,7 +27,9 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export const useAuth = () => useContext(AuthContext);
 
-const buildUserProfile = (user: User, displayName?: string, location = 'Nairobi'): UserProfile => ({
+const isAdminEmail = (email?: string | null) => email?.trim().toLowerCase() === ADMIN_EMAIL;
+
+const buildUserProfile = (user: User, displayName?: string, location = 'Lavington'): UserProfile => ({
   uid: user.uid,
   displayName: displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
   email: user.email || '',
@@ -33,7 +37,7 @@ const buildUserProfile = (user: User, displayName?: string, location = 'Nairobi'
   location,
   phone: '',
   bio: '',
-  isAdmin: false,
+  isAdmin: isAdminEmail(user.email),
   flagged: false,
   flagCount: 0,
   createdAt: Date.now()
@@ -44,14 +48,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const ensureUserProfile = async (user: User, displayName?: string, location = 'Nairobi') => {
+  const ensureUserProfile = async (user: User, displayName?: string, location = 'Lavington') => {
     const userRef = doc(db, 'users', user.uid);
     const snap = await getDoc(userRef);
 
     if (snap.exists()) {
       const existingProfile = snap.data() as UserProfile;
-      setUserProfile(existingProfile);
-      return existingProfile;
+      const normalizedProfile = {
+        ...existingProfile,
+        isAdmin: existingProfile.isAdmin || isAdminEmail(existingProfile.email || user.email)
+      };
+      setUserProfile(normalizedProfile);
+      if (normalizedProfile.isAdmin !== existingProfile.isAdmin) {
+        await setDoc(userRef, { isAdmin: true }, { merge: true });
+      }
+      return normalizedProfile;
     }
 
     const newProfile = buildUserProfile(user, displayName, location);
@@ -64,7 +75,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const snap = await getDoc(doc(db, 'users', uid));
       if (snap.exists()) {
-        setUserProfile(snap.data() as UserProfile);
+        const profile = snap.data() as UserProfile;
+        setUserProfile({ ...profile, isAdmin: profile.isAdmin || isAdminEmail(profile.email || auth.currentUser?.email) });
       } else if (auth.currentUser) {
         await ensureUserProfile(auth.currentUser);
       } else {
@@ -72,7 +84,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       console.error('Error fetching profile:', err);
-      setUserProfile(null);
+      if (auth.currentUser) {
+        setUserProfile(buildUserProfile(auth.currentUser));
+      } else {
+        setUserProfile(null);
+      }
     }
   };
 
@@ -85,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (email: string, password: string, displayName: string, location: string) => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = displayName.trim();
-    const cleanLocation = location || 'Nairobi';
+    const cleanLocation = location || 'Lavington';
 
     const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
     await updateProfile(cred.user, { displayName: cleanName });
@@ -98,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       bio: '',
       location: cleanLocation,
       phone: '',
-      isAdmin: false,
+      isAdmin: isAdminEmail(cleanEmail),
       flagged: false,
       flagCount: 0,
       createdAt: Date.now()
@@ -111,7 +127,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     const cred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
-    await ensureUserProfile(cred.user);
+    setCurrentUser(cred.user);
+    setUserProfile(buildUserProfile(cred.user));
+    ensureUserProfile(cred.user).catch((err) => console.error('Error syncing profile:', err));
   };
 
   const logout = async () => {
@@ -121,19 +139,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    const unsub = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
-      try {
-        if (user) {
-          await ensureUserProfile(user);
-        } else {
-          setUserProfile(null);
-        }
-      } catch (err) {
-        console.error('Error syncing user profile:', err);
+      setLoading(false);
+
+      if (user) {
+        setUserProfile(buildUserProfile(user));
+        ensureUserProfile(user).catch((err) => console.error('Error syncing user profile:', err));
+      } else {
         setUserProfile(null);
-      } finally {
-        setLoading(false);
       }
     });
     return unsub;

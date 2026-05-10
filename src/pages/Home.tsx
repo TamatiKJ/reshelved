@@ -96,10 +96,13 @@ const Home: React.FC = () => {
               {listings.map((listing) => <BookCard key={listing.id} listing={listing} />)}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="aspect-[4/3] bg-stone-200 rounded-sm" />
-              ))}
+            <div className="mt-6 rounded-3xl border border-stone-200 bg-stone-50 px-6 py-12 text-center">
+              <i className="las la-book-open text-6xl text-stone-300" />
+              <h3 className="mt-3 text-xl font-bold text-stone-900">No books listed yet</h3>
+              <p className="mt-2 text-stone-500">Once users publish books, the latest listings will appear here automatically.</p>
+              <Link to="/create" className="mt-5 inline-flex px-5 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-md transition">
+                List the first book
+              </Link>
             </div>
           )}
 
@@ -137,7 +140,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section className="relative bg-[#121212] text-white pt-28 pb-28">
+      <section className="relative bg-[#121212] text-white pt-28 pb-0">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 -mt-48 mb-28">
           <div className="bg-[#f5eee3] text-stone-950 rounded-[28px] sm:rounded-[36px] px-6 sm:px-16 py-16 sm:py-24 text-center">
             <h2 className="text-4xl sm:text-6xl font-bold leading-tight">Don’t let your books<br />sit unused</h2>
@@ -150,7 +153,7 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-28">
           <div className="text-center min-h-[320px]">
             <h2 className="text-4xl sm:text-6xl font-bold">See what others say</h2>
           </div>
