@@ -4,26 +4,27 @@ import { Link } from 'react-router-dom';
 const Footer: React.FC = () => {
   return (
     <footer className="bg-black text-white mt-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-end">
           <div>
-            <Link to="/" className="inline-flex items-center gap-3">
-              <img src="/reshelved-logo-white.svg" alt="Reshelved" className="h-9 w-auto" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-              <span className="text-xl font-bold">Reshelved</span>
+            <Link to="/" className="inline-flex items-center" aria-label="Reshelved home">
+              <img src="/reshelved-logo.svg" alt="Reshelved" className="h-8 w-auto" />
             </Link>
-            <p className="text-sm text-white/70 mt-3 max-w-md">
-              Affordable physical books for readers in Nairobi. Search, sell, swap, or donate books through one trusted platform.
+            <p className="text-sm text-white/70 mt-4 max-w-xs">
+              Promoting literacy in Kenya one book at a time.
             </p>
           </div>
-          <div className="flex flex-wrap gap-4 text-sm text-white/80">
-            <Link to="/" className="hover:text-white transition">Home</Link>
-            <Link to="/browse" className="hover:text-white transition">Browse Book</Link>
-            <a href="/#how-it-works" className="hover:text-white transition">How it Works</a>
-            <Link to="/create" className="hover:text-white transition">List a Book</Link>
+
+          <div className="flex flex-wrap md:justify-end gap-x-5 gap-y-3 text-sm text-white/75">
+            <Link to="/privacy-policy" className="hover:text-white transition">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-white transition">Terms of Service</Link>
+            <Link to="/cookies" className="hover:text-white transition">Cookie Policy</Link>
+            <Link to="/contact" className="hover:text-white transition">Contact</Link>
           </div>
         </div>
-        <div className="border-t border-white/10 mt-8 pt-6 text-sm text-white/60">
-          © 2026 Reshelved. Built for readers in Kenya.
+
+        <div className="border-t border-white/20 mt-10 pt-8 text-sm text-white/65">
+          © 2026 Reshelved. All rights reserved. Built by Tamati.
         </div>
       </div>
     </footer>
