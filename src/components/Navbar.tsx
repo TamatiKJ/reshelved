@@ -20,14 +20,13 @@ const Navbar: React.FC = () => {
     <nav className="bg-white shadow-sm border-b border-stone-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center gap-2 shrink-0">
-            <img src="/reshelved-logo.svg" alt="Reshelved" className="h-9 w-auto" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-            <span className="text-xl font-bold text-primary-700">Reshelved</span>
+          <Link to="/" className="flex items-center shrink-0" aria-label="Reshelved home">
+            <img src="/reshelved-logo.svg" alt="Reshelved" className="h-7 w-auto" />
           </Link>
 
           <div className="hidden md:flex items-center gap-1">
             <Link to="/" className="px-3 py-2 rounded-lg text-stone-600 hover:text-primary-700 hover:bg-primary-50 transition font-medium text-sm">Home</Link>
-            <Link to="/browse" className="px-3 py-2 rounded-lg text-stone-600 hover:text-primary-700 hover:bg-primary-50 transition font-medium text-sm">Browse Book</Link>
+            <Link to="/browse" className="px-3 py-2 rounded-lg text-stone-600 hover:text-primary-700 hover:bg-primary-50 transition font-medium text-sm">Browse</Link>
             <a href="/#how-it-works" className="px-3 py-2 rounded-lg text-stone-600 hover:text-primary-700 hover:bg-primary-50 transition font-medium text-sm">How it Works</a>
             {currentUser && (
               <>
@@ -40,7 +39,7 @@ const Navbar: React.FC = () => {
           <div className="hidden md:flex items-center gap-3">
             {currentUser ? (
               <>
-                <Link to="/create" className="px-4 py-2 text-sm font-semibold text-primary-600 border border-[#E8E9E9] rounded-lg hover:bg-primary-50 transition">List a Book</Link>
+                <Link to="/create" className="px-4 py-2 text-sm font-semibold text-stone-700 border border-[#E8E9E9] rounded-lg hover:bg-stone-50 transition">List a Book</Link>
                 <Link to="/notifications" className="relative p-2 rounded-lg hover:bg-stone-100 transition">
                   <i className="las la-bell text-2xl text-stone-600" />
                   {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold leading-none">{unreadCount > 9 ? '9+' : unreadCount}</span>}
@@ -71,8 +70,8 @@ const Navbar: React.FC = () => {
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <Link to="/create" className="px-4 py-2 text-sm font-semibold text-primary-600 border border-[#E8E9E9] rounded-lg hover:bg-primary-50 transition">List a Book</Link>
-                <Link to="/register" className="px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition">Join Reshelved</Link>
+                <Link to="/create" className="px-4 py-2 text-sm font-semibold text-stone-700 border border-[#E8E9E9] rounded-lg hover:bg-stone-50 transition">List a Book</Link>
+                <Link to="/register" className="px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition">Join Free</Link>
               </div>
             )}
           </div>
@@ -90,7 +89,7 @@ const Navbar: React.FC = () => {
         <div className="md:hidden border-t border-stone-100 bg-white">
           <div className="px-4 py-3 space-y-1">
             <Link to="/" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-stone-700 hover:bg-primary-50 font-medium">Home</Link>
-            <Link to="/browse" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-stone-700 hover:bg-primary-50 font-medium">Browse Book</Link>
+            <Link to="/browse" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-stone-700 hover:bg-primary-50 font-medium">Browse</Link>
             <a href="/#how-it-works" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-stone-700 hover:bg-primary-50 font-medium">How it Works</a>
             <Link to="/create" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-primary-700 hover:bg-primary-50 font-medium">List a Book</Link>
             {currentUser ? (
@@ -102,7 +101,7 @@ const Navbar: React.FC = () => {
                 <button onClick={() => { handleLogout(); setMobileOpen(false); }} className="w-full text-left px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 font-medium">Log Out</button>
               </>
             ) : (
-              <Link to="/register" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-white bg-primary-600 font-medium">Join Reshelved</Link>
+              <Link to="/register" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-white bg-primary-600 font-medium">Join Free</Link>
             )}
           </div>
         </div>
