@@ -30,6 +30,7 @@ const CreateListing: React.FC = () => {
   const [previews, setPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -69,24 +70,27 @@ const CreateListing: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || !userProfile) return;
+    if (!currentUser || !userProfile) {
+      setError('Please log in again before publishing.');
+      return;
+    }
     setError('');
+    setSuccess('');
     setLoading(true);
 
     try {
       const now = Date.now();
-      const docRef = await addDoc(collection(db, 'listings'), {
+      const listingPayload = {
         title,
         author,
         description,
         condition,
         category,
         type,
-        price: type === 'sell' ? parseFloat(price) || 0 : null,
+        price: type === 'sell' ? parseFloat(price) || 0 : 0,
         images: [],
-        imageUploadPending: images.length > 0,
         userId: currentUser.uid,
-        userName: userProfile.displayName,
+        userName: userProfile.displayName || currentUser.displayName || 'Reshelved User',
         userPhoto: userProfile.photoURL || '',
         location,
         createdAt: now,
@@ -94,13 +98,16 @@ const CreateListing: React.FC = () => {
         active: true,
         flagged: false,
         flagCount: 0
-      });
+      };
 
+      const docRef = await addDoc(collection(db, 'listings'), listingPayload);
+      setSuccess('Your listing is live. Redirecting to browse...');
       const filesToUpload = [...images];
-      navigate('/browse');
       uploadListingImages(docRef.id, filesToUpload);
+      window.setTimeout(() => navigate('/browse'), 900);
     } catch (err: any) {
-      setError(err.message || 'Failed to create listing');
+      console.error('Failed to publish listing:', err);
+      setError(err.message || 'Failed to create listing. Check your Firebase rules.');
       setLoading(false);
     }
   };
@@ -112,6 +119,7 @@ const CreateListing: React.FC = () => {
 
       <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 sm:p-8 mt-6">
         {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{error}</div>}
+        {success && <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">{success}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -198,7 +206,7 @@ const CreateListing: React.FC = () => {
             </div>
           </div>
 
-          <button type="submit" disabled={loading} className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
+          <button type="submit" disabled={loading || !!success} className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
             {loading ? 'Publishing...' : 'Publish Listing'}
           </button>
         </form>
