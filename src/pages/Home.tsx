@@ -255,7 +255,7 @@ const Home: React.FC = () => {
             <div className="space-y-0">
               {solutionItems.map((item, index) => (
                 <div key={item.text} className={`flex items-center gap-6 py-7 ${index !== solutionItems.length - 1 ? 'border-b border-stone-200' : ''}`}>
-                  <div className="w-16 h-16 rounded-full bg-[#f5eee3] border border-stone-200 flex items-center justify-center shrink-0">
+                  <div className="w-16 h-16 rounded-full bg-[#f5eee3] flex items-center justify-center shrink-0">
                     <i className={`las ${item.icon} text-primary-600 text-3xl`} />
                   </div>
                   <p className="text-[18px] font-normal leading-[1.45] text-stone-950">
