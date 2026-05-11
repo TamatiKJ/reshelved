@@ -35,7 +35,6 @@ const Home: React.FC = () => {
   const [allListings, setAllListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [submittedSearch, setSubmittedSearch] = useState('');
 
   useEffect(() => {
     fetchListings();
@@ -57,26 +56,21 @@ const Home: React.FC = () => {
   };
 
   const latestListings = allListings.slice(0, 4);
+  const liveSearchTerm = search.trim().toLowerCase();
   const searchResults = useMemo(() => {
-    const term = submittedSearch.trim().toLowerCase();
-    if (!term) return [];
+    if (!liveSearchTerm) return [];
     return allListings.filter((listing) => (
-      listing.title.toLowerCase().includes(term) ||
-      listing.author.toLowerCase().includes(term) ||
-      listing.description.toLowerCase().includes(term) ||
-      listing.category.toLowerCase().includes(term) ||
-      listing.condition.toLowerCase().includes(term) ||
-      listing.location.toLowerCase().includes(term) ||
-      listing.type.toLowerCase().includes(term)
+      listing.title.toLowerCase().includes(liveSearchTerm) ||
+      listing.author.toLowerCase().includes(liveSearchTerm) ||
+      listing.description.toLowerCase().includes(liveSearchTerm) ||
+      listing.category.toLowerCase().includes(liveSearchTerm) ||
+      listing.condition.toLowerCase().includes(liveSearchTerm) ||
+      listing.location.toLowerCase().includes(liveSearchTerm) ||
+      listing.type.toLowerCase().includes(liveSearchTerm)
     ));
-  }, [allListings, submittedSearch]);
+  }, [allListings, liveSearchTerm]);
 
-  const handleSearch = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    setSubmittedSearch(search.trim());
-  };
-
-  const showingSearch = submittedSearch.trim().length > 0;
+  const showingSearch = liveSearchTerm.length > 0;
   const visibleListings = showingSearch ? searchResults : latestListings;
 
   return (
@@ -85,11 +79,7 @@ const Home: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-[116px] sm:pt-32 sm:pb-[148px]">
           <div className="max-w-3xl">
             <h1 className="text-5xl sm:text-7xl font-bold leading-[1.08] tracking-tight">
-              Find the Books You Need Without{' '}
-              <span className="relative inline-block whitespace-nowrap">
-                <span className="relative z-10">Paying Full Price</span>
-                <span className="absolute left-0 right-0 bottom-[0.08em] h-[0.16em] bg-[#F7AF31] rounded-sm" aria-hidden="true" />
-              </span>
+              Find the Books You Need Without Paying Full Price
             </h1>
             <p className="mt-8 text-xl text-white/85 leading-relaxed max-w-2xl">
               Reshelved helps you search affordable physical books by title, author, genre, academic field, condition, and location — all in one platform.
@@ -106,9 +96,9 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section className="relative -mt-[60px] bg-white rounded-t-[42px] sm:rounded-t-[56px] pt-12 pb-20">
+      <section className="relative -mt-[60px] bg-white rounded-t-[42px] sm:rounded-t-[56px] pt-12 pb-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4 items-stretch">
+          <div className="flex flex-col lg:flex-row gap-4 items-stretch">
             <div className="flex-1 relative">
               <i className="las la-search absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-stone-500" />
               <input
@@ -118,13 +108,15 @@ const Home: React.FC = () => {
                 className="w-full h-12 pl-12 pr-4 rounded-lg border border-stone-200 text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
               />
             </div>
-            <button type="submit" className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition self-start lg:self-auto">
-              Search
-            </button>
-          </form>
+            {showingSearch && (
+              <button type="button" onClick={() => setSearch('')} className="inline-flex items-center justify-center px-8 py-3 rounded-lg border border-stone-200 text-stone-700 text-sm font-bold transition hover:bg-stone-50 self-start lg:self-auto">
+                Clear
+              </button>
+            )}
+          </div>
 
           <div className="mt-10 flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-stone-950">{showingSearch ? `Search results for “${submittedSearch}”` : 'Latest Books'}</h2>
+            <h2 className="text-2xl font-bold text-stone-950">{showingSearch ? `Search results for “${search.trim()}”` : 'Latest Books'}</h2>
             {!showingSearch && <Link to="/browse" className="text-sm font-semibold text-primary-600 hover:text-primary-700">View all</Link>}
           </div>
 
@@ -208,7 +200,7 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-20 pt-[60px]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-0 pt-0">
           <div className="text-center">
             <p className="text-xs font-bold tracking-[0.25em] text-white uppercase mb-4">Testimonials</p>
             <h2 className="text-4xl sm:text-6xl font-bold">What others say</h2>

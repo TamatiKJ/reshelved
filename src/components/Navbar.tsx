@@ -21,7 +21,7 @@ const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center shrink-0" aria-label="Reshelved home">
-            <img src="/reshelved-logo.svg" alt="Reshelved" className="h-7 w-auto" />
+            <img src="/reshelved-logo.svg" alt="Reshelved" className="h-6 w-auto" />
           </Link>
 
           <div className="hidden md:flex items-center gap-1">
