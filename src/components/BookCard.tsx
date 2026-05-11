@@ -76,13 +76,13 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
   return (
     <Link to={`/listing/${listing.id}`} className="group block h-full">
       <article className="h-full bg-white rounded-[22px] border border-stone-200 p-2.5 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
-        <div className="relative aspect-[1.45/1] rounded-[18px] bg-stone-100 overflow-hidden">
+        <div className="relative aspect-[1.45/1] rounded-[18px] bg-[#f5eee3] overflow-hidden">
           {hasImages ? (
             <>
               <img
                 src={coverImage}
                 alt={listing.title}
-                className="absolute inset-0 w-full h-full object-cover bg-stone-100"
+                className="absolute inset-0 w-full h-full object-cover bg-[#f5eee3]"
                 loading="eager"
               />
               {images.length > 1 && images.map((image, index) => (
@@ -90,19 +90,19 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
                   key={`${image}-${index}`}
                   src={image}
                   alt={listing.title}
-                  className={`absolute inset-0 w-full h-full object-cover bg-stone-100 transition-opacity duration-700 ease-in-out ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
+                  className={`absolute inset-0 w-full h-full object-cover bg-[#f5eee3] transition-opacity duration-700 ease-in-out ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
                   loading={index === 0 ? 'eager' : 'lazy'}
                 />
               ))}
             </>
           ) : (
-            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-stone-100">
+            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-[#f5eee3]">
               <i className="las la-book-open text-5xl text-stone-300" />
             </div>
           )}
 
           <div className="absolute top-3 left-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 text-[#4A2A10] shadow-sm text-xs font-bold backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 text-primary-700 shadow-sm text-xs font-bold backdrop-blur-sm">
               <i className={`${typeIcons[listing.type]} text-base leading-none`} />
               {typeLabels[listing.type]}
             </span>
@@ -114,7 +114,7 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
               onClick={handleBookmark}
               disabled={bookmarking}
               aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'}
-              className={`absolute bottom-3 left-3 w-9 h-9 rounded-xl flex items-center justify-center shadow-md backdrop-blur-sm transition ${isBookmarked ? 'bg-primary-600 text-white' : 'bg-stone-900/85 text-green-400 hover:bg-stone-950'}`}
+              className="absolute top-3 right-3 w-9 h-9 rounded-xl bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50 disabled:opacity-60"
             >
               <i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-lg`} />
             </button>
@@ -122,36 +122,36 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
         </div>
 
         <div className="px-1.5 pt-3.5 pb-1">
-          <h3 className="text-lg font-bold text-stone-900 leading-tight line-clamp-1 group-hover:text-primary-700 transition">
+          <h3 className="text-[16px] font-bold text-stone-950 leading-tight line-clamp-1 group-hover:text-primary-700 transition">
             {listing.title}
           </h3>
-          <p className="text-sm text-slate-500 mt-0.5 line-clamp-1">by {listing.author}</p>
+          <p className="text-[14px] text-stone-500 mt-0.5 line-clamp-1">by {listing.author}</p>
 
           <div className="flex items-center gap-2 mt-3">
             {listing.userPhoto ? (
-              <img src={listing.userPhoto} alt={listing.userName} className="w-7 h-7 rounded-full object-cover bg-stone-200" />
+              <img src={listing.userPhoto} alt={listing.userName} className="w-7 h-7 rounded-full object-cover bg-[#f5eee3]" />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-stone-200 text-stone-500 flex items-center justify-center text-[10px] font-bold">
+              <div className="w-7 h-7 rounded-full bg-[#f5eee3] text-stone-500 flex items-center justify-center text-[10px] font-bold">
                 {listing.userName?.[0]?.toUpperCase() || 'U'}
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-slate-700 truncate">Listed by {listing.userName || 'Reshelved user'}</p>
+              <p className="text-xs font-semibold text-stone-700 truncate">Listed by {listing.userName || 'Reshelved user'}</p>
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl bg-stone-50/90 border border-stone-100 p-3 grid grid-cols-3 divide-x divide-stone-200">
+          <div className="mt-4 rounded-2xl bg-[#f5eee3] border border-stone-200/70 p-3 grid grid-cols-3 divide-x divide-stone-300/70">
             <div className="px-1.5 min-w-0">
-              <p className="text-[11px] font-semibold text-slate-500">Condition</p>
-              <p className="mt-0.5 text-sm font-bold text-slate-800 truncate">{listing.condition}</p>
+              <p className="text-[11px] font-semibold text-stone-500">Condition</p>
+              <p className="mt-0.5 text-sm font-bold text-stone-800 truncate">{listing.condition}</p>
             </div>
             <div className="px-2.5 min-w-0">
-              <p className="text-[11px] font-semibold text-slate-500">Location</p>
-              <p className="mt-0.5 text-sm font-bold text-slate-800 truncate">{listing.location}</p>
+              <p className="text-[11px] font-semibold text-stone-500">Location</p>
+              <p className="mt-0.5 text-sm font-bold text-stone-800 truncate">{listing.location}</p>
             </div>
             <div className="px-2.5 min-w-0">
-              <p className="text-[11px] font-semibold text-slate-500">Price</p>
-              <p className="mt-0.5 text-sm font-bold text-slate-800 truncate">{getDisplayPrice(listing)}</p>
+              <p className="text-[11px] font-semibold text-stone-500">Price</p>
+              <p className="mt-0.5 text-sm font-bold text-stone-800 truncate">{getDisplayPrice(listing)}</p>
             </div>
           </div>
         </div>
