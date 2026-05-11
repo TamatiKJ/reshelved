@@ -268,12 +268,12 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section className="bg-white pb-[340px] overflow-hidden">
+      <section className="bg-white pt-0 pb-[160px] sm:pb-[340px] overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <img
             src="/homepage personas active.webp"
             alt="Different types of Reshelved readers and book traders"
-            className="w-full h-auto block"
+            className="w-full h-auto block -my-6 sm:my-0"
             loading="lazy"
           />
         </div>
