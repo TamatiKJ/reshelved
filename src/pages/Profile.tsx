@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import BookCard from '../components/BookCard';
@@ -15,6 +16,9 @@ const Profile: React.FC = () => {
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+  const [saveError, setSaveError] = useState('');
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editLocation, setEditLocation] = useState('');
@@ -40,7 +44,10 @@ const Profile: React.FC = () => {
       isAdmin: userProfile?.isAdmin || false,
       flagged: false,
       flagCount: 0,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      online: true,
+      lastSeen: Date.now(),
+      deactivated: false
     };
     await setDoc(doc(db, 'users', currentUser.uid), fallback, { merge: true });
     return fallback;
@@ -54,7 +61,7 @@ const Profile: React.FC = () => {
       let p: UserProfile | null = null;
 
       if (snap.exists()) {
-        p = snap.data() as UserProfile;
+        p = { uid: targetUserId, ...snap.data() } as UserProfile;
       } else {
         p = await createFallbackProfile();
       }
@@ -91,18 +98,47 @@ const Profile: React.FC = () => {
 
   const handleSaveProfile = async () => {
     if (!currentUser) return;
+
+    const cleanName = editName.trim();
+    if (!cleanName) {
+      setSaveError('Display name cannot be empty.');
+      return;
+    }
+
+    setSaving(true);
+    setSaveError('');
+    setSaveMessage('');
+
     try {
-      await updateDoc(doc(db, 'users', currentUser.uid), {
-        displayName: editName,
-        bio: editBio,
-        location: editLocation,
-        phone: editPhone
-      });
+      const updates = {
+        uid: currentUser.uid,
+        displayName: cleanName,
+        email: currentUser.email || profile?.email || '',
+        photoURL: currentUser.photoURL || profile?.photoURL || '',
+        bio: editBio.trim(),
+        location: editLocation || 'Lavington',
+        phone: editPhone.trim(),
+        isAdmin: profile?.isAdmin || userProfile?.isAdmin || false,
+        flagged: profile?.flagged || false,
+        flagCount: profile?.flagCount || 0,
+        createdAt: profile?.createdAt || userProfile?.createdAt || Date.now(),
+        online: true,
+        lastSeen: Date.now(),
+        deactivated: profile?.deactivated || false
+      };
+
+      await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
+      await updateProfile(currentUser, { displayName: cleanName }).catch((err) => console.error('Auth display name update failed:', err));
+
+      setProfile((current) => current ? { ...current, ...updates } : updates);
       setEditing(false);
+      setSaveMessage('Profile saved.');
       await refreshProfile();
-      fetchData();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Error saving profile:', err);
+      setSaveError(err?.message || 'Profile failed to save. Check your Firestore rules and try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -139,6 +175,8 @@ const Profile: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
       <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 sm:p-8">
+        {saveMessage && <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">{saveMessage}</div>}
+        {saveError && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{saveError}</div>}
         <div className="flex flex-col sm:flex-row items-start gap-6">
           {profile.photoURL ? (
             <img src={profile.photoURL} alt={profile.displayName} className="w-20 h-20 rounded-full object-cover shrink-0" />
@@ -157,15 +195,15 @@ const Profile: React.FC = () => {
                 </select>
                 <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-stone-200 text-sm" placeholder="Phone number" />
                 <div className="flex gap-2">
-                  <button onClick={handleSaveProfile} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium">Save</button>
-                  <button onClick={() => setEditing(false)} className="px-4 py-2 border border-stone-200 rounded-lg text-sm">Cancel</button>
+                  <button onClick={handleSaveProfile} disabled={saving} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium disabled:opacity-60">{saving ? 'Saving...' : 'Save'}</button>
+                  <button onClick={() => setEditing(false)} disabled={saving} className="px-4 py-2 border border-stone-200 rounded-lg text-sm disabled:opacity-60">Cancel</button>
                 </div>
               </div>
             ) : (
               <>
                 <div className="flex items-center gap-3">
                   <h1 className="text-2xl font-bold text-stone-800">{profile.displayName}</h1>
-                  {isOwnProfile && <button onClick={() => setEditing(true)} className="text-sm text-primary-600 hover:text-primary-700 font-medium">Edit</button>}
+                  {isOwnProfile && <button onClick={() => { setSaveMessage(''); setSaveError(''); setEditing(true); }} className="text-sm text-primary-600 hover:text-primary-700 font-medium">Edit</button>}
                 </div>
                 {profile.bio && <p className="text-stone-600 mt-1">{profile.bio}</p>}
                 <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-stone-500">
