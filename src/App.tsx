@@ -18,13 +18,21 @@ const ScrollToTop: React.FC = () => {
   const { pathname, search } = useLocation();
 
   useLayoutEffect(() => {
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
+    const html = document.documentElement;
+    const previousScrollBehavior = html.style.scrollBehavior;
+    html.style.scrollBehavior = 'auto';
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    html.scrollTop = 0;
     document.body.scrollTop = 0;
+    document.scrollingElement?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
     requestAnimationFrame(() => {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      html.scrollTop = 0;
       document.body.scrollTop = 0;
+      document.scrollingElement?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      html.style.scrollBehavior = previousScrollBehavior;
     });
   }, [pathname, search]);
 
