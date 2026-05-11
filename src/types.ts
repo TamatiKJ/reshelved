@@ -6,6 +6,7 @@ export interface UserProfile {
   bio?: string;
   location?: string;
   phone?: string;
+  bookmarks?: string[];
   isAdmin: boolean;
   flagged: boolean;
   flagCount: number;
