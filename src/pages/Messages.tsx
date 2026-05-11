@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { collection, query, where, orderBy, addDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, addDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import type { Conversation, Message } from '../types';
@@ -13,26 +13,39 @@ const Messages: React.FC = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
 
   useEffect(() => {
     if (!currentUser) return;
+
+    setLoading(true);
+    setError('');
+
     const q = query(
       collection(db, 'conversations'),
-      where('participants', 'array-contains', currentUser.uid),
-      orderBy('lastMessageAt', 'desc')
+      where('participants', 'array-contains', currentUser.uid)
     );
+
     const unsub = onSnapshot(q, (snap) => {
       const convs: Conversation[] = [];
       snap.forEach(d => convs.push({ id: d.id, ...d.data() } as Conversation));
+      convs.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
       setConversations(convs);
+
       if (conversationId) {
         const sel = convs.find(c => c.id === conversationId);
-        if (sel) setSelectedConv(sel);
+        setSelectedConv(sel || null);
       }
+
+      setLoading(false);
+    }, (err) => {
+      console.error('Error loading conversations:', err);
+      setError('Could not load conversations. Check your Firestore rules.');
       setLoading(false);
     });
+
     return unsub;
   }, [currentUser, conversationId]);
 
@@ -41,61 +54,77 @@ const Messages: React.FC = () => {
       setMessages([]);
       return;
     }
+
+    setError('');
+
     const q = query(
       collection(db, 'messages'),
-      where('conversationId', '==', conversationId),
-      orderBy('createdAt', 'asc')
+      where('conversationId', '==', conversationId)
     );
+
     const unsub = onSnapshot(q, (snap) => {
       const msgs: Message[] = [];
       snap.forEach(d => msgs.push({ id: d.id, ...d.data() } as Message));
+      msgs.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
       setMessages(msgs);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    }, (err) => {
+      console.error('Error loading messages:', err);
+      setError('Could not load messages. Check your Firestore rules.');
     });
+
     return unsub;
   }, [conversationId]);
 
   useEffect(() => {
     if (conversationId) {
       const sel = conversations.find(c => c.id === conversationId);
-      if (sel) setSelectedConv(sel);
+      setSelectedConv(sel || null);
     }
   }, [conversationId, conversations]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentUser || !conversationId || !selectedConv) return;
+
     const messageText = newMessage.trim();
     const now = Date.now();
     setSending(true);
+    setError('');
+
     try {
       await addDoc(collection(db, 'messages'), {
         conversationId,
         senderId: currentUser.uid,
-        senderName: userProfile?.displayName || 'User',
+        senderName: userProfile?.displayName || currentUser.displayName || 'User',
         text: messageText,
         createdAt: now
       });
+
       await updateDoc(doc(db, 'conversations', conversationId), {
         lastMessage: messageText,
-        lastMessageAt: now
+        lastMessageAt: now,
+        updatedAt: now
       });
 
       const recipientIds = selectedConv.participants.filter((id) => id !== currentUser.uid);
       await Promise.all(recipientIds.map((recipientId) => addDoc(collection(db, 'notifications'), {
         userId: recipientId,
-        fromAdmin: false,
+        fromUserId: currentUser.uid,
+        fromUserName: userProfile?.displayName || currentUser.displayName || 'User',
         type: 'message',
-        subject: `New message from ${userProfile?.displayName || 'User'}`,
+        subject: `New message from ${userProfile?.displayName || currentUser.displayName || 'User'}`,
         message: messageText,
         conversationId,
+        listingId: selectedConv.listingId,
         createdAt: now,
         read: false
       })));
 
       setNewMessage('');
     } catch (err) {
-      console.error(err);
+      console.error('Error sending message:', err);
+      setError('Message failed to send. Check your Firestore rules.');
     } finally {
       setSending(false);
     }
@@ -123,6 +152,7 @@ const Messages: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
       <h1 className="text-2xl font-bold text-stone-800 mb-6">Messages</h1>
+      {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{error}</div>}
 
       <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden" style={{ height: 'calc(100vh - 200px)', minHeight: '500px' }}>
         <div className="flex h-full">
@@ -162,7 +192,7 @@ const Messages: React.FC = () => {
                         <div className="flex items-center justify-between">
                           <span className="font-medium text-stone-800 text-sm truncate">{getOtherParticipantName(conv)}</span>
                           <span className="text-xs text-stone-400 shrink-0 ml-2">
-                            {new Date(conv.lastMessageAt).toLocaleDateString()}
+                            {conv.lastMessageAt ? new Date(conv.lastMessageAt).toLocaleDateString() : ''}
                           </span>
                         </div>
                         <p className="text-xs text-stone-500 truncate mt-0.5">{conv.listingTitle}</p>
@@ -203,7 +233,7 @@ const Messages: React.FC = () => {
                         }`}>
                           <p>{msg.text}</p>
                           <p className={`text-xs mt-1 ${isMe ? 'text-primary-200' : 'text-stone-400'}`}>
-                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                           </p>
                         </div>
                       </div>
@@ -226,14 +256,14 @@ const Messages: React.FC = () => {
                       disabled={!newMessage.trim() || sending}
                       className="px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition disabled:opacity-50 text-sm font-medium"
                     >
-                      Send
+                      {sending ? 'Sending...' : 'Send'}
                     </button>
                   </div>
                 </form>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-stone-400 text-sm">
-                Select a conversation to start messaging
+              <div className="flex-1 flex items-center justify-center text-stone-400 text-sm px-6 text-center">
+                {conversationId ? 'This conversation could not be loaded for this account.' : 'Select a conversation to start messaging'}
               </div>
             )}
           </div>
