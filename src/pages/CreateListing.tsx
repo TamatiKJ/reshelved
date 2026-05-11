@@ -48,7 +48,7 @@ const compressListingImage = (file: File): Promise<Blob> => {
       ctx.drawImage(image, 0, 0, width, height);
       canvas.toBlob((blob) => {
         if (!blob) {
-          reject(new Error('Could not compress image.'));
+          reject(new Error('Could not convert image to WebP.'));
           return;
         }
         resolve(blob);
@@ -79,16 +79,15 @@ const CreateListing: React.FC = () => {
   const [previews, setPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [uploadProgress, setUploadProgress] = useState({
     active: false,
+    done: false,
     phase: '',
     fileName: '',
     currentFile: 0,
     totalFiles: 0,
     bytesTransferred: 0,
     totalBytes: 0,
-    originalBytes: 0,
     percent: 0
   });
 
@@ -118,14 +117,14 @@ const CreateListing: React.FC = () => {
 
     setUploadProgress({
       active: true,
-      phase: 'Compressing image...',
+      done: false,
+      phase: 'Converting to WebP',
       fileName: file.name,
       currentFile: index + 1,
       totalFiles,
       bytesTransferred: 0,
       totalBytes: file.size,
-      originalBytes: file.size,
-      percent: 1
+      percent: 0
     });
 
     const compressedBlob = await compressListingImage(file);
@@ -144,28 +143,28 @@ const CreateListing: React.FC = () => {
 
       setUploadProgress({
         active: true,
-        phase: 'Uploading image...',
+        done: false,
+        phase: 'Uploading image',
         fileName: file.name,
         currentFile: index + 1,
         totalFiles,
         bytesTransferred: 0,
         totalBytes: compressedBlob.size,
-        originalBytes: file.size,
-        percent: 1
+        percent: 0
       });
 
       task.on('state_changed', (snapshot) => {
         if (snapshot.bytesTransferred > 0) movedBytes = true;
-        const percent = snapshot.totalBytes ? Math.max(1, Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)) : 1;
+        const percent = snapshot.totalBytes ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100) : 0;
         setUploadProgress({
           active: true,
-          phase: snapshot.state === 'paused' ? 'Upload paused...' : 'Uploading image...',
+          done: false,
+          phase: snapshot.state === 'paused' ? 'Upload paused' : 'Uploading image',
           fileName: file.name,
           currentFile: index + 1,
           totalFiles,
           bytesTransferred: snapshot.bytesTransferred,
           totalBytes: snapshot.totalBytes,
-          originalBytes: file.size,
           percent
         });
       }, (uploadError) => {
@@ -197,8 +196,7 @@ const CreateListing: React.FC = () => {
       return;
     }
     setError('');
-    setSuccess('');
-    setUploadProgress({ active: false, phase: '', fileName: '', currentFile: 0, totalFiles: 0, bytesTransferred: 0, totalBytes: 0, originalBytes: 0, percent: 0 });
+    setUploadProgress({ active: false, done: false, phase: '', fileName: '', currentFile: 0, totalFiles: 0, bytesTransferred: 0, totalBytes: 0, percent: 0 });
     setLoading(true);
 
     try {
@@ -225,17 +223,24 @@ const CreateListing: React.FC = () => {
 
       const docRef = await addDoc(collection(db, 'listings'), listingPayload);
       if (images.length > 0) {
-        setSuccess('Preparing images...');
         await uploadListingImages(docRef.id, [...images]);
       }
-      setUploadProgress(prev => ({ ...prev, active: false, percent: 100 }));
-      setSuccess('Your listing is live. Redirecting...');
-      navigate(`/listing/${docRef.id}`);
+      setUploadProgress({
+        active: true,
+        done: true,
+        phase: 'Uploaded Successfully!',
+        fileName: '',
+        currentFile: images.length || 1,
+        totalFiles: images.length || 1,
+        bytesTransferred: 0,
+        totalBytes: 0,
+        percent: 100
+      });
+      window.setTimeout(() => navigate(`/listing/${docRef.id}`), 900);
     } catch (err: any) {
       console.error('Failed to publish listing:', err);
       setError(err?.message || 'Failed to create listing. Check your Firebase rules.');
-      setSuccess('');
-      setUploadProgress(prev => ({ ...prev, active: false }));
+      setUploadProgress(prev => ({ ...prev, active: false, done: false }));
       setLoading(false);
     }
   };
@@ -247,24 +252,31 @@ const CreateListing: React.FC = () => {
 
       <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 sm:p-8 mt-6">
         {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{error}</div>}
-        {success && <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">{success}</div>}
 
         {uploadProgress.active && (
-          <div className="mb-4 rounded-xl border border-primary-200 bg-primary-50 p-4">
+          <div className="mb-4 rounded-xl border border-green-200 bg-green-50 p-4">
             <div className="flex items-center justify-between gap-3 text-sm">
-              <div className="min-w-0">
-                <p className="font-semibold text-primary-700 truncate">{uploadProgress.phase} {uploadProgress.fileName}</p>
-                <p className="text-primary-600 mt-0.5">
-                  File {uploadProgress.currentFile} of {uploadProgress.totalFiles} · {formatBytes(uploadProgress.bytesTransferred)} / {formatBytes(uploadProgress.totalBytes)}
-                </p>
-                {uploadProgress.originalBytes > uploadProgress.totalBytes && (
-                  <p className="text-xs text-primary-500 mt-0.5">Compressed from {formatBytes(uploadProgress.originalBytes)} to {formatBytes(uploadProgress.totalBytes)}</p>
+              <div className="min-w-0 flex items-start gap-3">
+                {uploadProgress.done ? (
+                  <i className="las la-check-circle text-2xl text-green-600 leading-none mt-0.5" />
+                ) : (
+                  <i className="las la-cloud-upload-alt text-2xl text-green-600 leading-none mt-0.5" />
                 )}
+                <div className="min-w-0">
+                  <p className="font-semibold text-green-700 truncate">
+                    {uploadProgress.phase}{uploadProgress.fileName ? `: ${uploadProgress.fileName}` : ''}
+                  </p>
+                  {!uploadProgress.done && (
+                    <p className="text-green-600 mt-0.5">
+                      File {uploadProgress.currentFile} of {uploadProgress.totalFiles} · {formatBytes(uploadProgress.bytesTransferred)} / {formatBytes(uploadProgress.totalBytes)}
+                    </p>
+                  )}
+                </div>
               </div>
-              <span className="font-bold text-primary-700">{uploadProgress.percent}%</span>
+              <span className="font-bold text-green-700">{uploadProgress.percent}%</span>
             </div>
             <div className="mt-3 h-2 rounded-full bg-white overflow-hidden">
-              <div className="h-full rounded-full bg-primary-600 transition-all duration-200" style={{ width: `${uploadProgress.percent}%` }} />
+              <div className="h-full rounded-full bg-green-600 transition-all duration-200" style={{ width: `${uploadProgress.percent}%` }} />
             </div>
           </div>
         )}
@@ -350,7 +362,7 @@ const CreateListing: React.FC = () => {
             <i className="las la-info-circle text-2xl text-accent-600" />
             <div className="text-sm text-accent-800">
               <p className="font-medium">Your listing will publish after images finish uploading</p>
-              <p className="text-accent-600 mt-0.5">Images are compressed before upload so they load faster on Reshelved.</p>
+              <p className="text-accent-600 mt-0.5">Images are converted to WebP before upload so they load faster on Reshelved.</p>
             </div>
           </div>
 
