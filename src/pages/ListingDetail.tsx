@@ -1,9 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { doc, getDoc, addDoc, collection, query, where, getDocs, updateDoc, increment, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import type { Listing, Rating } from '../types';
+
+const normalizeImages = (images?: unknown): string[] => {
+  if (!Array.isArray(images)) return [];
+  return images
+    .filter((image): image is string => typeof image === 'string')
+    .map((image) => image.trim())
+    .filter((image) => image.length > 0);
+};
 
 const ListingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +20,7 @@ const ListingDetail: React.FC = () => {
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImage, setCurrentImage] = useState(0);
+  const [failedImages, setFailedImages] = useState<string[]>([]);
   const [showReport, setShowReport] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportDetails, setReportDetails] = useState('');
@@ -22,9 +31,25 @@ const ListingDetail: React.FC = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState('');
 
+  const listingImages = useMemo(() => normalizeImages(listing?.images).filter((image) => !failedImages.includes(image)), [listing?.images, failedImages]);
+  const activeImage = listingImages[currentImage] || listingImages[0];
+
   useEffect(() => {
     if (id) fetchListing();
   }, [id]);
+
+  useEffect(() => {
+    setCurrentImage(0);
+    setFailedImages([]);
+  }, [listing?.id]);
+
+  useEffect(() => {
+    if (currentImage >= listingImages.length) setCurrentImage(0);
+  }, [currentImage, listingImages.length]);
+
+  const handleImageError = (image: string) => {
+    setFailedImages((current) => current.includes(image) ? current : [...current, image]);
+  };
 
   const fetchListing = async () => {
     try {
@@ -240,10 +265,10 @@ const ListingDetail: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         <div className="lg:col-span-3">
           <div className="aspect-[4/3] bg-stone-100 rounded-2xl overflow-hidden relative">
-            {listing.images && listing.images.length > 0 ? (
-              <img src={listing.images[currentImage]} alt={listing.title} className="w-full h-full object-cover" />
+            {activeImage ? (
+              <img src={activeImage} alt={listing.title} className="w-full h-full object-cover" onError={() => handleImageError(activeImage)} />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
+              <div className="w-full h-full flex items-center justify-center bg-stone-100">
                 <svg className="w-16 h-16 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
               </div>
             )}
@@ -253,15 +278,15 @@ const ListingDetail: React.FC = () => {
               </div>
             )}
           </div>
-          {listing.images && listing.images.length > 1 && (
+          {listingImages.length > 1 && (
             <div className="flex gap-2 mt-3">
-              {listing.images.map((img, i) => (
+              {listingImages.map((img, i) => (
                 <button
-                  key={i}
+                  key={img}
                   onClick={() => setCurrentImage(i)}
                   className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition ${i === currentImage ? 'border-primary-500' : 'border-stone-200 hover:border-stone-300'}`}
                 >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <img src={img} alt="" className="w-full h-full object-cover" onError={() => handleImageError(img)} />
                 </button>
               ))}
             </div>
