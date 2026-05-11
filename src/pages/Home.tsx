@@ -161,7 +161,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section className="relative bg-[#121212] text-white pt-28 pb-0">
+      <section className="relative bg-black text-white pt-28 pb-0">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 -mt-48 mb-28">
           <div className="bg-[#f5eee3] text-stone-950 rounded-[28px] sm:rounded-[36px] px-6 sm:px-16 py-16 sm:py-24 text-center">
             <h2 className="text-4xl sm:text-6xl font-bold leading-tight">Don’t let your books sit unused</h2>
@@ -176,9 +176,8 @@ const Home: React.FC = () => {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-28">
           <div className="text-center">
-            <p className="text-xs font-bold tracking-[0.25em] text-white/70 uppercase mb-4">Testimonials</p>
+            <p className="text-xs font-bold tracking-[0.25em] text-white uppercase mb-4">Testimonials</p>
             <h2 className="text-4xl sm:text-6xl font-bold">What others say</h2>
-            <p className="text-white/65 mt-4">Real readers from across Kenya sharing their experience.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
@@ -191,7 +190,7 @@ const Home: React.FC = () => {
                     </svg>
                   ))}
                 </div>
-                <p className="text-[16px] leading-[24px] text-black flex-1">“{review.text}”</p>
+                <p className="text-[17px] leading-[1.4] text-black flex-1">“{review.text}”</p>
                 <div>
                   <p className="font-semibold text-stone-800 text-sm">{review.name}</p>
                   <p className="text-stone-400 text-xs mt-0.5">{review.location}</p>
