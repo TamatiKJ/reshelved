@@ -34,19 +34,19 @@ const publisherLogos = [
 
 const solutionItems = [
   {
-    icon: 'fa-book-open-reader',
+    icon: 'la-book-open',
     text: 'Find the right book without the long search or stress.'
   },
   {
-    icon: 'fa-arrows-rotate',
+    icon: 'la-sync-alt',
     text: 'Swap old books and feel happy they matter again.'
   },
   {
-    icon: 'fa-piggy-bank',
+    icon: 'la-wallet',
     text: 'Save more money while still getting books you love.'
   },
   {
-    icon: 'fa-circle-check',
+    icon: 'la-check-circle',
     text: 'Meet trusted readers and trade with peace of mind.'
   }
 ];
@@ -256,7 +256,7 @@ const Home: React.FC = () => {
               {solutionItems.map((item, index) => (
                 <div key={item.text} className={`flex items-center gap-6 py-7 ${index !== solutionItems.length - 1 ? 'border-b border-stone-200' : ''}`}>
                   <div className="w-16 h-16 rounded-full bg-[#f5eee3] border border-stone-200 flex items-center justify-center shrink-0">
-                    <i className={`fa-solid ${item.icon} text-primary-600 text-xl`} />
+                    <i className={`las ${item.icon} text-primary-600 text-3xl`} />
                   </div>
                   <p className="text-[18px] font-normal leading-[1.45] text-stone-950">
                     {item.text}
