@@ -5,7 +5,32 @@ import { db } from '../firebase';
 import BookCard from '../components/BookCard';
 import type { Listing } from '../types';
 
-const publisherPlaceholders = ['Publisher', 'Bookshop', 'Campus', 'Library', 'Reader', 'Vendor'];
+const publisherLogos = [
+  {
+    name: 'Penguin Random House',
+    src: '/publishers/penguin-random-house-logo.svg'
+  },
+  {
+    name: 'Epsilon',
+    src: '/publishers/epsilon.png'
+  },
+  {
+    name: 'Longhorn',
+    src: '/publishers/longhorn.png'
+  },
+  {
+    name: 'Harper Collins',
+    src: '/publishers/harper-collins.avif'
+  },
+  {
+    name: 'Oxford Press',
+    src: '/publishers/oxford-press.svg'
+  },
+  {
+    name: 'Thames & Hudson',
+    src: '/publishers/thames-hudson.png'
+  }
+];
 
 const testimonials = [
   {
@@ -152,12 +177,26 @@ const Home: React.FC = () => {
             </div>
           )}
 
-          <div className="mt-20 flex flex-wrap justify-center gap-8 pb-8">
-            {publisherPlaceholders.map((name) => (
-              <div key={name} className="w-28 h-10 bg-yellow-200 flex items-center justify-center text-[10px] font-bold text-yellow-900/50 uppercase tracking-wide">
-                {name}
+          <div className="mt-20 pb-8">
+            <div className="hidden sm:grid grid-cols-3 lg:grid-cols-6 gap-5 items-center">
+              {publisherLogos.map((publisher) => (
+                <div key={publisher.name} className="h-20 rounded-2xl bg-white border border-stone-200 flex items-center justify-center px-5 shadow-sm">
+                  <img src={publisher.src} alt={`${publisher.name} logo`} className="max-h-12 max-w-[130px] object-contain grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition" loading="lazy" />
+                </div>
+              ))}
+            </div>
+
+            <div className="sm:hidden relative overflow-hidden">
+              <div className="absolute left-0 top-0 z-10 h-full w-10 bg-gradient-to-r from-white to-transparent" />
+              <div className="absolute right-0 top-0 z-10 h-full w-10 bg-gradient-to-l from-white to-transparent" />
+              <div className="flex w-max animate-[publisher-scroll_22s_linear_infinite]">
+                {[...publisherLogos, ...publisherLogos].map((publisher, index) => (
+                  <div key={`${publisher.name}-${index}`} className="mx-2 h-20 w-40 shrink-0 rounded-2xl bg-white border border-stone-200 flex items-center justify-center px-4 shadow-sm">
+                    <img src={publisher.src} alt={`${publisher.name} logo`} className="max-h-10 max-w-[120px] object-contain grayscale opacity-80" loading="lazy" />
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
           <p className="text-center text-xs font-semibold text-stone-400 mt-3">Collections from Top Publishers</p>
           <div className="mt-4 border-b border-stone-200" />
@@ -246,6 +285,19 @@ const Home: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <style>
+        {`
+          @keyframes publisher-scroll {
+            from {
+              transform: translateX(0);
+            }
+            to {
+              transform: translateX(-50%);
+            }
+          }
+        `}
+      </style>
     </div>
   );
 };
