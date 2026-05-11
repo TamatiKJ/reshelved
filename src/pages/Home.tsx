@@ -177,7 +177,7 @@ const Home: React.FC = () => {
             </div>
           )}
 
-          <div className="mt-20 pb-8">
+          <div className="mt-20 pb-4">
             <div className="hidden sm:grid grid-cols-3 lg:grid-cols-6 gap-5 items-center">
               {publisherLogos.map((publisher) => (
                 <div key={publisher.name} className="h-20 flex items-center justify-center px-5">
