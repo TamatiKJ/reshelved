@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import Browse from './pages/Browse';
 import { Login, Register } from './pages/Auth';
 import CreateListing from './pages/CreateListing';
+import EditListing from './pages/EditListing';
 import ListingDetail from './pages/ListingDetail';
 import Messages from './pages/Messages';
 import Profile from './pages/Profile';
@@ -66,6 +67,7 @@ const AppContent: React.FC = () => {
                 <Route path="/" element={<Home />} />
                 <Route path="/browse" element={<Browse />} />
                 <Route path="/listing/:id" element={<ListingDetail />} />
+                <Route path="/listing/:id/edit" element={<ProtectedRoute><EditListing /></ProtectedRoute>} />
                 <Route path="/user/:userId" element={<Profile />} />
                 <Route path="/create" element={<ProtectedRoute><CreateListing /></ProtectedRoute>} />
                 <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
