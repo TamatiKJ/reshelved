@@ -10,21 +10,24 @@ const publisherPlaceholders = ['Publisher', 'Bookshop', 'Campus', 'Library', 'Re
 const testimonials = [
   {
     stars: 5,
-    text: 'I had three textbooks sitting on my shelf gathering dust after finishing uni. Listed them on Reshelved and within two days someone from Kasarani had already reached out. The messaging was simple and we sorted everything out quickly. Did not expect it to be this easy.',
-    name: 'Brian Otieno',
-    location: 'Kasarani, Nairobi'
+    text: 'Finding affordable novels in Nairobi is genuinely hard. I stumbled on Reshelved looking for something to read over the weekend and ended up swapping two books I had already finished. The person I swapped with was lovely and we even recommended titles to each other. I keep coming back.',
+    name: 'Amina Waweru',
+    location: 'Kileleshwa, Nairobi',
+    image: '/reviewer-1.png'
   },
   {
     stars: 5,
-    text: 'Finding affordable novels in Nairobi is genuinely hard. I stumbled on Reshelved looking for something to read over the weekend and ended up swapping two books I had already finished. The person I swapped with was lovely and we even recommended titles to each other. I keep coming back.',
-    name: 'Amina Waweru',
-    location: 'Kileleshwa, Nairobi'
+    text: 'I had three textbooks sitting on my shelf gathering dust after finishing uni. Listed them on Reshelved and within two days someone from Kasarani had already reached out. The messaging was simple and we sorted everything out quickly. Did not expect it to be this easy.',
+    name: 'Brian Otieno',
+    location: 'Kasarani, Nairobi',
+    image: '/reviewer-2.png'
   },
   {
     stars: 5,
     text: "I donated a whole stack of children's books my kids had outgrown and the response was almost immediate. Knowing they went to a family nearby instead of a box somewhere felt really good. The platform is clean and signing up took me less than a minute. Would tell every parent in Nairobi about this.",
     name: 'Fatuma Ndegwa',
-    location: 'South B, Nairobi'
+    location: 'South B, Nairobi',
+    image: '/reviewer-3.png'
   }
 ];
 
@@ -161,8 +164,8 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section className="relative bg-black text-white pt-28 pb-0">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 -mt-48 mb-28">
+      <section className="relative bg-black text-white pt-0 pb-0">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 -translate-y-1/2 mb-[-90px] sm:mb-[-120px] relative z-10">
           <div className="bg-[#f5eee3] text-stone-950 rounded-[28px] sm:rounded-[36px] px-6 sm:px-16 py-16 sm:py-24 text-center">
             <h2 className="text-4xl sm:text-6xl font-bold leading-tight">Don’t let your books sit unused</h2>
             <p className="mt-8 text-stone-700">Someone needs what you already have.</p>
@@ -174,7 +177,7 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-28">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-28 pt-16">
           <div className="text-center">
             <p className="text-xs font-bold tracking-[0.25em] text-white uppercase mb-4">Testimonials</p>
             <h2 className="text-4xl sm:text-6xl font-bold">What others say</h2>
@@ -191,9 +194,12 @@ const Home: React.FC = () => {
                   ))}
                 </div>
                 <p className="text-[17px] leading-[1.4] text-black flex-1">“{review.text}”</p>
-                <div>
-                  <p className="font-semibold text-stone-800 text-sm">{review.name}</p>
-                  <p className="text-stone-400 text-xs mt-0.5">{review.location}</p>
+                <div className="flex items-center gap-3 pt-2">
+                  <img src={review.image} alt={review.name} className="w-10 h-10 rounded-full object-cover bg-stone-200" loading="lazy" />
+                  <div>
+                    <p className="font-semibold text-stone-800 text-sm">{review.name}</p>
+                    <p className="text-[#898A88] text-xs mt-0.5">{review.location}</p>
+                  </div>
                 </div>
               </div>
             ))}
@@ -205,8 +211,8 @@ const Home: React.FC = () => {
                 <div>Start free</div>
                 <div className="inline-flex items-center gap-8">
                   <span>today</span>
-                  <Link to="/register" className="w-[clamp(72px,8vw,104px)] h-[clamp(72px,8vw,104px)] rounded-full bg-[#78ee72] hover:bg-[#67dc61] flex items-center justify-center transition shrink-0" aria-label="Join Reshelved free">
-                    <i className="las la-arrow-right text-[clamp(30px,3vw,44px)] text-black" />
+                  <Link to="/register" className="w-[clamp(72px,8vw,104px)] h-[clamp(72px,8vw,104px)] rounded-full bg-primary-600 hover:bg-primary-700 flex items-center justify-center transition shrink-0" aria-label="Join Reshelved free">
+                    <i className="las la-arrow-right text-[clamp(30px,3vw,44px)] text-white" />
                   </Link>
                 </div>
               </div>
