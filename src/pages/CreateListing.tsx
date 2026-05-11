@@ -54,18 +54,16 @@ const CreateListing: React.FC = () => {
   };
 
   const uploadListingImages = async (listingId: string, files: File[]) => {
-    if (!currentUser || files.length === 0) return;
-    try {
-      const imageUrls: string[] = [];
-      for (const file of files) {
-        const storageRef = ref(storage, `listings/${currentUser.uid}/${listingId}_${Date.now()}_${file.name}`);
-        const snap = await uploadBytes(storageRef, file);
-        imageUrls.push(await getDownloadURL(snap.ref));
-      }
-      await updateDoc(doc(db, 'listings', listingId), { images: imageUrls });
-    } catch (err) {
-      console.error('Image upload failed after publishing listing:', err);
+    if (!currentUser || files.length === 0) return [];
+    const imageUrls: string[] = [];
+    for (const file of files) {
+      const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+      const storageRef = ref(storage, `listings/${currentUser.uid}/${listingId}_${Date.now()}_${safeFileName}`);
+      const snap = await uploadBytes(storageRef, file, { contentType: file.type });
+      imageUrls.push(await getDownloadURL(snap.ref));
     }
+    await updateDoc(doc(db, 'listings', listingId), { images: imageUrls });
+    return imageUrls;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,13 +99,16 @@ const CreateListing: React.FC = () => {
       };
 
       const docRef = await addDoc(collection(db, 'listings'), listingPayload);
-      setSuccess('Your listing is live. Redirecting to browse...');
-      const filesToUpload = [...images];
-      uploadListingImages(docRef.id, filesToUpload);
-      window.setTimeout(() => navigate('/browse'), 900);
+      if (images.length > 0) {
+        setSuccess('Uploading images...');
+        await uploadListingImages(docRef.id, [...images]);
+      }
+      setSuccess('Your listing is live. Redirecting...');
+      navigate(`/listing/${docRef.id}`);
     } catch (err: any) {
       console.error('Failed to publish listing:', err);
       setError(err.message || 'Failed to create listing. Check your Firebase rules.');
+      setSuccess('');
       setLoading(false);
     }
   };
