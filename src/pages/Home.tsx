@@ -243,7 +243,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section className="bg-white pt-0 pb-[360px]">
+      <section className="bg-white pt-5 pb-[340px]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             <div>
