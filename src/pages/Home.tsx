@@ -85,7 +85,11 @@ const Home: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-[116px] sm:pt-32 sm:pb-[148px]">
           <div className="max-w-3xl">
             <h1 className="text-5xl sm:text-7xl font-bold leading-[1.08] tracking-tight">
-              Find the Books You Need Without Paying Full Price
+              Find the Books You Need Without{' '}
+              <span className="relative inline-block whitespace-nowrap">
+                <span className="relative z-10">Paying Full Price</span>
+                <span className="absolute left-0 right-0 bottom-[0.08em] h-[0.16em] bg-[#F7AF31] rounded-sm" aria-hidden="true" />
+              </span>
             </h1>
             <p className="mt-8 text-xl text-white/85 leading-relaxed max-w-2xl">
               Reshelved helps you search affordable physical books by title, author, genre, academic field, condition, and location — all in one platform.
@@ -204,7 +208,7 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-20 pt-[100px]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-20 pt-[60px]">
           <div className="text-center">
             <p className="text-xs font-bold tracking-[0.25em] text-white uppercase mb-4">Testimonials</p>
             <h2 className="text-4xl sm:text-6xl font-bold">What others say</h2>
