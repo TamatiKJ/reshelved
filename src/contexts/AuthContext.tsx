@@ -108,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUserProfile(normalizedProfile);
       } else if (auth.currentUser) {
-        await ensureUserProfile(auth.currentUser);
+        ensureUserProfile(auth.currentUser).catch((err) => console.error('Error syncing missing profile:', err));
       } else {
         setUserProfile(null);
       }
@@ -162,9 +162,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     await setPersistence(auth, browserSessionPersistence);
     const cred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
-    const profile = await ensureUserProfile(cred.user);
+    const fallbackProfile = buildUserProfile(cred.user);
     setCurrentUser(cred.user);
-    setUserProfile(profile);
+    setUserProfile(fallbackProfile);
+
+    ensureUserProfile(cred.user).catch((err) => {
+      console.error('Firestore profile sync failed after login:', err);
+    });
   };
 
   const logout = async () => {
@@ -185,8 +189,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserProfile(buildUserProfile(user));
         ensureUserProfile(user).catch((err) => {
           console.error('Error syncing user profile:', err);
-          setCurrentUser(null);
-          setUserProfile(null);
         });
       } else {
         setUserProfile(null);
@@ -207,7 +209,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setDoc(doc(db, 'users', currentUser.uid), {
         online: false,
         lastSeen: Date.now()
-      }, { merge: true });
+      }, { merge: true }).catch(() => undefined);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
