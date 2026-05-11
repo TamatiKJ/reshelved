@@ -24,23 +24,32 @@ const getDisplayPrice = (listing: Listing) => {
   return 'Ask';
 };
 
+const normalizeImages = (images?: unknown): string[] => {
+  if (!Array.isArray(images)) return [];
+  return images
+    .filter((image): image is string => typeof image === 'string')
+    .map((image) => image.trim())
+    .filter((image) => image.length > 0);
+};
+
 const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
   const { currentUser, userProfile, refreshProfile } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [bookmarking, setBookmarking] = useState(false);
-  const images = useMemo(() => {
-    return (listing.images || [])
-      .filter((image): image is string => typeof image === 'string')
-      .map((image) => image.trim())
-      .filter((image) => image.length > 0);
-  }, [listing.images]);
+  const [failedImages, setFailedImages] = useState<string[]>([]);
+  const images = useMemo(() => normalizeImages(listing.images).filter((image) => !failedImages.includes(image)), [listing.images, failedImages]);
   const coverImage = images[0];
   const hasImages = Boolean(coverImage);
   const isBookmarked = Boolean(userProfile?.bookmarks?.includes(listing.id));
 
   useEffect(() => {
     setCurrentImageIndex(0);
-  }, [listing.id, coverImage]);
+    setFailedImages([]);
+  }, [listing.id]);
+
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [coverImage]);
 
   useEffect(() => {
     if (images.length <= 1) return;
@@ -53,6 +62,10 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
 
     return () => window.clearTimeout(startDelay);
   }, [images.length]);
+
+  const handleImageError = (image: string) => {
+    setFailedImages((current) => current.includes(image) ? current : [...current, image]);
+  };
 
   const handleBookmark = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -76,27 +89,29 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
   return (
     <Link to={`/listing/${listing.id}`} className="group block h-full">
       <article className="h-full bg-white rounded-[22px] border border-stone-200 p-2.5 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
-        <div className="relative aspect-[1.45/1] rounded-[18px] bg-[#f5eee3] overflow-hidden">
+        <div className="relative aspect-[1.45/1] rounded-[18px] bg-stone-100 overflow-hidden">
           {hasImages ? (
             <>
               <img
                 src={coverImage}
                 alt={listing.title}
-                className="absolute inset-0 w-full h-full object-cover bg-[#f5eee3]"
+                className="absolute inset-0 w-full h-full object-cover bg-stone-100"
                 loading="eager"
+                onError={() => handleImageError(coverImage)}
               />
               {images.length > 1 && images.map((image, index) => (
                 <img
                   key={`${image}-${index}`}
                   src={image}
                   alt={listing.title}
-                  className={`absolute inset-0 w-full h-full object-cover bg-[#f5eee3] transition-opacity duration-700 ease-in-out ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
+                  className={`absolute inset-0 w-full h-full object-cover bg-stone-100 transition-opacity duration-700 ease-in-out ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
                   loading={index === 0 ? 'eager' : 'lazy'}
+                  onError={() => handleImageError(image)}
                 />
               ))}
             </>
           ) : (
-            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-[#f5eee3]">
+            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-stone-100">
               <i className="las la-book-open text-5xl text-stone-300" />
             </div>
           )}
@@ -129,9 +144,9 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
 
           <div className="flex items-center gap-2 mt-3">
             {listing.userPhoto ? (
-              <img src={listing.userPhoto} alt={listing.userName} className="w-7 h-7 rounded-full object-cover bg-[#f5eee3]" />
+              <img src={listing.userPhoto} alt={listing.userName} className="w-7 h-7 rounded-full object-cover bg-stone-100" />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-[#f5eee3] text-stone-500 flex items-center justify-center text-[10px] font-bold">
+              <div className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 flex items-center justify-center text-[10px] font-bold">
                 {listing.userName?.[0]?.toUpperCase() || 'U'}
               </div>
             )}
@@ -140,18 +155,18 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl bg-[#f5eee3] border border-stone-200/70 p-3 grid grid-cols-3 divide-x divide-stone-300/70">
+          <div className="mt-4 rounded-2xl bg-[#f5eee3]/50 border border-stone-200/60 p-3 grid grid-cols-3 divide-x divide-stone-300/50">
             <div className="px-1.5 min-w-0">
-              <p className="text-[11px] font-semibold text-stone-500">Condition</p>
-              <p className="mt-0.5 text-sm font-bold text-stone-800 truncate">{listing.condition}</p>
+              <p className="text-[10px] font-semibold text-stone-500">Condition</p>
+              <p className="mt-0.5 text-[12px] font-bold text-stone-800 truncate">{listing.condition}</p>
             </div>
             <div className="px-2.5 min-w-0">
-              <p className="text-[11px] font-semibold text-stone-500">Location</p>
-              <p className="mt-0.5 text-sm font-bold text-stone-800 truncate">{listing.location}</p>
+              <p className="text-[10px] font-semibold text-stone-500">Location</p>
+              <p className="mt-0.5 text-[12px] font-bold text-stone-800 truncate">{listing.location}</p>
             </div>
             <div className="px-2.5 min-w-0">
-              <p className="text-[11px] font-semibold text-stone-500">Price</p>
-              <p className="mt-0.5 text-sm font-bold text-stone-800 truncate">{getDisplayPrice(listing)}</p>
+              <p className="text-[10px] font-semibold text-stone-500">Price</p>
+              <p className="mt-0.5 text-[12px] font-bold text-stone-800 truncate">{getDisplayPrice(listing)}</p>
             </div>
           </div>
         </div>
