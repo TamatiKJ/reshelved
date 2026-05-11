@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, orderBy, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -7,11 +7,13 @@ import { Link } from 'react-router-dom';
 interface Notification {
   id: string;
   userId: string;
-  fromAdmin: boolean;
+  fromAdmin?: boolean;
+  type?: 'admin' | 'message' | 'system';
   subject: string;
   message: string;
   createdAt: number;
   read: boolean;
+  conversationId?: string;
 }
 
 const Notifications: React.FC = () => {
@@ -21,26 +23,31 @@ const Notifications: React.FC = () => {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
-    if (currentUser) fetchNotifications();
-  }, [currentUser]);
+    if (!currentUser) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
 
-  const fetchNotifications = async () => {
-    try {
-      const q = query(
-        collection(db, 'notifications'),
-        where('userId', '==', currentUser!.uid),
-        orderBy('createdAt', 'desc')
-      );
-      const snap = await getDocs(q);
+    setLoading(true);
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', currentUser.uid)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
       const ns: Notification[] = [];
       snap.forEach(d => ns.push({ id: d.id, ...d.data() } as Notification));
+      ns.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       setNotifications(ns);
-    } catch (err) {
-      console.error(err);
-    } finally {
       setLoading(false);
-    }
-  };
+    }, (err) => {
+      console.error('Error loading notifications:', err);
+      setLoading(false);
+    });
+
+    return unsub;
+  }, [currentUser]);
 
   const markRead = async (notifId: string) => {
     await updateDoc(doc(db, 'notifications', notifId), { read: true });
@@ -102,9 +109,7 @@ const Notifications: React.FC = () => {
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
                     !n.read ? 'bg-primary-100' : 'bg-stone-100'
                   }`}>
-                    <svg className={`w-5 h-5 ${!n.read ? 'text-primary-600' : 'text-stone-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
+                    <i className={`las ${n.type === 'message' ? 'la-comment' : 'la-bell'} text-2xl ${!n.read ? 'text-primary-600' : 'text-stone-400'}`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
@@ -116,7 +121,7 @@ const Notifications: React.FC = () => {
                         <span className="text-xs text-stone-400">{new Date(n.createdAt).toLocaleDateString()}</span>
                       </div>
                     </div>
-                    <p className="text-xs text-stone-500 mt-0.5">From Reshelved Team</p>
+                    <p className="text-xs text-stone-500 mt-0.5">{n.type === 'message' ? 'Message notification' : 'From Reshelved Team'}</p>
                     {expanded !== n.id && (
                       <p className="text-sm text-stone-500 mt-1 line-clamp-1">{n.message}</p>
                     )}
@@ -126,6 +131,11 @@ const Notifications: React.FC = () => {
                 {expanded === n.id && (
                   <div className="mt-3 pt-3 border-t border-stone-100 ml-12">
                     <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">{n.message}</p>
+                    {n.conversationId && (
+                      <Link to={`/messages/${n.conversationId}`} className="mt-3 inline-flex text-sm font-semibold text-primary-600 hover:text-primary-700">
+                        Open conversation
+                      </Link>
+                    )}
                   </div>
                 )}
               </div>
