@@ -10,6 +10,9 @@ export interface UserProfile {
   flagged: boolean;
   flagCount: number;
   createdAt: number;
+  online?: boolean;
+  lastSeen?: number;
+  deactivated?: boolean;
 }
 
 export interface Listing {
