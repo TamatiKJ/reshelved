@@ -7,6 +7,27 @@ import type { Listing } from '../types';
 
 const publisherPlaceholders = ['Publisher', 'Bookshop', 'Campus', 'Library', 'Reader', 'Vendor'];
 
+const testimonials = [
+  {
+    stars: 5,
+    text: 'I had three textbooks sitting on my shelf gathering dust after finishing uni. Listed them on Reshelved and within two days someone from Kasarani had already reached out. The messaging was simple and we sorted everything out quickly. Did not expect it to be this easy.',
+    name: 'Brian Otieno',
+    location: 'Kasarani, Nairobi'
+  },
+  {
+    stars: 5,
+    text: 'Finding affordable novels in Nairobi is genuinely hard. I stumbled on Reshelved looking for something to read over the weekend and ended up swapping two books I had already finished. The person I swapped with was lovely and we even recommended titles to each other. I keep coming back.',
+    name: 'Amina Waweru',
+    location: 'Kileleshwa, Nairobi'
+  },
+  {
+    stars: 5,
+    text: "I donated a whole stack of children's books my kids had outgrown and the response was almost immediate. Knowing they went to a family nearby instead of a box somewhere felt really good. The platform is clean and signing up took me less than a minute. Would tell every parent in Nairobi about this.",
+    name: 'Fatuma Ndegwa',
+    location: 'South B, Nairobi'
+  }
+];
+
 const Home: React.FC = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,11 +175,32 @@ const Home: React.FC = () => {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-28">
-          <div className="text-center min-h-[320px]">
-            <h2 className="text-4xl sm:text-6xl font-bold">See what others say</h2>
+          <div className="text-center">
+            <p className="text-xs font-bold tracking-[0.25em] text-white/70 uppercase mb-4">Testimonials</p>
+            <h2 className="text-4xl sm:text-6xl font-bold">What others say</h2>
+            <p className="text-white/65 mt-4">Real readers from across Kenya sharing their experience.</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-end border-b border-white/25 pb-16">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
+            {testimonials.map((review, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-stone-200 p-6 flex flex-col gap-4">
+                <div className="flex items-center gap-0.5">
+                  {[...Array(review.stars)].map((_, s) => (
+                    <svg key={s} className="w-5 h-5 text-accent-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                </div>
+                <p className="text-stone-600 text-sm leading-relaxed flex-1">“{review.text}”</p>
+                <div>
+                  <p className="font-semibold text-stone-800 text-sm">{review.name}</p>
+                  <p className="text-stone-400 text-xs mt-0.5">{review.location}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-end border-b border-white/25 pb-16 mt-28">
             <div className="flex items-center gap-8">
               <h2 className="text-6xl sm:text-8xl font-bold leading-none">Start free<br />today</h2>
               <Link to="/register" className="w-16 h-16 rounded-full bg-primary-600 hover:bg-primary-700 flex items-center justify-center transition shrink-0">
