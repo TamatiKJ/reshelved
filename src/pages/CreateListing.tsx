@@ -8,6 +8,8 @@ import { CATEGORIES, KENYAN_CITIES, CONDITIONS } from '../types';
 import type { Listing } from '../types';
 
 const TEN_DAYS = 10 * 24 * 60 * 60 * 1000;
+const MAX_LISTING_IMAGE_SIZE = 1400;
+const UPLOAD_STALL_TIMEOUT = 30000;
 
 const listingTypes = [
   { value: 'swap', label: 'Swap', icon: 'las la-sync', desc: 'Trade for another book' },
@@ -20,6 +22,46 @@ const formatBytes = (bytes: number) => {
   const units = ['B', 'KB', 'MB', 'GB'];
   const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
   return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+};
+
+const compressListingImage = (file: File): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+
+      const ratio = Math.min(1, MAX_LISTING_IMAGE_SIZE / Math.max(image.width, image.height));
+      const width = Math.round(image.width * ratio);
+      const height = Math.round(image.height * ratio);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Image processing is not supported in this browser.'));
+        return;
+      }
+
+      ctx.drawImage(image, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('Could not compress image.'));
+          return;
+        }
+        resolve(blob);
+      }, 'image/webp', 0.82);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not read this image. Try a JPG, PNG, or WebP file.'));
+    };
+
+    image.src = objectUrl;
+  });
 };
 
 const CreateListing: React.FC = () => {
@@ -40,11 +82,13 @@ const CreateListing: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [uploadProgress, setUploadProgress] = useState({
     active: false,
+    phase: '',
     fileName: '',
     currentFile: 0,
     totalFiles: 0,
     bytesTransferred: 0,
     totalBytes: 0,
+    originalBytes: 0,
     percent: 0
   });
 
@@ -69,26 +113,66 @@ const CreateListing: React.FC = () => {
     setPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  const uploadSingleFile = (listingId: string, file: File, index: number, totalFiles: number): Promise<string> => {
-    if (!currentUser) return Promise.reject(new Error('You must be logged in to upload images.'));
+  const uploadSingleFile = async (listingId: string, file: File, index: number, totalFiles: number): Promise<string> => {
+    if (!currentUser) throw new Error('You must be logged in to upload images.');
 
-    const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
-    const storageRef = ref(storage, `listings/${currentUser.uid}/${listingId}_${Date.now()}_${safeFileName}`);
-    const task = uploadBytesResumable(storageRef, file, { contentType: file.type });
+    setUploadProgress({
+      active: true,
+      phase: 'Compressing image...',
+      fileName: file.name,
+      currentFile: index + 1,
+      totalFiles,
+      bytesTransferred: 0,
+      totalBytes: file.size,
+      originalBytes: file.size,
+      percent: 1
+    });
+
+    const compressedBlob = await compressListingImage(file);
+    const safeFileName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '-');
+    const storageRef = ref(storage, `listings/${currentUser.uid}/${listingId}_${Date.now()}_${safeFileName}.webp`);
+    const task = uploadBytesResumable(storageRef, compressedBlob, { contentType: 'image/webp' });
 
     return new Promise((resolve, reject) => {
+      let movedBytes = false;
+      const stallTimer = window.setTimeout(() => {
+        if (!movedBytes) {
+          task.cancel();
+          reject(new Error('Image upload did not start. Check your internet connection and Firebase Storage rules.'));
+        }
+      }, UPLOAD_STALL_TIMEOUT);
+
+      setUploadProgress({
+        active: true,
+        phase: 'Uploading image...',
+        fileName: file.name,
+        currentFile: index + 1,
+        totalFiles,
+        bytesTransferred: 0,
+        totalBytes: compressedBlob.size,
+        originalBytes: file.size,
+        percent: 1
+      });
+
       task.on('state_changed', (snapshot) => {
-        const percent = snapshot.totalBytes ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100) : 0;
+        if (snapshot.bytesTransferred > 0) movedBytes = true;
+        const percent = snapshot.totalBytes ? Math.max(1, Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)) : 1;
         setUploadProgress({
           active: true,
+          phase: snapshot.state === 'paused' ? 'Upload paused...' : 'Uploading image...',
           fileName: file.name,
           currentFile: index + 1,
           totalFiles,
           bytesTransferred: snapshot.bytesTransferred,
           totalBytes: snapshot.totalBytes,
+          originalBytes: file.size,
           percent
         });
-      }, reject, async () => {
+      }, (uploadError) => {
+        window.clearTimeout(stallTimer);
+        reject(uploadError);
+      }, async () => {
+        window.clearTimeout(stallTimer);
         const url = await getDownloadURL(task.snapshot.ref);
         resolve(url);
       });
@@ -114,7 +198,7 @@ const CreateListing: React.FC = () => {
     }
     setError('');
     setSuccess('');
-    setUploadProgress({ active: false, fileName: '', currentFile: 0, totalFiles: 0, bytesTransferred: 0, totalBytes: 0, percent: 0 });
+    setUploadProgress({ active: false, phase: '', fileName: '', currentFile: 0, totalFiles: 0, bytesTransferred: 0, totalBytes: 0, originalBytes: 0, percent: 0 });
     setLoading(true);
 
     try {
@@ -141,7 +225,7 @@ const CreateListing: React.FC = () => {
 
       const docRef = await addDoc(collection(db, 'listings'), listingPayload);
       if (images.length > 0) {
-        setSuccess('Uploading images...');
+        setSuccess('Preparing images...');
         await uploadListingImages(docRef.id, [...images]);
       }
       setUploadProgress(prev => ({ ...prev, active: false, percent: 100 }));
@@ -149,7 +233,7 @@ const CreateListing: React.FC = () => {
       navigate(`/listing/${docRef.id}`);
     } catch (err: any) {
       console.error('Failed to publish listing:', err);
-      setError(err.message || 'Failed to create listing. Check your Firebase rules.');
+      setError(err?.message || 'Failed to create listing. Check your Firebase rules.');
       setSuccess('');
       setUploadProgress(prev => ({ ...prev, active: false }));
       setLoading(false);
@@ -169,10 +253,13 @@ const CreateListing: React.FC = () => {
           <div className="mb-4 rounded-xl border border-primary-200 bg-primary-50 p-4">
             <div className="flex items-center justify-between gap-3 text-sm">
               <div className="min-w-0">
-                <p className="font-semibold text-primary-700 truncate">Uploading {uploadProgress.fileName}</p>
+                <p className="font-semibold text-primary-700 truncate">{uploadProgress.phase} {uploadProgress.fileName}</p>
                 <p className="text-primary-600 mt-0.5">
                   File {uploadProgress.currentFile} of {uploadProgress.totalFiles} · {formatBytes(uploadProgress.bytesTransferred)} / {formatBytes(uploadProgress.totalBytes)}
                 </p>
+                {uploadProgress.originalBytes > uploadProgress.totalBytes && (
+                  <p className="text-xs text-primary-500 mt-0.5">Compressed from {formatBytes(uploadProgress.originalBytes)} to {formatBytes(uploadProgress.totalBytes)}</p>
+                )}
               </div>
               <span className="font-bold text-primary-700">{uploadProgress.percent}%</span>
             </div>
@@ -263,7 +350,7 @@ const CreateListing: React.FC = () => {
             <i className="las la-info-circle text-2xl text-accent-600" />
             <div className="text-sm text-accent-800">
               <p className="font-medium">Your listing will publish after images finish uploading</p>
-              <p className="text-accent-600 mt-0.5">Keep this page open until the upload finishes.</p>
+              <p className="text-accent-600 mt-0.5">Images are compressed before upload so they load faster on Reshelved.</p>
             </div>
           </div>
 
