@@ -1,17 +1,14 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { arrayRemove, arrayUnion, doc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useAuth } from '../contexts/AuthContext';
 import type { Listing } from '../types';
-
-const typeColors: Record<Listing['type'], string> = {
-  swap: 'bg-blue-50 text-blue-700 border-blue-100',
-  donate: 'bg-green-50 text-green-700 border-green-100',
-  sell: 'bg-primary-50 text-primary-700 border-primary-100'
-};
 
 const typeLabels: Record<Listing['type'], string> = {
   swap: 'Swap',
-  donate: 'Donate',
-  sell: 'Sell'
+  donate: 'Free',
+  sell: 'For sale'
 };
 
 const typeIcons: Record<Listing['type'], string> = {
@@ -20,88 +17,123 @@ const typeIcons: Record<Listing['type'], string> = {
   sell: 'las la-tag'
 };
 
+const getDisplayPrice = (listing: Listing) => {
+  if (listing.type === 'swap') return 'Swap';
+  if (listing.type === 'donate') return 'Free';
+  if (listing.price && listing.price > 0) return `KSh ${listing.price.toLocaleString()}`;
+  return 'Price on request';
+};
+
 const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
-  const isExpired = listing.expiresAt < Date.now();
-  const daysLeft = Math.max(0, Math.ceil((listing.expiresAt - Date.now()) / (1000 * 60 * 60 * 24)));
+  const { currentUser, userProfile, refreshProfile } = useAuth();
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [bookmarking, setBookmarking] = useState(false);
+  const images = useMemo(() => (listing.images || []).filter(Boolean), [listing.images]);
+  const hasImages = images.length > 0;
+  const isBookmarked = Boolean(userProfile?.bookmarks?.includes(listing.id));
+
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const interval = window.setInterval(() => {
+      setCurrentImageIndex((current) => (current + 1) % images.length);
+    }, 3200);
+    return () => window.clearInterval(interval);
+  }, [images.length]);
+
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [listing.id]);
+
+  const handleBookmark = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!currentUser || bookmarking) return;
+
+    setBookmarking(true);
+    try {
+      await setDoc(doc(db, 'users', currentUser.uid), {
+        bookmarks: isBookmarked ? arrayRemove(listing.id) : arrayUnion(listing.id),
+        lastSeen: Date.now()
+      }, { merge: true });
+      await refreshProfile();
+    } catch (err) {
+      console.error('Error updating bookmark:', err);
+    } finally {
+      setBookmarking(false);
+    }
+  };
 
   return (
     <Link to={`/listing/${listing.id}`} className="group block h-full">
-      <article className="h-full bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-        <div className="relative aspect-[4/3] bg-stone-100 overflow-hidden">
-          {listing.images && listing.images.length > 0 ? (
-            <img
-              src={listing.images[0]}
-              alt={listing.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
+      <article className="h-full bg-white rounded-[28px] border border-stone-200 p-3 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+        <div className="relative aspect-[1.45/1] rounded-[22px] bg-stone-100 overflow-hidden">
+          {hasImages ? (
+            images.map((image, index) => (
+              <img
+                key={`${image}-${index}`}
+                src={image}
+                alt={listing.title}
+                className={`absolute inset-0 w-full h-full object-cover bg-stone-100 transition-opacity duration-700 ease-in-out ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
+                loading="lazy"
+              />
+            ))
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-stone-100">
+            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-stone-100">
               <i className="las la-book-open text-6xl text-stone-300" />
             </div>
           )}
 
-          <div className="absolute top-3 left-3 flex flex-wrap gap-2">
-            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border ${typeColors[listing.type]}`}>
-              <i className={`${typeIcons[listing.type]} text-base leading-none`} />
+          <div className="absolute top-4 left-4">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/95 text-[#4A2A10] shadow-sm text-sm font-bold backdrop-blur-sm">
+              <i className={`${typeIcons[listing.type]} text-xl leading-none`} />
               {typeLabels[listing.type]}
-            </span>
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/90 text-stone-700 border border-white/70">
-              {listing.condition}
             </span>
           </div>
 
-          {listing.images && listing.images.length > 1 && (
-            <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2.5 py-1 rounded-full">
-              {listing.images.length} photos
-            </div>
-          )}
-
-          {isExpired && (
-            <div className="absolute inset-0 bg-black/55 flex items-center justify-center">
-              <span className="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-full">Expired</span>
-            </div>
+          {currentUser && (
+            <button
+              type="button"
+              onClick={handleBookmark}
+              disabled={bookmarking}
+              aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'}
+              className={`absolute bottom-4 left-4 w-12 h-12 rounded-2xl flex items-center justify-center shadow-md backdrop-blur-sm transition ${isBookmarked ? 'bg-primary-600 text-white' : 'bg-stone-900/85 text-green-400 hover:bg-stone-950'}`}
+            >
+              <i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-2xl`} />
+            </button>
           )}
         </div>
 
-        <div className="p-4 space-y-3">
-          <div>
-            <h3 className="text-lg font-bold text-stone-900 leading-snug line-clamp-1 group-hover:text-primary-700 transition">
-              {listing.title}
-            </h3>
-            <p className="text-sm text-stone-500 mt-0.5 line-clamp-1">by {listing.author}</p>
-          </div>
+        <div className="px-2 pt-5 pb-2">
+          <h3 className="text-2xl font-bold text-stone-900 leading-tight line-clamp-1 group-hover:text-primary-700 transition">
+            {listing.title}
+          </h3>
+          <p className="text-lg text-slate-500 mt-1 line-clamp-1">by {listing.author}</p>
 
-          <div className="flex items-center justify-between gap-3">
-            {listing.type === 'sell' && listing.price ? (
-              <span className="text-xl font-bold text-primary-700">KSh {listing.price.toLocaleString()}</span>
-            ) : (
-              <span className="text-sm font-semibold text-stone-700">{listing.type === 'donate' ? 'Free' : 'Open to swap'}</span>
-            )}
-            {!isExpired && <span className="text-xs text-stone-400">{daysLeft} day{daysLeft !== 1 ? 's' : ''} left</span>}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-xs text-stone-500">
-            <span className="inline-flex items-center gap-1 min-w-0">
-              <i className="las la-map-marker text-base text-stone-400" />
-              <span className="truncate">{listing.location}</span>
-            </span>
-            <span className="inline-flex items-center gap-1 min-w-0">
-              <i className="las la-layer-group text-base text-stone-400" />
-              <span className="truncate">{listing.category}</span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 pt-2 border-t border-stone-100">
+          <div className="flex items-center gap-3 mt-5">
             {listing.userPhoto ? (
-              <img src={listing.userPhoto} alt={listing.userName} className="w-8 h-8 rounded-full object-cover" />
+              <img src={listing.userPhoto} alt={listing.userName} className="w-10 h-10 rounded-full object-cover bg-stone-200" />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-stone-200 text-stone-500 flex items-center justify-center text-xs font-bold">
+              <div className="w-10 h-10 rounded-full bg-stone-200 text-stone-500 flex items-center justify-center text-sm font-bold">
                 {listing.userName?.[0]?.toUpperCase() || 'U'}
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-stone-800 truncate">{listing.userName || 'Reshelved user'}</p>
-              <p className="text-xs text-stone-400">Listed on Reshelved</p>
+              <p className="text-base font-semibold text-slate-700 truncate">Listed by {listing.userName || 'Reshelved user'}</p>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-3xl bg-stone-50/90 border border-stone-100 p-4 grid grid-cols-3 divide-x divide-stone-200">
+            <div className="px-2">
+              <p className="text-sm font-semibold text-slate-500">Condition</p>
+              <p className="mt-1 text-lg font-bold text-slate-800 truncate">{listing.condition}</p>
+            </div>
+            <div className="px-4">
+              <p className="text-sm font-semibold text-slate-500">Location</p>
+              <p className="mt-1 text-lg font-bold text-slate-800 truncate">{listing.location}</p>
+            </div>
+            <div className="px-4">
+              <p className="text-sm font-semibold text-slate-500">Price</p>
+              <p className="mt-1 text-lg font-bold text-slate-800 truncate">{getDisplayPrice(listing)}</p>
             </div>
           </div>
         </div>
