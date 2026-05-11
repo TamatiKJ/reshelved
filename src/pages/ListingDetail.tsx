@@ -32,7 +32,6 @@ const ListingDetail: React.FC = () => {
       if (snap.exists()) {
         const data = { id: snap.id, ...snap.data() } as Listing;
         setListing(data);
-        // Fetch ratings for the seller
         const rq = query(collection(db, 'ratings'), where('toUserId', '==', data.userId));
         const rSnap = await getDocs(rq);
         const r: Rating[] = [];
@@ -48,9 +47,12 @@ const ListingDetail: React.FC = () => {
 
   const handleContact = async () => {
     if (!currentUser || !listing) return;
+    if (!listing.userId || listing.userId === currentUser.uid) return;
+
     setActionLoading(true);
+    setMessage('');
+
     try {
-      // Check for existing conversation
       const cq = query(
         collection(db, 'conversations'),
         where('participants', 'array-contains', currentUser.uid)
@@ -59,7 +61,7 @@ const ListingDetail: React.FC = () => {
       let existingConvId: string | null = null;
       cSnap.forEach(d => {
         const data = d.data();
-        if (data.listingId === listing.id && data.participants.includes(listing.userId)) {
+        if (data.listingId === listing.id && Array.isArray(data.participants) && data.participants.includes(listing.userId)) {
           existingConvId = d.id;
         }
       });
@@ -69,41 +71,61 @@ const ListingDetail: React.FC = () => {
         return;
       }
 
-      // Create new conversation
+      const now = Date.now();
+      const initialMessage = `Hi! I'm interested in "${listing.title}"`;
+      const buyerName = userProfile?.displayName || currentUser.displayName || 'User';
+      const sellerName = listing.userName || 'Seller';
+
       const convRef = await addDoc(collection(db, 'conversations'), {
         participants: [currentUser.uid, listing.userId],
+        buyerId: currentUser.uid,
+        sellerId: listing.userId,
         participantNames: {
-          [currentUser.uid]: userProfile?.displayName || 'User',
-          [listing.userId]: listing.userName
+          [currentUser.uid]: buyerName,
+          [listing.userId]: sellerName
         },
         participantPhotos: {
-          [currentUser.uid]: userProfile?.photoURL || '',
+          [currentUser.uid]: userProfile?.photoURL || currentUser.photoURL || '',
           [listing.userId]: listing.userPhoto || ''
         },
         listingId: listing.id,
         listingTitle: listing.title,
-        lastMessage: `Hi! I'm interested in "${listing.title}"`,
-        lastMessageAt: Date.now(),
-        createdAt: Date.now()
+        lastMessage: initialMessage,
+        lastMessageAt: now,
+        updatedAt: now,
+        createdAt: now
       });
 
-      // Send initial message
       await addDoc(collection(db, 'messages'), {
         conversationId: convRef.id,
         senderId: currentUser.uid,
-        senderName: userProfile?.displayName || 'User',
-        text: `Hi! I'm interested in "${listing.title}"`,
-        createdAt: Date.now()
+        senderName: buyerName,
+        recipientId: listing.userId,
+        text: initialMessage,
+        createdAt: now
       });
 
-      // Track contact for review prompt
+      await addDoc(collection(db, 'notifications'), {
+        userId: listing.userId,
+        fromUserId: currentUser.uid,
+        fromUserName: buyerName,
+        fromAdmin: false,
+        type: 'message',
+        subject: `New message from ${buyerName}`,
+        message: initialMessage,
+        conversationId: convRef.id,
+        listingId: listing.id,
+        createdAt: now,
+        read: false
+      });
+
       await addDoc(collection(db, 'contacts'), {
         userId: currentUser.uid,
         listingId: listing.id,
         listingTitle: listing.title,
         sellerId: listing.userId,
-        sellerName: listing.userName,
-        contactedAt: Date.now(),
+        sellerName,
+        contactedAt: now,
         reviewPromptShown: false,
         reviewed: false
       });
@@ -111,7 +133,7 @@ const ListingDetail: React.FC = () => {
       navigate(`/messages/${convRef.id}`);
     } catch (err) {
       console.error(err);
-      setMessage('Failed to start conversation');
+      setMessage('Failed to start conversation. Check your Firestore rules.');
     } finally {
       setActionLoading(false);
     }
@@ -216,7 +238,6 @@ const ListingDetail: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        {/* Images */}
         <div className="lg:col-span-3">
           <div className="aspect-[4/3] bg-stone-100 rounded-2xl overflow-hidden relative">
             {listing.images && listing.images.length > 0 ? (
@@ -247,7 +268,6 @@ const ListingDetail: React.FC = () => {
           )}
         </div>
 
-        {/* Details */}
         <div className="lg:col-span-2 space-y-5">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -296,7 +316,6 @@ const ListingDetail: React.FC = () => {
             </div>
           )}
 
-          {/* Seller info */}
           <div className="border border-stone-200 rounded-xl p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold">
@@ -314,7 +333,6 @@ const ListingDetail: React.FC = () => {
             </div>
           </div>
 
-          {/* Actions */}
           <div className="space-y-2">
             {!isOwner && currentUser && !isExpired && (
               <button
@@ -361,7 +379,6 @@ const ListingDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Reviews section */}
       {ratings.length > 0 && (
         <div className="mt-10">
           <h2 className="text-lg font-bold text-stone-800 mb-4">Seller Reviews</h2>
@@ -380,7 +397,6 @@ const ListingDetail: React.FC = () => {
         </div>
       )}
 
-      {/* Report Modal */}
       {showReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
@@ -421,7 +437,6 @@ const ListingDetail: React.FC = () => {
         </div>
       )}
 
-      {/* Rating Modal */}
       {showRating && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
