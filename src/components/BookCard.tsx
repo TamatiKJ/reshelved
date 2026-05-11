@@ -41,6 +41,7 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
   const coverImage = images[0];
   const hasImages = Boolean(coverImage);
   const isBookmarked = Boolean(userProfile?.bookmarks?.includes(listing.id));
+  const isOwner = Boolean(currentUser && currentUser.uid === listing.userId);
 
   useEffect(() => {
     setCurrentImageIndex(0);
@@ -86,6 +87,11 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
     }
   };
 
+  const stopCardClick = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
   return (
     <Link to={`/listing/${listing.id}`} className="group block h-full">
       <article className="h-full bg-white rounded-[22px] border border-stone-200 p-2.5 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
@@ -123,17 +129,29 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
             </span>
           </div>
 
-          {currentUser && (
-            <button
-              type="button"
-              onClick={handleBookmark}
-              disabled={bookmarking}
-              aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'}
-              className="absolute top-3 right-3 w-9 h-9 rounded-xl bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50 disabled:opacity-60"
-            >
-              <i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-lg`} />
-            </button>
-          )}
+          <div className="absolute top-3 right-3 flex items-center gap-2">
+            {isOwner && (
+              <Link
+                to={`/listing/${listing.id}/edit`}
+                onClick={stopCardClick}
+                className="w-9 h-9 rounded-xl bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50"
+                aria-label="Edit listing"
+              >
+                <i className="las la-pen text-lg" />
+              </Link>
+            )}
+            {currentUser && (
+              <button
+                type="button"
+                onClick={handleBookmark}
+                disabled={bookmarking}
+                aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'}
+                className="w-9 h-9 rounded-xl bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50 disabled:opacity-60"
+              >
+                <i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-lg`} />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="px-1.5 pt-3.5 pb-1">
