@@ -34,7 +34,7 @@ const Messages: React.FC = () => {
       setLoading(false);
     });
     return unsub;
-  }, [currentUser]);
+  }, [currentUser, conversationId]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -64,20 +64,35 @@ const Messages: React.FC = () => {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !currentUser || !conversationId) return;
+    if (!newMessage.trim() || !currentUser || !conversationId || !selectedConv) return;
+    const messageText = newMessage.trim();
+    const now = Date.now();
     setSending(true);
     try {
       await addDoc(collection(db, 'messages'), {
         conversationId,
         senderId: currentUser.uid,
         senderName: userProfile?.displayName || 'User',
-        text: newMessage.trim(),
-        createdAt: Date.now()
+        text: messageText,
+        createdAt: now
       });
       await updateDoc(doc(db, 'conversations', conversationId), {
-        lastMessage: newMessage.trim(),
-        lastMessageAt: Date.now()
+        lastMessage: messageText,
+        lastMessageAt: now
       });
+
+      const recipientIds = selectedConv.participants.filter((id) => id !== currentUser.uid);
+      await Promise.all(recipientIds.map((recipientId) => addDoc(collection(db, 'notifications'), {
+        userId: recipientId,
+        fromAdmin: false,
+        type: 'message',
+        subject: `New message from ${userProfile?.displayName || 'User'}`,
+        message: messageText,
+        conversationId,
+        createdAt: now,
+        read: false
+      })));
+
       setNewMessage('');
     } catch (err) {
       console.error(err);
@@ -111,7 +126,6 @@ const Messages: React.FC = () => {
 
       <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden" style={{ height: 'calc(100vh - 200px)', minHeight: '500px' }}>
         <div className="flex h-full">
-          {/* Conversation List */}
           <div className={`w-full sm:w-80 border-r border-stone-200 flex flex-col ${conversationId ? 'hidden sm:flex' : 'flex'}`}>
             <div className="p-4 border-b border-stone-100">
               <h2 className="font-semibold text-stone-700">Conversations</h2>
@@ -161,11 +175,9 @@ const Messages: React.FC = () => {
             </div>
           </div>
 
-          {/* Chat Area */}
           <div className={`flex-1 flex flex-col ${!conversationId ? 'hidden sm:flex' : 'flex'}`}>
             {conversationId && selectedConv ? (
               <>
-                {/* Chat Header */}
                 <div className="p-4 border-b border-stone-200 flex items-center gap-3">
                   <Link to="/messages" className="sm:hidden p-1 hover:bg-stone-100 rounded-lg">
                     <svg className="w-5 h-5 text-stone-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -181,7 +193,6 @@ const Messages: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-3">
                   {messages.map((msg) => {
                     const isMe = msg.senderId === currentUser.uid;
@@ -201,7 +212,6 @@ const Messages: React.FC = () => {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input */}
                 <form onSubmit={handleSend} className="p-4 border-t border-stone-200">
                   <div className="flex gap-2">
                     <input
