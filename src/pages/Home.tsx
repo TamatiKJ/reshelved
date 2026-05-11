@@ -191,7 +191,7 @@ const Home: React.FC = () => {
                     </svg>
                   ))}
                 </div>
-                <p className="text-stone-600 text-sm leading-relaxed flex-1">“{review.text}”</p>
+                <p className="text-[16px] leading-[24px] text-black flex-1">“{review.text}”</p>
                 <div>
                   <p className="font-semibold text-stone-800 text-sm">{review.name}</p>
                   <p className="text-stone-400 text-xs mt-0.5">{review.location}</p>
@@ -200,16 +200,21 @@ const Home: React.FC = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-end border-b border-white/25 pb-16 mt-28">
-            <div className="flex items-center gap-8">
-              <h2 className="text-6xl sm:text-8xl font-bold leading-none">Start free<br />today</h2>
-              <Link to="/register" className="w-16 h-16 rounded-full bg-primary-600 hover:bg-primary-700 flex items-center justify-center transition shrink-0">
-                <i className="las la-play text-3xl text-black" />
-              </Link>
+          <div className="border-b border-white/25 pb-16 mt-28">
+            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-12">
+              <div className="text-[clamp(64px,11vw,140px)] font-bold leading-[0.92] tracking-tight text-white">
+                <div>Start free</div>
+                <div className="inline-flex items-center gap-8">
+                  <span>today</span>
+                  <Link to="/register" className="w-[clamp(72px,8vw,104px)] h-[clamp(72px,8vw,104px)] rounded-full bg-[#78ee72] hover:bg-[#67dc61] flex items-center justify-center transition shrink-0" aria-label="Join Reshelved free">
+                    <i className="las la-arrow-right text-[clamp(30px,3vw,44px)] text-black" />
+                  </Link>
+                </div>
+              </div>
+              <p className="text-white/80 text-lg max-w-md lg:pb-8">
+                Built with feedback from readers across Nairobi. Try Reshelved and see why they love it.
+              </p>
             </div>
-            <p className="text-white/80 text-lg max-w-md lg:ml-auto">
-              Built with feedback from readers across Nairobi. Try Reshelved and see why they love it.
-            </p>
           </div>
         </div>
       </section>
