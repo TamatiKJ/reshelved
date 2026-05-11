@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
+import React, { useEffect, useMemo, useState } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import BookCard from '../components/BookCard';
@@ -32,9 +32,10 @@ const testimonials = [
 ];
 
 const Home: React.FC = () => {
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [allListings, setAllListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [submittedSearch, setSubmittedSearch] = useState('');
 
   useEffect(() => {
     fetchListings();
@@ -43,11 +44,11 @@ const Home: React.FC = () => {
   const fetchListings = async () => {
     try {
       setLoading(true);
-      const q = query(collection(db, 'listings'), where('active', '==', true), orderBy('createdAt', 'desc'), limit(4));
-      const snap = await getDocs(q);
+      const snap = await getDocs(collection(db, 'listings'));
       const items: Listing[] = [];
       snap.forEach((doc) => items.push({ id: doc.id, ...doc.data() } as Listing));
-      setListings(items.filter((item) => item.expiresAt > Date.now()));
+      items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setAllListings(items.filter((item) => item.active && item.expiresAt > Date.now()));
     } catch (err) {
       console.error('Error fetching listings:', err);
     } finally {
@@ -55,7 +56,28 @@ const Home: React.FC = () => {
     }
   };
 
-  const searchTarget = search.trim() ? `/browse?search=${encodeURIComponent(search.trim())}` : '/browse';
+  const latestListings = allListings.slice(0, 4);
+  const searchResults = useMemo(() => {
+    const term = submittedSearch.trim().toLowerCase();
+    if (!term) return [];
+    return allListings.filter((listing) => (
+      listing.title.toLowerCase().includes(term) ||
+      listing.author.toLowerCase().includes(term) ||
+      listing.description.toLowerCase().includes(term) ||
+      listing.category.toLowerCase().includes(term) ||
+      listing.condition.toLowerCase().includes(term) ||
+      listing.location.toLowerCase().includes(term) ||
+      listing.type.toLowerCase().includes(term)
+    ));
+  }, [allListings, submittedSearch]);
+
+  const handleSearch = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setSubmittedSearch(search.trim());
+  };
+
+  const showingSearch = submittedSearch.trim().length > 0;
+  const visibleListings = showingSearch ? searchResults : latestListings;
 
   return (
     <div className="min-h-screen bg-white">
@@ -82,27 +104,24 @@ const Home: React.FC = () => {
 
       <section className="relative -mt-[60px] bg-white rounded-t-[42px] sm:rounded-t-[56px] pt-12 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col lg:flex-row gap-4 items-stretch">
+          <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4 items-stretch">
             <div className="flex-1 relative">
               <i className="las la-search absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-stone-500" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') window.location.href = searchTarget;
-                }}
                 placeholder="Search across 500+ books..."
                 className="w-full h-12 pl-12 pr-4 rounded-lg border border-stone-200 text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
               />
             </div>
-            <Link to={searchTarget} className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition self-start lg:self-auto">
+            <button type="submit" className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition self-start lg:self-auto">
               Search
-            </Link>
-          </div>
+            </button>
+          </form>
 
           <div className="mt-10 flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-stone-950">Latest Books</h2>
-            <Link to="/browse" className="text-sm font-semibold text-primary-600 hover:text-primary-700">View all</Link>
+            <h2 className="text-2xl font-bold text-stone-950">{showingSearch ? `Search results for “${submittedSearch}”` : 'Latest Books'}</h2>
+            {!showingSearch && <Link to="/browse" className="text-sm font-semibold text-primary-600 hover:text-primary-700">View all</Link>}
           </div>
 
           {loading ? (
@@ -117,9 +136,14 @@ const Home: React.FC = () => {
                 </div>
               ))}
             </div>
-          ) : listings.length > 0 ? (
+          ) : visibleListings.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
-              {listings.map((listing) => <BookCard key={listing.id} listing={listing} />)}
+              {visibleListings.map((listing) => <BookCard key={listing.id} listing={listing} />)}
+            </div>
+          ) : showingSearch ? (
+            <div className="mt-6 rounded-3xl border border-stone-200 bg-stone-50 px-6 py-12 text-center">
+              <i className="las la-search text-6xl text-stone-300" />
+              <h3 className="mt-3 text-xl font-bold text-stone-900">We didn't find what you are looking for. Try another search</h3>
             </div>
           ) : (
             <div className="mt-6 rounded-3xl border border-stone-200 bg-stone-50 px-6 py-12 text-center">
