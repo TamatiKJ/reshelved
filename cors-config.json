@@ -8,6 +8,7 @@
       "http://localhost:5177",
       "http://localhost:5178",
       "http://localhost:5180",
+      "http://localhost:5181",
       "http://127.0.0.1:5173",
       "http://127.0.0.1:5174",
       "http://127.0.0.1:5175",
@@ -15,6 +16,7 @@
       "http://127.0.0.1:5177",
       "http://127.0.0.1:5178",
       "http://127.0.0.1:5180",
+      "http://127.0.0.1:5181",
       "https://newapp-5178a.firebaseapp.com",
       "https://newapp-5178a.web.app"
     ],
