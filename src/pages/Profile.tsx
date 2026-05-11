@@ -55,6 +55,7 @@ const Profile: React.FC = () => {
   const { currentUser, userProfile, refreshProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
+  const [bookmarkedListings, setBookmarkedListings] = useState<Listing[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -72,7 +73,7 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     if (targetUserId) fetchData();
-  }, [targetUserId, currentUser?.uid]);
+  }, [targetUserId, currentUser?.uid, userProfile?.bookmarks?.join('|')]);
 
   const createFallbackProfile = async (): Promise<UserProfile | null> => {
     if (!currentUser || !isOwnProfile) return null;
@@ -84,6 +85,7 @@ const Profile: React.FC = () => {
       bio: '',
       location: 'Lavington',
       phone: '',
+      bookmarks: [],
       isAdmin: userProfile?.isAdmin || false,
       flagged: false,
       flagCount: 0,
@@ -125,6 +127,21 @@ const Profile: React.FC = () => {
       lSnap.forEach(d => ls.push({ id: d.id, ...d.data() } as Listing));
       ls.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       setListings(ls);
+
+      if (isOwnProfile && p?.bookmarks?.length) {
+        const bookmarkedIds = new Set(p.bookmarks);
+        const allSnap = await getDocs(collection(db, 'listings'));
+        const bookmarked: Listing[] = [];
+        allSnap.forEach(d => {
+          if (bookmarkedIds.has(d.id)) {
+            bookmarked.push({ id: d.id, ...d.data() } as Listing);
+          }
+        });
+        bookmarked.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        setBookmarkedListings(bookmarked.filter(l => l.active && l.expiresAt > Date.now()));
+      } else {
+        setBookmarkedListings([]);
+      }
 
       const rq = query(collection(db, 'ratings'), where('toUserId', '==', targetUserId));
       const rSnap = await getDocs(rq).catch(() => null);
@@ -305,6 +322,23 @@ const Profile: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {isOwnProfile && (
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-stone-800">Bookmarked Books ({bookmarkedListings.length})</h2>
+            <Link to="/browse" className="text-sm font-semibold text-primary-600 hover:text-primary-700">Browse books</Link>
+          </div>
+          {bookmarkedListings.length === 0 ? (
+            <div className="text-center py-8 bg-white rounded-xl border border-stone-200">
+              <p className="text-stone-500">No bookmarked books yet</p>
+              <Link to="/browse" className="mt-2 inline-block text-primary-600 font-medium text-sm">Find books to save</Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">{bookmarkedListings.map(l => <BookCard key={l.id} listing={l} />)}</div>
+          )}
+        </div>
+      )}
 
       <div className="mt-8">
         <h2 className="text-lg font-bold text-stone-800 mb-4">{isOwnProfile ? 'My' : `${profile.displayName}'s`} Active Listings ({activeListings.length})</h2>
