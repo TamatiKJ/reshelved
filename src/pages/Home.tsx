@@ -180,19 +180,17 @@ const Home: React.FC = () => {
           <div className="mt-20 pb-8">
             <div className="hidden sm:grid grid-cols-3 lg:grid-cols-6 gap-5 items-center">
               {publisherLogos.map((publisher) => (
-                <div key={publisher.name} className="h-20 rounded-2xl bg-white border border-stone-200 flex items-center justify-center px-5 shadow-sm">
-                  <img src={publisher.src} alt={`${publisher.name} logo`} className="max-h-12 max-w-[130px] object-contain grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition" loading="lazy" />
+                <div key={publisher.name} className="h-20 flex items-center justify-center px-5">
+                  <img src={publisher.src} alt={`${publisher.name} logo`} className="max-h-12 max-w-[130px] object-contain" loading="lazy" />
                 </div>
               ))}
             </div>
 
             <div className="sm:hidden relative overflow-hidden">
-              <div className="absolute left-0 top-0 z-10 h-full w-10 bg-gradient-to-r from-white to-transparent" />
-              <div className="absolute right-0 top-0 z-10 h-full w-10 bg-gradient-to-l from-white to-transparent" />
               <div className="flex w-max animate-[publisher-scroll_22s_linear_infinite]">
                 {[...publisherLogos, ...publisherLogos].map((publisher, index) => (
-                  <div key={`${publisher.name}-${index}`} className="mx-2 h-20 w-40 shrink-0 rounded-2xl bg-white border border-stone-200 flex items-center justify-center px-4 shadow-sm">
-                    <img src={publisher.src} alt={`${publisher.name} logo`} className="max-h-10 max-w-[120px] object-contain grayscale opacity-80" loading="lazy" />
+                  <div key={`${publisher.name}-${index}`} className="mx-2 h-20 w-40 shrink-0 flex items-center justify-center px-4">
+                    <img src={publisher.src} alt={`${publisher.name} logo`} className="max-h-10 max-w-[120px] object-contain" loading="lazy" />
                   </div>
                 ))}
               </div>
