@@ -32,6 +32,25 @@ const publisherLogos = [
   }
 ];
 
+const solutionItems = [
+  {
+    icon: 'fa-book-open-reader',
+    text: 'Find the right book without the long search or stress.'
+  },
+  {
+    icon: 'fa-arrows-rotate',
+    text: 'Swap old books and feel happy they matter again.'
+  },
+  {
+    icon: 'fa-piggy-bank',
+    text: 'Save more money while still getting books you love.'
+  },
+  {
+    icon: 'fa-circle-check',
+    text: 'Meet trusted readers and trade with peace of mind.'
+  }
+];
+
 const testimonials = [
   {
     stars: 5,
@@ -201,7 +220,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section id="how-it-works" className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-[360px]">
+      <section id="how-it-works" className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-24">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div className="max-w-xl">
             <h2 className="text-4xl sm:text-5xl font-bold text-stone-950 leading-tight">Book Hunting Should Not Be This Hard</h2>
@@ -220,6 +239,31 @@ const Home: React.FC = () => {
               className="w-full max-w-[560px] h-auto object-contain"
               loading="lazy"
             />
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white pt-0 pb-[360px]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+            <div>
+              <h2 className="text-4xl sm:text-6xl font-bold leading-[1.05] tracking-tight text-stone-950 max-w-xl">
+                Second-hand books should feel easy, safe, and worth it.
+              </h2>
+            </div>
+
+            <div className="space-y-0">
+              {solutionItems.map((item, index) => (
+                <div key={item.text} className={`flex items-center gap-6 py-7 ${index !== solutionItems.length - 1 ? 'border-b border-stone-200' : ''}`}>
+                  <div className="w-16 h-16 rounded-full bg-[#f5eee3] border border-stone-200 flex items-center justify-center shrink-0">
+                    <i className={`fa-solid ${item.icon} text-primary-600 text-xl`} />
+                  </div>
+                  <p className="text-[18px] font-normal leading-[1.45] text-stone-950">
+                    {item.text}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
