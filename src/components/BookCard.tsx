@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { arrayRemove, arrayUnion, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,6 +33,7 @@ const normalizeImages = (images?: unknown): string[] => {
 };
 
 const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
+  const navigate = useNavigate();
   const { currentUser, userProfile, refreshProfile } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [bookmarking, setBookmarking] = useState(false);
@@ -68,6 +69,16 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
     setFailedImages((current) => current.includes(image) ? current : [...current, image]);
   };
 
+  const handleCardClick = () => {
+    navigate(`/listing/${listing.id}`);
+  };
+
+  const handleEdit = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    navigate(`/listing/${listing.id}/edit`);
+  };
+
   const handleBookmark = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -87,109 +98,113 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
     }
   };
 
-  const stopCardClick = (event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-  };
-
   return (
-    <Link to={`/listing/${listing.id}`} className="group block h-full">
-      <article className="h-full bg-white rounded-[22px] border border-stone-200 p-2.5 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
-        <div className="relative aspect-[1.45/1] rounded-[18px] bg-stone-100 overflow-hidden">
-          {hasImages ? (
-            <>
+    <article
+      onClick={handleCardClick}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          handleCardClick();
+        }
+      }}
+      className="group block h-full cursor-pointer bg-white rounded-[22px] border border-stone-200 p-2.5 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+    >
+      <div className="relative aspect-[1.45/1] rounded-[18px] bg-stone-100 overflow-hidden">
+        {hasImages ? (
+          <>
+            <img
+              src={coverImage}
+              alt={listing.title}
+              className="absolute inset-0 w-full h-full object-cover bg-stone-100"
+              loading="eager"
+              onError={() => handleImageError(coverImage)}
+            />
+            {images.length > 1 && images.map((image, index) => (
               <img
-                src={coverImage}
+                key={`${image}-${index}`}
+                src={image}
                 alt={listing.title}
-                className="absolute inset-0 w-full h-full object-cover bg-stone-100"
-                loading="eager"
-                onError={() => handleImageError(coverImage)}
+                className={`absolute inset-0 w-full h-full object-cover bg-stone-100 transition-opacity duration-700 ease-in-out ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
+                loading={index === 0 ? 'eager' : 'lazy'}
+                onError={() => handleImageError(image)}
               />
-              {images.length > 1 && images.map((image, index) => (
-                <img
-                  key={`${image}-${index}`}
-                  src={image}
-                  alt={listing.title}
-                  className={`absolute inset-0 w-full h-full object-cover bg-stone-100 transition-opacity duration-700 ease-in-out ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
-                  loading={index === 0 ? 'eager' : 'lazy'}
-                  onError={() => handleImageError(image)}
-                />
-              ))}
-            </>
+            ))}
+          </>
+        ) : (
+          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-stone-100">
+            <i className="las la-book-open text-5xl text-stone-300" />
+          </div>
+        )}
+
+        <div className="absolute top-3 left-3">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 text-primary-700 shadow-sm text-xs font-bold backdrop-blur-sm">
+            <i className={`${typeIcons[listing.type]} text-base leading-none`} />
+            {typeLabels[listing.type]}
+          </span>
+        </div>
+
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          {isOwner && (
+            <button
+              type="button"
+              onClick={handleEdit}
+              className="w-9 h-9 rounded-xl bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50"
+              aria-label="Edit listing"
+            >
+              <i className="las la-pen text-lg" />
+            </button>
+          )}
+          {currentUser && (
+            <button
+              type="button"
+              onClick={handleBookmark}
+              disabled={bookmarking}
+              aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'}
+              className="w-9 h-9 rounded-xl bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50 disabled:opacity-60"
+            >
+              <i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-lg`} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="px-1.5 pt-3.5 pb-1">
+        <h3 className="text-[16px] font-bold text-stone-950 leading-tight line-clamp-1 group-hover:text-primary-700 transition">
+          {listing.title}
+        </h3>
+        <p className="text-[14px] text-stone-500 mt-0.5 line-clamp-1">by {listing.author}</p>
+
+        <div className="flex items-center gap-2 mt-3">
+          {listing.userPhoto ? (
+            <img src={listing.userPhoto} alt={listing.userName} className="w-7 h-7 rounded-full object-cover bg-stone-100" />
           ) : (
-            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-stone-100">
-              <i className="las la-book-open text-5xl text-stone-300" />
+            <div className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 flex items-center justify-center text-[10px] font-bold">
+              {listing.userName?.[0]?.toUpperCase() || 'U'}
             </div>
           )}
-
-          <div className="absolute top-3 left-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 text-primary-700 shadow-sm text-xs font-bold backdrop-blur-sm">
-              <i className={`${typeIcons[listing.type]} text-base leading-none`} />
-              {typeLabels[listing.type]}
-            </span>
-          </div>
-
-          <div className="absolute top-3 right-3 flex items-center gap-2">
-            {isOwner && (
-              <Link
-                to={`/listing/${listing.id}/edit`}
-                onClick={stopCardClick}
-                className="w-9 h-9 rounded-xl bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50"
-                aria-label="Edit listing"
-              >
-                <i className="las la-pen text-lg" />
-              </Link>
-            )}
-            {currentUser && (
-              <button
-                type="button"
-                onClick={handleBookmark}
-                disabled={bookmarking}
-                aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'}
-                className="w-9 h-9 rounded-xl bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50 disabled:opacity-60"
-              >
-                <i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-lg`} />
-              </button>
-            )}
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-stone-700 truncate">Listed by {listing.userName || 'Reshelved user'}</p>
           </div>
         </div>
 
-        <div className="px-1.5 pt-3.5 pb-1">
-          <h3 className="text-[16px] font-bold text-stone-950 leading-tight line-clamp-1 group-hover:text-primary-700 transition">
-            {listing.title}
-          </h3>
-          <p className="text-[14px] text-stone-500 mt-0.5 line-clamp-1">by {listing.author}</p>
-
-          <div className="flex items-center gap-2 mt-3">
-            {listing.userPhoto ? (
-              <img src={listing.userPhoto} alt={listing.userName} className="w-7 h-7 rounded-full object-cover bg-stone-100" />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 flex items-center justify-center text-[10px] font-bold">
-                {listing.userName?.[0]?.toUpperCase() || 'U'}
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-stone-700 truncate">Listed by {listing.userName || 'Reshelved user'}</p>
-            </div>
+        <div className="mt-4 rounded-2xl bg-[#f5eee3]/50 border border-stone-200/60 p-3 grid grid-cols-3 divide-x divide-stone-300/50">
+          <div className="px-1.5 min-w-0">
+            <p className="text-[10px] font-semibold text-stone-500">Condition</p>
+            <p className="mt-0.5 text-[12px] font-bold text-stone-800 truncate">{listing.condition}</p>
           </div>
-
-          <div className="mt-4 rounded-2xl bg-[#f5eee3]/50 border border-stone-200/60 p-3 grid grid-cols-3 divide-x divide-stone-300/50">
-            <div className="px-1.5 min-w-0">
-              <p className="text-[10px] font-semibold text-stone-500">Condition</p>
-              <p className="mt-0.5 text-[12px] font-bold text-stone-800 truncate">{listing.condition}</p>
-            </div>
-            <div className="px-2.5 min-w-0">
-              <p className="text-[10px] font-semibold text-stone-500">Location</p>
-              <p className="mt-0.5 text-[12px] font-bold text-stone-800 truncate">{listing.location}</p>
-            </div>
-            <div className="px-2.5 min-w-0">
-              <p className="text-[10px] font-semibold text-stone-500">Price</p>
-              <p className="mt-0.5 text-[12px] font-bold text-stone-800 truncate">{getDisplayPrice(listing)}</p>
-            </div>
+          <div className="px-2.5 min-w-0">
+            <p className="text-[10px] font-semibold text-stone-500">Location</p>
+            <p className="mt-0.5 text-[12px] font-bold text-stone-800 truncate">{listing.location}</p>
+          </div>
+          <div className="px-2.5 min-w-0">
+            <p className="text-[10px] font-semibold text-stone-500">Price</p>
+            <p className="mt-0.5 text-[12px] font-bold text-stone-800 truncate">{getDisplayPrice(listing)}</p>
           </div>
         </div>
-      </article>
-    </Link>
+      </div>
+    </article>
   );
 };
 
