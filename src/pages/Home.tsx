@@ -69,7 +69,7 @@ const testimonials = [
   {
     stars: 5,
     text: "I donated a whole stack of children's books my kids had outgrown and the response was almost immediate. Knowing they went to a family nearby instead of a box somewhere felt really good. The platform is clean and signing up took me less than a minute. Would tell every parent in Nairobi about this.",
-    name: 'Fatuma Ndegwa',
+    name: 'Faith Ndegwa',
     location: 'South B, Nairobi',
     image: '/reviewer-3.png'
   }
