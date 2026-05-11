@@ -42,13 +42,23 @@ const buildUserProfile = (user: User, displayName?: string, location = 'Lavingto
   isAdmin: isAdminEmail(user.email),
   flagged: false,
   flagCount: 0,
-  createdAt: Date.now()
+  createdAt: Date.now(),
+  online: true,
+  lastSeen: Date.now(),
+  deactivated: false
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const updatePresence = async (uid: string, online: boolean) => {
+    await setDoc(doc(db, 'users', uid), {
+      online,
+      lastSeen: Date.now()
+    }, { merge: true });
+  };
 
   const ensureUserProfile = async (user: User, displayName?: string, location = 'Lavington') => {
     const userRef = doc(db, 'users', user.uid);
@@ -58,12 +68,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const existingProfile = snap.data() as UserProfile;
       const normalizedProfile = {
         ...existingProfile,
-        isAdmin: existingProfile.isAdmin || isAdminEmail(existingProfile.email || user.email)
+        uid: existingProfile.uid || user.uid,
+        isAdmin: existingProfile.isAdmin || isAdminEmail(existingProfile.email || user.email),
+        online: true,
+        lastSeen: Date.now(),
+        deactivated: existingProfile.deactivated || false
       };
-      setUserProfile(normalizedProfile);
-      if (normalizedProfile.isAdmin !== existingProfile.isAdmin) {
-        await setDoc(userRef, { isAdmin: true }, { merge: true });
+
+      if (normalizedProfile.deactivated && !normalizedProfile.isAdmin) {
+        await signOut(auth);
+        throw new Error('This account has been banned. Please contact Reshelved support.');
       }
+
+      setUserProfile(normalizedProfile);
+      await setDoc(userRef, {
+        uid: normalizedProfile.uid,
+        isAdmin: normalizedProfile.isAdmin,
+        online: true,
+        lastSeen: normalizedProfile.lastSeen,
+        deactivated: normalizedProfile.deactivated
+      }, { merge: true });
       return normalizedProfile;
     }
 
@@ -78,7 +102,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const snap = await getDoc(doc(db, 'users', uid));
       if (snap.exists()) {
         const profile = snap.data() as UserProfile;
-        setUserProfile({ ...profile, isAdmin: profile.isAdmin || isAdminEmail(profile.email || auth.currentUser?.email) });
+        const normalizedProfile = {
+          ...profile,
+          isAdmin: profile.isAdmin || isAdminEmail(profile.email || auth.currentUser?.email)
+        };
+        setUserProfile(normalizedProfile);
       } else if (auth.currentUser) {
         await ensureUserProfile(auth.currentUser);
       } else {
@@ -120,7 +148,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAdmin: isAdminEmail(cleanEmail),
       flagged: false,
       flagCount: 0,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      online: true,
+      lastSeen: Date.now(),
+      deactivated: false
     };
 
     await setDoc(doc(db, 'users', cred.user.uid), profile, { merge: true });
@@ -131,12 +162,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     await setPersistence(auth, browserSessionPersistence);
     const cred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+    const profile = await ensureUserProfile(cred.user);
     setCurrentUser(cred.user);
-    setUserProfile(buildUserProfile(cred.user));
-    ensureUserProfile(cred.user).catch((err) => console.error('Error syncing profile:', err));
+    setUserProfile(profile);
   };
 
   const logout = async () => {
+    if (auth.currentUser) {
+      await updatePresence(auth.currentUser.uid, false).catch((err) => console.error('Error updating presence:', err));
+    }
     await signOut(auth);
     setCurrentUser(null);
     setUserProfile(null);
@@ -149,13 +183,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (user) {
         setUserProfile(buildUserProfile(user));
-        ensureUserProfile(user).catch((err) => console.error('Error syncing user profile:', err));
+        ensureUserProfile(user).catch((err) => {
+          console.error('Error syncing user profile:', err);
+          setCurrentUser(null);
+          setUserProfile(null);
+        });
       } else {
         setUserProfile(null);
       }
     });
     return unsub;
   }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    updatePresence(currentUser.uid, true).catch((err) => console.error('Error updating presence:', err));
+    const interval = window.setInterval(() => {
+      updatePresence(currentUser.uid, true).catch((err) => console.error('Error updating presence:', err));
+    }, 60 * 1000);
+
+    const handleBeforeUnload = () => {
+      setDoc(doc(db, 'users', currentUser.uid), {
+        online: false,
+        lastSeen: Date.now()
+      }, { merge: true });
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      updatePresence(currentUser.uid, false).catch(() => undefined);
+    };
+  }, [currentUser]);
 
   return (
     <AuthContext.Provider value={{ currentUser, userProfile, loading, register, login, logout, refreshProfile }}>
