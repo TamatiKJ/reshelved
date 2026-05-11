@@ -139,7 +139,7 @@ const Profile: React.FC = () => {
     }
   };
 
-  const saveProfileUpdates = async (extraUpdates: Partial<UserProfile> = {}) => {
+  const saveProfileUpdates = async () => {
     if (!currentUser) return null;
 
     const cleanName = editName.trim();
@@ -147,33 +147,21 @@ const Profile: React.FC = () => {
       throw new Error('Display name cannot be empty.');
     }
 
-    const updates: UserProfile = {
-      uid: currentUser.uid,
+    const profileUpdates: Partial<UserProfile> = {
       displayName: cleanName,
       email: currentUser.email || profile?.email || '',
-      photoURL: extraUpdates.photoURL || currentUser.photoURL || profile?.photoURL || '',
       bio: editBio.trim(),
-      location: editLocation || 'Lavington',
+      location: editLocation || profile?.location || 'Lavington',
       phone: editPhone.trim(),
-      isAdmin: profile?.isAdmin || userProfile?.isAdmin || false,
-      flagged: profile?.flagged || false,
-      flagCount: profile?.flagCount || 0,
-      createdAt: profile?.createdAt || userProfile?.createdAt || Date.now(),
-      online: true,
-      lastSeen: Date.now(),
-      deactivated: profile?.deactivated || false,
-      ...extraUpdates
+      lastSeen: Date.now()
     };
 
-    await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
-    await updateProfile(currentUser, {
-      displayName: cleanName,
-      photoURL: updates.photoURL || null
-    }).catch((err) => console.error('Auth profile update failed:', err));
+    await setDoc(doc(db, 'users', currentUser.uid), profileUpdates, { merge: true });
+    await updateProfile(currentUser, { displayName: cleanName }).catch((err) => console.error('Auth profile update failed:', err));
 
-    setProfile((current) => current ? { ...current, ...updates } : updates);
+    setProfile((current) => current ? { ...current, ...profileUpdates } as UserProfile : null);
     await refreshProfile();
-    return updates;
+    return profileUpdates;
   };
 
   const handleSaveProfile = async () => {
@@ -214,7 +202,18 @@ const Profile: React.FC = () => {
       const photoRef = ref(storage, `users/${currentUser.uid}/profile-photo.webp`);
       await uploadBytes(photoRef, compressed, { contentType: 'image/webp' });
       const photoURL = await getDownloadURL(photoRef);
-      await saveProfileUpdates({ photoURL });
+
+      await setDoc(doc(db, 'users', currentUser.uid), {
+        photoURL,
+        lastSeen: Date.now()
+      }, { merge: true });
+
+      await updateProfile(currentUser, {
+        photoURL
+      }).catch((err) => console.error('Auth profile photo update failed:', err));
+
+      setProfile((current) => current ? { ...current, photoURL, lastSeen: Date.now() } : current);
+      await refreshProfile();
       setSaveMessage('Profile photo uploaded and saved.');
     } catch (err: any) {
       console.error('Error uploading profile photo:', err);
