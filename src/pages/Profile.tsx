@@ -2,11 +2,53 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
-import { db } from '../firebase';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { db, storage } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import BookCard from '../components/BookCard';
 import type { UserProfile, Listing, Rating } from '../types';
 import { KENYAN_CITIES } from '../types';
+
+const resizeProfilePhoto = (file: File): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const canvas = document.createElement('canvas');
+      const size = 400;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        reject(new Error('Image processing is not supported in this browser.'));
+        return;
+      }
+
+      const shortestSide = Math.min(img.width, img.height);
+      const sourceX = (img.width - shortestSide) / 2;
+      const sourceY = (img.height - shortestSide) / 2;
+
+      ctx.drawImage(img, sourceX, sourceY, shortestSide, shortestSide, 0, 0, size, size);
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('Could not compress image.'));
+          return;
+        }
+        resolve(blob);
+      }, 'image/webp', 0.82);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Invalid image file.'));
+    };
+
+    img.src = objectUrl;
+  });
+};
 
 const Profile: React.FC = () => {
   const { userId } = useParams<{ userId?: string }>();
@@ -17,6 +59,7 @@ const Profile: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [saveError, setSaveError] = useState('');
   const [editName, setEditName] = useState('');
@@ -96,49 +139,88 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleSaveProfile = async () => {
-    if (!currentUser) return;
+  const saveProfileUpdates = async (extraUpdates: Partial<UserProfile> = {}) => {
+    if (!currentUser) return null;
 
     const cleanName = editName.trim();
     if (!cleanName) {
-      setSaveError('Display name cannot be empty.');
-      return;
+      throw new Error('Display name cannot be empty.');
     }
+
+    const updates: UserProfile = {
+      uid: currentUser.uid,
+      displayName: cleanName,
+      email: currentUser.email || profile?.email || '',
+      photoURL: extraUpdates.photoURL || currentUser.photoURL || profile?.photoURL || '',
+      bio: editBio.trim(),
+      location: editLocation || 'Lavington',
+      phone: editPhone.trim(),
+      isAdmin: profile?.isAdmin || userProfile?.isAdmin || false,
+      flagged: profile?.flagged || false,
+      flagCount: profile?.flagCount || 0,
+      createdAt: profile?.createdAt || userProfile?.createdAt || Date.now(),
+      online: true,
+      lastSeen: Date.now(),
+      deactivated: profile?.deactivated || false,
+      ...extraUpdates
+    };
+
+    await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
+    await updateProfile(currentUser, {
+      displayName: cleanName,
+      photoURL: updates.photoURL || null
+    }).catch((err) => console.error('Auth profile update failed:', err));
+
+    setProfile((current) => current ? { ...current, ...updates } : updates);
+    await refreshProfile();
+    return updates;
+  };
+
+  const handleSaveProfile = async () => {
+    if (!currentUser) return;
 
     setSaving(true);
     setSaveError('');
     setSaveMessage('');
 
     try {
-      const updates = {
-        uid: currentUser.uid,
-        displayName: cleanName,
-        email: currentUser.email || profile?.email || '',
-        photoURL: currentUser.photoURL || profile?.photoURL || '',
-        bio: editBio.trim(),
-        location: editLocation || 'Lavington',
-        phone: editPhone.trim(),
-        isAdmin: profile?.isAdmin || userProfile?.isAdmin || false,
-        flagged: profile?.flagged || false,
-        flagCount: profile?.flagCount || 0,
-        createdAt: profile?.createdAt || userProfile?.createdAt || Date.now(),
-        online: true,
-        lastSeen: Date.now(),
-        deactivated: profile?.deactivated || false
-      };
-
-      await setDoc(doc(db, 'users', currentUser.uid), updates, { merge: true });
-      await updateProfile(currentUser, { displayName: cleanName }).catch((err) => console.error('Auth display name update failed:', err));
-
-      setProfile((current) => current ? { ...current, ...updates } : updates);
+      await saveProfileUpdates();
       setEditing(false);
       setSaveMessage('Profile saved.');
-      await refreshProfile();
     } catch (err: any) {
       console.error('Error saving profile:', err);
       setSaveError(err?.message || 'Profile failed to save. Check your Firestore rules and try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !currentUser || !isOwnProfile) return;
+
+    if (!file.type.startsWith('image/')) {
+      setSaveError('Please upload an image file.');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    setSaveError('');
+    setSaveMessage('');
+
+    try {
+      const compressed = await resizeProfilePhoto(file);
+      const photoRef = ref(storage, `users/${currentUser.uid}/profile-photo.webp`);
+      await uploadBytes(photoRef, compressed, { contentType: 'image/webp' });
+      const photoURL = await getDownloadURL(photoRef);
+      await saveProfileUpdates({ photoURL });
+      setSaveMessage('Profile photo uploaded and saved.');
+    } catch (err: any) {
+      console.error('Error uploading profile photo:', err);
+      setSaveError(err?.message || 'Profile photo failed to upload. Check your Storage rules and try again.');
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -178,13 +260,21 @@ const Profile: React.FC = () => {
         {saveMessage && <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">{saveMessage}</div>}
         {saveError && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{saveError}</div>}
         <div className="flex flex-col sm:flex-row items-start gap-6">
-          {profile.photoURL ? (
-            <img src={profile.photoURL} alt={profile.displayName} className="w-20 h-20 rounded-full object-cover shrink-0" />
-          ) : (
-            <div className="w-20 h-20 rounded-full bg-stone-200 text-stone-500 flex items-center justify-center text-3xl font-bold shrink-0">
-              {profile.displayName?.[0]?.toUpperCase() || 'U'}
-            </div>
-          )}
+          <div className="shrink-0">
+            {profile.photoURL ? (
+              <img src={profile.photoURL} alt={profile.displayName} className="w-20 h-20 rounded-full object-cover shrink-0" />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-stone-200 text-stone-500 flex items-center justify-center text-3xl font-bold shrink-0">
+                {profile.displayName?.[0]?.toUpperCase() || 'U'}
+              </div>
+            )}
+            {isOwnProfile && (
+              <label className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50">
+                {uploadingPhoto ? 'Uploading...' : 'Upload Photo'}
+                <input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploadingPhoto} className="hidden" />
+              </label>
+            )}
+          </div>
           <div className="flex-1 min-w-0">
             {editing ? (
               <div className="space-y-3">
