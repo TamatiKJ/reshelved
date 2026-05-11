@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { CATEGORIES, KENYAN_CITIES, CONDITIONS } from '../types';
@@ -14,6 +14,13 @@ const listingTypes = [
   { value: 'donate', label: 'Donate', icon: 'las la-gift', desc: 'Give away for free' },
   { value: 'sell', label: 'Sell', icon: 'las la-tag', desc: 'Set your price' },
 ] as const;
+
+const formatBytes = (bytes: number) => {
+  if (!bytes) return '0 KB';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+};
 
 const CreateListing: React.FC = () => {
   const { currentUser, userProfile } = useAuth();
@@ -31,6 +38,15 @@ const CreateListing: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [uploadProgress, setUploadProgress] = useState({
+    active: false,
+    fileName: '',
+    currentFile: 0,
+    totalFiles: 0,
+    bytesTransferred: 0,
+    totalBytes: 0,
+    percent: 0
+  });
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -53,14 +69,38 @@ const CreateListing: React.FC = () => {
     setPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
+  const uploadSingleFile = (listingId: string, file: File, index: number, totalFiles: number): Promise<string> => {
+    if (!currentUser) return Promise.reject(new Error('You must be logged in to upload images.'));
+
+    const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+    const storageRef = ref(storage, `listings/${currentUser.uid}/${listingId}_${Date.now()}_${safeFileName}`);
+    const task = uploadBytesResumable(storageRef, file, { contentType: file.type });
+
+    return new Promise((resolve, reject) => {
+      task.on('state_changed', (snapshot) => {
+        const percent = snapshot.totalBytes ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100) : 0;
+        setUploadProgress({
+          active: true,
+          fileName: file.name,
+          currentFile: index + 1,
+          totalFiles,
+          bytesTransferred: snapshot.bytesTransferred,
+          totalBytes: snapshot.totalBytes,
+          percent
+        });
+      }, reject, async () => {
+        const url = await getDownloadURL(task.snapshot.ref);
+        resolve(url);
+      });
+    });
+  };
+
   const uploadListingImages = async (listingId: string, files: File[]) => {
     if (!currentUser || files.length === 0) return [];
     const imageUrls: string[] = [];
-    for (const file of files) {
-      const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
-      const storageRef = ref(storage, `listings/${currentUser.uid}/${listingId}_${Date.now()}_${safeFileName}`);
-      const snap = await uploadBytes(storageRef, file, { contentType: file.type });
-      imageUrls.push(await getDownloadURL(snap.ref));
+    for (let i = 0; i < files.length; i += 1) {
+      const url = await uploadSingleFile(listingId, files[i], i, files.length);
+      imageUrls.push(url);
     }
     await updateDoc(doc(db, 'listings', listingId), { images: imageUrls });
     return imageUrls;
@@ -74,6 +114,7 @@ const CreateListing: React.FC = () => {
     }
     setError('');
     setSuccess('');
+    setUploadProgress({ active: false, fileName: '', currentFile: 0, totalFiles: 0, bytesTransferred: 0, totalBytes: 0, percent: 0 });
     setLoading(true);
 
     try {
@@ -103,12 +144,14 @@ const CreateListing: React.FC = () => {
         setSuccess('Uploading images...');
         await uploadListingImages(docRef.id, [...images]);
       }
+      setUploadProgress(prev => ({ ...prev, active: false, percent: 100 }));
       setSuccess('Your listing is live. Redirecting...');
       navigate(`/listing/${docRef.id}`);
     } catch (err: any) {
       console.error('Failed to publish listing:', err);
       setError(err.message || 'Failed to create listing. Check your Firebase rules.');
       setSuccess('');
+      setUploadProgress(prev => ({ ...prev, active: false }));
       setLoading(false);
     }
   };
@@ -122,6 +165,23 @@ const CreateListing: React.FC = () => {
         {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{error}</div>}
         {success && <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">{success}</div>}
 
+        {uploadProgress.active && (
+          <div className="mb-4 rounded-xl border border-primary-200 bg-primary-50 p-4">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <div className="min-w-0">
+                <p className="font-semibold text-primary-700 truncate">Uploading {uploadProgress.fileName}</p>
+                <p className="text-primary-600 mt-0.5">
+                  File {uploadProgress.currentFile} of {uploadProgress.totalFiles} · {formatBytes(uploadProgress.bytesTransferred)} / {formatBytes(uploadProgress.totalBytes)}
+                </p>
+              </div>
+              <span className="font-bold text-primary-700">{uploadProgress.percent}%</span>
+            </div>
+            <div className="mt-3 h-2 rounded-full bg-white overflow-hidden">
+              <div className="h-full rounded-full bg-primary-600 transition-all duration-200" style={{ width: `${uploadProgress.percent}%` }} />
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-2">Photos (up to 4)</label>
@@ -129,14 +189,14 @@ const CreateListing: React.FC = () => {
               {previews.map((preview, i) => (
                 <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-stone-200 group">
                   <img src={preview} alt="" className="w-full h-full object-cover" />
-                  <button type="button" onClick={() => removeImage(i)} className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-xs">×</button>
+                  <button type="button" onClick={() => removeImage(i)} disabled={loading} className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-xs disabled:opacity-40">×</button>
                 </div>
               ))}
               {previews.length < 4 && (
-                <label className="aspect-square rounded-xl border-2 border-dashed border-stone-300 hover:border-primary-400 flex flex-col items-center justify-center cursor-pointer transition hover:bg-primary-50">
+                <label className={`aspect-square rounded-xl border-2 border-dashed border-stone-300 hover:border-primary-400 flex flex-col items-center justify-center transition hover:bg-primary-50 ${loading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                   <i className="las la-plus text-3xl text-stone-400" />
                   <span className="text-xs text-stone-500 mt-1">Add Photo</span>
-                  <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" />
+                  <input type="file" accept="image/*" multiple onChange={handleImageChange} disabled={loading} className="hidden" />
                 </label>
               )}
             </div>
@@ -145,24 +205,24 @@ const CreateListing: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">Book Title *</label>
-              <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm" placeholder="e.g. Things Fall Apart" />
+              <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm disabled:bg-stone-50" placeholder="e.g. Things Fall Apart" />
             </div>
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">Author *</label>
-              <input type="text" required value={author} onChange={(e) => setAuthor(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm" placeholder="e.g. Chinua Achebe" />
+              <input type="text" required value={author} onChange={(e) => setAuthor(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm disabled:bg-stone-50" placeholder="e.g. Chinua Achebe" />
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-1">Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm resize-none" placeholder="Tell us about the book condition, edition, and notes." />
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={loading} rows={3} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm resize-none disabled:bg-stone-50" placeholder="Tell us about the book condition, edition, and notes." />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-2">Listing Type *</label>
             <div className="grid grid-cols-3 gap-3">
               {listingTypes.map((t) => (
-                <button key={t.value} type="button" onClick={() => setType(t.value)} className={`p-3 rounded-xl border-2 text-center transition ${type === t.value ? 'border-primary-500 bg-primary-50' : 'border-stone-200 hover:border-stone-300'}`}>
+                <button key={t.value} type="button" disabled={loading} onClick={() => setType(t.value)} className={`p-3 rounded-xl border-2 text-center transition disabled:opacity-60 ${type === t.value ? 'border-primary-500 bg-primary-50' : 'border-stone-200 hover:border-stone-300'}`}>
                   <i className={`${t.icon} text-3xl text-primary-600`} />
                   <div className="text-sm font-semibold text-stone-800 mt-1">{t.label}</div>
                   <div className="text-xs text-stone-500 mt-0.5">{t.desc}</div>
@@ -174,26 +234,26 @@ const CreateListing: React.FC = () => {
           {type === 'sell' && (
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">Price (KSh) *</label>
-              <input type="number" required min="0" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm" placeholder="e.g. 500" />
+              <input type="number" required min="0" value={price} onChange={(e) => setPrice(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm disabled:bg-stone-50" placeholder="e.g. 500" />
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">Condition *</label>
-              <select value={condition} onChange={(e) => setCondition(e.target.value as Listing['condition'])} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white">
+              <select value={condition} onChange={(e) => setCondition(e.target.value as Listing['condition'])} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white disabled:bg-stone-50">
                 {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">Category *</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white">
+              <select value={category} onChange={(e) => setCategory(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white disabled:bg-stone-50">
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">Location *</label>
-              <select value={location} onChange={(e) => setLocation(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white">
+              <select value={location} onChange={(e) => setLocation(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white disabled:bg-stone-50">
                 {KENYAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -202,12 +262,12 @@ const CreateListing: React.FC = () => {
           <div className="bg-accent-50 border border-accent-200 rounded-xl p-4 flex items-start gap-3">
             <i className="las la-info-circle text-2xl text-accent-600" />
             <div className="text-sm text-accent-800">
-              <p className="font-medium">Your listing will publish immediately</p>
-              <p className="text-accent-600 mt-0.5">It will show on the browse page and stay active for 10 days.</p>
+              <p className="font-medium">Your listing will publish after images finish uploading</p>
+              <p className="text-accent-600 mt-0.5">Keep this page open until the upload finishes.</p>
             </div>
           </div>
 
-          <button type="submit" disabled={loading || !!success} className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
+          <button type="submit" disabled={loading} className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
             {loading ? 'Publishing...' : 'Publish Listing'}
           </button>
         </form>
