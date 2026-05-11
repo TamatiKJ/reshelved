@@ -243,7 +243,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section className="bg-white pt-5 pb-[340px]">
+      <section className="bg-white pt-5 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             <div>
@@ -266,6 +266,15 @@ const Home: React.FC = () => {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="bg-white pb-[340px] overflow-hidden">
+        <img
+          src="/homepage personas active.webp"
+          alt="Different types of Reshelved readers and book traders"
+          className="w-screen max-w-none h-auto block"
+          loading="lazy"
+        />
       </section>
 
       <section className="relative bg-black text-white pt-0 pb-0">
