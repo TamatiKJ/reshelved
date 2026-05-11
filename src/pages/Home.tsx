@@ -88,14 +88,16 @@ const Home: React.FC = () => {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') window.location.href = searchTarget;
+                }}
                 placeholder="Search across 500+ books..."
                 className="w-full h-12 pl-12 pr-4 rounded-lg border border-stone-200 text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
               />
             </div>
-            <div className="inline-flex rounded-xl bg-stone-100 p-1 self-start lg:self-auto">
-              <Link to={searchTarget} className="px-5 py-3 rounded-lg bg-white text-primary-600 shadow-sm text-sm font-bold">Books</Link>
-              <Link to="/browse" className="px-5 py-3 rounded-lg text-stone-500 text-sm font-bold">People</Link>
-            </div>
+            <Link to={searchTarget} className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition self-start lg:self-auto">
+              Search
+            </Link>
           </div>
 
           <div className="mt-10 flex items-center justify-between">
@@ -130,7 +132,7 @@ const Home: React.FC = () => {
             </div>
           )}
 
-          <div className="mt-8 flex flex-wrap justify-center gap-8 border-b border-stone-200 pb-8">
+          <div className="mt-20 flex flex-wrap justify-center gap-8 pb-8">
             {publisherPlaceholders.map((name) => (
               <div key={name} className="w-28 h-10 bg-yellow-200 flex items-center justify-center text-[10px] font-bold text-yellow-900/50 uppercase tracking-wide">
                 {name}
@@ -138,10 +140,11 @@ const Home: React.FC = () => {
             ))}
           </div>
           <p className="text-center text-xs font-semibold text-stone-400 mt-3">Collections from Top Publishers</p>
+          <div className="mt-4 border-b border-stone-200" />
         </div>
       </section>
 
-      <section id="how-it-works" className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-[280px]">
+      <section id="how-it-works" className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-[360px]">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div className="max-w-xl">
             <h2 className="text-4xl sm:text-5xl font-bold text-stone-950 leading-tight">Book Hunting Should Not Be This Hard</h2>
@@ -177,7 +180,7 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-20 pt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-20 pt-[100px]">
           <div className="text-center">
             <p className="text-xs font-bold tracking-[0.25em] text-white uppercase mb-4">Testimonials</p>
             <h2 className="text-4xl sm:text-6xl font-bold">What others say</h2>
