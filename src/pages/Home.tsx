@@ -269,12 +269,14 @@ const Home: React.FC = () => {
       </section>
 
       <section className="bg-white pb-[340px] overflow-hidden">
-        <img
-          src="/homepage personas active.webp"
-          alt="Different types of Reshelved readers and book traders"
-          className="w-screen max-w-none h-auto block"
-          loading="lazy"
-        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <img
+            src="/homepage personas active.webp"
+            alt="Different types of Reshelved readers and book traders"
+            className="w-full h-auto block"
+            loading="lazy"
+          />
+        </div>
       </section>
 
       <section className="relative bg-black text-white pt-0 pb-0">
