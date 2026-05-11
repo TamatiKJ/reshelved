@@ -60,7 +60,7 @@ const Home: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <section className="bg-[#121212] text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-24 sm:py-32">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-[116px] sm:pt-32 sm:pb-[148px]">
           <div className="max-w-3xl">
             <h1 className="text-5xl sm:text-7xl font-bold leading-[1.08] tracking-tight">
               Find the Books You Need Without Paying Full Price
@@ -80,7 +80,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section className="relative -mt-10 bg-white rounded-t-[42px] sm:rounded-t-[56px] pt-12 pb-20">
+      <section className="relative -mt-[60px] bg-white rounded-t-[42px] sm:rounded-t-[56px] pt-12 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col lg:flex-row gap-4 items-stretch">
             <div className="flex-1 relative">
@@ -141,7 +141,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section id="how-it-works" className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-44">
+      <section id="how-it-works" className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-[280px]">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div className="max-w-xl">
             <h2 className="text-4xl sm:text-5xl font-bold text-stone-950 leading-tight">Book Hunting Should Not Be This Hard</h2>
@@ -177,7 +177,7 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-28 pt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-20 pt-16">
           <div className="text-center">
             <p className="text-xs font-bold tracking-[0.25em] text-white uppercase mb-4">Testimonials</p>
             <h2 className="text-4xl sm:text-6xl font-bold">What others say</h2>
@@ -205,7 +205,7 @@ const Home: React.FC = () => {
             ))}
           </div>
 
-          <div className="border-b border-white/25 pb-16 mt-28">
+          <div className="border-b border-white/25 pb-20 mt-28">
             <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-12">
               <div className="text-[clamp(64px,11vw,140px)] font-bold leading-[0.92] tracking-tight text-white">
                 <div>Start free</div>
