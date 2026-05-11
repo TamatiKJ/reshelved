@@ -8,7 +8,7 @@ import type { Listing } from '../types';
 
 const EditListing: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,9 +23,19 @@ const EditListing: React.FC = () => {
   const [price, setPrice] = useState('');
   const [location, setLocation] = useState('Lavington');
 
+  const canEditListing = (item: Listing) => {
+    return Boolean(currentUser && (item.userId === currentUser.uid || userProfile?.isAdmin));
+  };
+
   useEffect(() => {
     const fetchListing = async () => {
-      if (!id || !currentUser) return;
+      if (authLoading) return;
+      if (!id || !currentUser) {
+        setError('You must be logged in to edit a listing.');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError('');
 
@@ -33,12 +43,14 @@ const EditListing: React.FC = () => {
         const snap = await getDoc(doc(db, 'listings', id));
         if (!snap.exists()) {
           setError('Listing not found.');
+          setListing(null);
           return;
         }
 
         const data = { id: snap.id, ...snap.data() } as Listing;
-        if (data.userId !== currentUser.uid && !userProfile?.isAdmin) {
-          setError('You can only edit your own listings.');
+        if (!canEditListing(data)) {
+          setError('You can only edit your own listings. Only admins can edit all listings.');
+          setListing(null);
           return;
         }
 
@@ -51,20 +63,26 @@ const EditListing: React.FC = () => {
         setType(data.type || 'swap');
         setPrice(data.price ? String(data.price) : '');
         setLocation(data.location || 'Lavington');
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error loading listing:', err);
-        setError('Could not load this listing.');
+        setError(err?.message || 'Could not load this listing.');
+        setListing(null);
       } finally {
         setLoading(false);
       }
     };
 
     fetchListing();
-  }, [id, currentUser, userProfile?.isAdmin]);
+  }, [id, currentUser?.uid, userProfile?.isAdmin, authLoading]);
 
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!listing || !currentUser) return;
+
+    if (!canEditListing(listing)) {
+      setError('You can only edit your own listings. Only admins can edit all listings.');
+      return;
+    }
 
     setSaving(true);
     setError('');
@@ -90,14 +108,14 @@ const EditListing: React.FC = () => {
 
       await updateDoc(doc(db, 'listings', listing.id), updates);
       navigate(`/listing/${listing.id}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving listing:', err);
-      setError('Could not save listing. Check your Firestore rules.');
+      setError(err?.message || 'Could not save listing. Check your Firestore rules.');
       setSaving(false);
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
         <div className="bg-white rounded-2xl border border-stone-200 p-8 animate-pulse">
@@ -113,7 +131,10 @@ const EditListing: React.FC = () => {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-center">
         <h1 className="text-xl font-bold text-stone-900">{error}</h1>
-        <Link to="/profile" className="mt-4 inline-flex text-primary-600 font-semibold">Back to profile</Link>
+        <div className="mt-4 flex items-center justify-center gap-4">
+          <Link to="/profile" className="inline-flex text-primary-600 font-semibold">Back to profile</Link>
+          <Link to="/browse" className="inline-flex text-stone-600 font-semibold">Browse books</Link>
+        </div>
       </div>
     );
   }
