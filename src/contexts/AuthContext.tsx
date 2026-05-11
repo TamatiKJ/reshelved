@@ -5,6 +5,8 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
+  setPersistence,
+  browserSessionPersistence,
   User
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -103,6 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanName = displayName.trim();
     const cleanLocation = location || 'Lavington';
 
+    await setPersistence(auth, browserSessionPersistence);
     const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
     await updateProfile(cred.user, { displayName: cleanName });
 
@@ -126,6 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async (email: string, password: string) => {
+    await setPersistence(auth, browserSessionPersistence);
     const cred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
     setCurrentUser(cred.user);
     setUserProfile(buildUserProfile(cred.user));
