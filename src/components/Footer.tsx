@@ -5,7 +5,7 @@ const Footer: React.FC = () => {
   return (
     <footer className="bg-black text-white mt-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-end border-t border-white/20 pt-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-end">
           <div>
             <Link to="/" className="inline-flex items-center" aria-label="Reshelved home">
               <img src="/reshelved-logo.svg" alt="Reshelved" className="h-7 w-auto" />
@@ -25,6 +25,7 @@ const Footer: React.FC = () => {
             <Link to="/contact" className="hover:text-white transition">Contact</Link>
           </div>
         </div>
+        <div className="border-t border-white/20 mt-10" />
       </div>
     </footer>
   );
