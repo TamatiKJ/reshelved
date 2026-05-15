@@ -317,16 +317,22 @@ const Admin: React.FC = () => {
     return matchSearch;
   });
 
-  const filteredUsers = allUsers.filter(u => {
-    const matchSearch = !userSearch ||
-      u.displayName.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.email.toLowerCase().includes(userSearch.toLowerCase());
-    if (userFilter === 'active') return matchSearch && !(u as any).deactivated;
-    if (userFilter === 'deactivated') return matchSearch && (u as any).deactivated;
-    if (userFilter === 'flagged') return matchSearch && u.flagged;
-    if (userFilter === 'admin') return matchSearch && u.isAdmin;
-    return matchSearch;
-  });
+  const filteredUsers = allUsers
+    .filter(u => {
+      const matchSearch = !userSearch ||
+        u.displayName.toLowerCase().includes(userSearch.toLowerCase()) ||
+        u.email.toLowerCase().includes(userSearch.toLowerCase());
+      if (userFilter === 'active') return matchSearch && !(u as any).deactivated;
+      if (userFilter === 'deactivated') return matchSearch && (u as any).deactivated;
+      if (userFilter === 'flagged') return matchSearch && u.flagged;
+      if (userFilter === 'admin') return matchSearch && u.isAdmin;
+      return matchSearch;
+    })
+    .sort((a, b) => {
+      if (a.isAdmin && !b.isAdmin) return -1;
+      if (!a.isAdmin && b.isAdmin) return 1;
+      return (a.displayName || '').localeCompare(b.displayName || '');
+    });
 
   // ── Access guard ───────────────────────────────────────────────────────
   if (!userProfile?.isAdmin) {
