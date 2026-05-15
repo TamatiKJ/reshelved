@@ -138,7 +138,7 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
           {sellerPhoto ? <img src={sellerPhoto} alt={listing.userName} className="w-7 h-7 rounded-full object-cover bg-stone-100" /> : <div className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 flex items-center justify-center text-[10px] font-bold">{listing.userName?.[0]?.toUpperCase() || 'U'}</div>}
           <div className="min-w-0"><p className="text-xs font-semibold text-stone-700 truncate">Listed by {listing.userName || 'Reshelved user'}</p>{sellerRating.count > 0 && <p className="mt-0.5 text-xs font-semibold text-accent-500 leading-none">{getStarLabel(sellerRating.average)} <span className="text-stone-500">({sellerRating.count})</span></p>}</div>
         </div>
-        <div className="mt-4 rounded-2xl bg-[#f5eee3]/50 border border-stone-200/60 p-2.5 grid grid-cols-3 divide-x divide-stone-300/50">
+        <div className="mt-4 rounded-2xl bg-[#FFF4E2]/50 border border-stone-200/60 p-2.5 grid grid-cols-3 divide-x divide-stone-300/50">
           <div className="px-1.5 min-w-0"><p className="text-[10px] font-semibold text-stone-500">Condition</p><p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{listing.condition}</p></div>
           <div className="px-2.5 min-w-0"><p className="text-[10px] font-semibold text-stone-500">Location</p><p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{listing.location}</p></div>
           <div className="px-2.5 min-w-0"><p className="text-[10px] font-semibold text-stone-500">Price</p><p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{getDisplayPrice(listing)}</p></div>
