@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import BookCard from '../components/BookCard';
@@ -11,6 +11,7 @@ const PAGE_SIZE = 12;
 
 const Browse: React.FC = () => {
   const { currentUser } = useAuth();
+  const [searchParams] = useSearchParams();
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -22,6 +23,14 @@ const Browse: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => { fetchListings(); }, []);
+
+  useEffect(() => {
+    const categoryFromUrl = searchParams.get('category');
+    if (categoryFromUrl && CATEGORIES.includes(categoryFromUrl)) {
+      setFilterCategory(categoryFromUrl);
+      setShowFilters(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => { setCurrentPage(1); }, [search, filterType, filterCategory, filterLocation, filterCondition]);
 
@@ -54,7 +63,9 @@ const Browse: React.FC = () => {
         l.author.toLowerCase().includes(s) ||
         l.description.toLowerCase().includes(s) ||
         l.category.toLowerCase().includes(s) ||
-        l.location.toLowerCase().includes(s)
+        l.condition.toLowerCase().includes(s) ||
+        l.location.toLowerCase().includes(s) ||
+        l.type.toLowerCase().includes(s)
       );
     }
     return true;
@@ -119,9 +130,7 @@ const Browse: React.FC = () => {
             {totalPages > 1 && (
               <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
                 <button onClick={() => goToPage(safePage - 1)} disabled={safePage === 1} className="cursor-pointer rounded-xl border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40">Previous</button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <button key={page} onClick={() => goToPage(page)} className={`cursor-pointer rounded-xl border px-4 py-2 text-sm font-semibold transition ${page === safePage ? 'border-primary-600 bg-primary-600 text-white' : 'border-stone-200 text-stone-700 hover:bg-stone-50'}`}>{page}</button>
-                ))}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => <button key={page} onClick={() => goToPage(page)} className={`cursor-pointer rounded-xl border px-4 py-2 text-sm font-semibold transition ${page === safePage ? 'border-primary-600 bg-primary-600 text-white' : 'border-stone-200 text-stone-700 hover:bg-stone-50'}`}>{page}</button>)}
                 <button onClick={() => goToPage(safePage + 1)} disabled={safePage === totalPages} className="cursor-pointer rounded-xl border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40">Next</button>
               </div>
             )}
