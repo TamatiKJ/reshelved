@@ -75,6 +75,12 @@ const Profile: React.FC = () => {
     if (targetUserId) fetchData();
   }, [targetUserId, currentUser?.uid, userProfile?.bookmarks?.join('|')]);
 
+  useEffect(() => {
+    if (!saveMessage) return;
+    const timer = window.setTimeout(() => setSaveMessage(''), 3000);
+    return () => window.clearTimeout(timer);
+  }, [saveMessage]);
+
   const createFallbackProfile = async (): Promise<UserProfile | null> => {
     if (!currentUser || !isOwnProfile) return null;
     const fallback: UserProfile = {
@@ -133,9 +139,7 @@ const Profile: React.FC = () => {
         const allSnap = await getDocs(collection(db, 'listings'));
         const bookmarked: Listing[] = [];
         allSnap.forEach(d => {
-          if (bookmarkedIds.has(d.id)) {
-            bookmarked.push({ id: d.id, ...d.data() } as Listing);
-          }
+          if (bookmarkedIds.has(d.id)) bookmarked.push({ id: d.id, ...d.data() } as Listing);
         });
         bookmarked.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         setBookmarkedListings(bookmarked.filter(l => l.active && l.expiresAt > Date.now()));
@@ -160,9 +164,7 @@ const Profile: React.FC = () => {
     if (!currentUser) return null;
 
     const cleanName = editName.trim();
-    if (!cleanName) {
-      throw new Error('Display name cannot be empty.');
-    }
+    if (!cleanName) throw new Error('Display name cannot be empty.');
 
     const profileUpdates: Partial<UserProfile> = {
       displayName: cleanName,
@@ -220,14 +222,8 @@ const Profile: React.FC = () => {
       await uploadBytes(photoRef, compressed, { contentType: 'image/webp' });
       const photoURL = await getDownloadURL(photoRef);
 
-      await setDoc(doc(db, 'users', currentUser.uid), {
-        photoURL,
-        lastSeen: Date.now()
-      }, { merge: true });
-
-      await updateProfile(currentUser, {
-        photoURL
-      }).catch((err) => console.error('Auth profile photo update failed:', err));
+      await setDoc(doc(db, 'users', currentUser.uid), { photoURL, lastSeen: Date.now() }, { merge: true });
+      await updateProfile(currentUser, { photoURL }).catch((err) => console.error('Auth profile photo update failed:', err));
 
       setProfile((current) => current ? { ...current, photoURL, lastSeen: Date.now() } : current);
       await refreshProfile();
@@ -301,15 +297,15 @@ const Profile: React.FC = () => {
                 </select>
                 <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-stone-200 text-sm" placeholder="Phone number" />
                 <div className="flex gap-2">
-                  <button onClick={handleSaveProfile} disabled={saving} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium disabled:opacity-60">{saving ? 'Saving...' : 'Save'}</button>
-                  <button onClick={() => setEditing(false)} disabled={saving} className="px-4 py-2 border border-stone-200 rounded-lg text-sm disabled:opacity-60">Cancel</button>
+                  <button onClick={handleSaveProfile} disabled={saving} className="cursor-pointer px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60">{saving ? 'Saving...' : 'Save'}</button>
+                  <button onClick={() => setEditing(false)} disabled={saving} className="cursor-pointer px-4 py-2 border border-stone-200 rounded-lg text-sm disabled:cursor-not-allowed disabled:opacity-60">Cancel</button>
                 </div>
               </div>
             ) : (
               <>
                 <div className="flex items-center gap-3">
                   <h1 className="text-2xl font-bold text-stone-800">{profile.displayName}</h1>
-                  {isOwnProfile && <button onClick={() => { setSaveMessage(''); setSaveError(''); setEditing(true); }} className="text-sm text-primary-600 hover:text-primary-700 font-medium">Edit</button>}
+                  {isOwnProfile && <button onClick={() => { setSaveMessage(''); setSaveError(''); setEditing(true); }} className="cursor-pointer text-sm text-primary-600 hover:text-primary-700 font-medium">Edit</button>}
                 </div>
                 {profile.bio && <p className="text-stone-600 mt-1">{profile.bio}</p>}
                 <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-stone-500">
@@ -345,7 +341,7 @@ const Profile: React.FC = () => {
         {activeListings.length === 0 ? (
           <div className="text-center py-8 bg-white rounded-xl border border-stone-200">
             <p className="text-stone-500">No active listings</p>
-            {isOwnProfile && <Link to="/create" className="mt-2 inline-block text-primary-600 font-medium text-sm">List a book</Link>}
+            {isOwnProfile && <Link to="/create" className="mt-2 inline-block cursor-pointer text-primary-600 font-medium text-sm">List a book</Link>}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">{activeListings.map(l => <BookCard key={l.id} listing={l} />)}</div>
