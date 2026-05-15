@@ -139,8 +139,8 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
         )}
 
         <div className="absolute top-3 left-3">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 text-primary-700 shadow-sm text-xs font-bold backdrop-blur-sm">
-            <i className={`${typeIcons[listing.type]} text-base leading-none`} />
+          <span className="inline-flex cursor-default items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 text-primary-700 shadow-sm text-xs font-bold backdrop-blur-sm">
+            <i className={`${typeIcons[listing.type]} cursor-default text-base leading-none`} />
             {typeLabels[listing.type]}
           </span>
         </div>
@@ -150,7 +150,7 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
             <button
               type="button"
               onClick={handleEdit}
-              className="w-9 h-9 rounded-xl bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50"
+              className="cursor-pointer w-9 h-9 rounded-xl bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50"
               aria-label="Edit listing"
             >
               <i className="las la-pen text-lg" />
@@ -162,7 +162,7 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
               onClick={handleBookmark}
               disabled={bookmarking}
               aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'}
-              className="w-9 h-9 rounded-xl bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50 disabled:opacity-60"
+              className={`cursor-pointer w-9 h-9 rounded-xl flex items-center justify-center shadow-sm backdrop-blur-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${isBookmarked ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-white/95 text-primary-600 hover:bg-primary-50'}`}
             >
               <i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-lg`} />
             </button>
@@ -189,18 +189,18 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
           </div>
         </div>
 
-        <div className="mt-4 rounded-2xl bg-[#f5eee3]/50 border border-stone-200/60 p-3 grid grid-cols-3 divide-x divide-stone-300/50">
+        <div className="mt-4 rounded-2xl bg-[#f5eee3]/50 border border-stone-200/60 p-2.5 grid grid-cols-3 divide-x divide-stone-300/50">
           <div className="px-1.5 min-w-0">
             <p className="text-[10px] font-semibold text-stone-500">Condition</p>
-            <p className="mt-0.5 text-[12px] font-bold text-stone-800 truncate">{listing.condition}</p>
+            <p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{listing.condition}</p>
           </div>
           <div className="px-2.5 min-w-0">
             <p className="text-[10px] font-semibold text-stone-500">Location</p>
-            <p className="mt-0.5 text-[12px] font-bold text-stone-800 truncate">{listing.location}</p>
+            <p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{listing.location}</p>
           </div>
           <div className="px-2.5 min-w-0">
             <p className="text-[10px] font-semibold text-stone-500">Price</p>
-            <p className="mt-0.5 text-[12px] font-bold text-stone-800 truncate">{getDisplayPrice(listing)}</p>
+            <p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{getDisplayPrice(listing)}</p>
           </div>
         </div>
       </div>
