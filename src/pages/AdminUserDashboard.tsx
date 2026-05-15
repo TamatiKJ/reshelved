@@ -32,6 +32,12 @@ const getPriceLabel = (listing: Listing) => {
   return 'Ask';
 };
 
+const sortAdminsFirst = (a: UserProfile, b: UserProfile) => {
+  if (a.isAdmin && !b.isAdmin) return -1;
+  if (!a.isAdmin && b.isAdmin) return 1;
+  return (a.displayName || a.email || '').localeCompare(b.displayName || b.email || '');
+};
+
 const StatCard: React.FC<{ label: string; value: number | string; icon: string; tone: string }> = ({ label, value, icon, tone }) => (
   <div className="bg-white rounded-2xl border border-stone-200 p-5 flex items-center gap-4">
     <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${tone}`}>
@@ -83,7 +89,7 @@ const AdminUserDashboard: React.FC = () => {
 
       const userItems: UserProfile[] = [];
       userSnap.forEach((item) => userItems.push({ uid: item.id, ...item.data() } as UserProfile));
-      userItems.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      userItems.sort(sortAdminsFirst);
       setUsers(userItems);
     } catch (error) {
       console.error('Admin dashboard failed to load:', error);
@@ -120,13 +126,15 @@ const AdminUserDashboard: React.FC = () => {
       .some((value) => value.toLowerCase().includes(term));
   });
 
-  const filteredUsers = users.filter((user) => {
-    const term = userSearch.trim().toLowerCase();
-    if (!term) return true;
-    return [user.displayName, user.email, user.location, user.uid, user.isAdmin ? 'admin' : 'user']
-      .filter(Boolean)
-      .some((value) => value.toLowerCase().includes(term));
-  });
+  const filteredUsers = users
+    .filter((user) => {
+      const term = userSearch.trim().toLowerCase();
+      if (!term) return true;
+      return [user.displayName, user.email, user.location, user.uid, user.isAdmin ? 'admin' : 'user']
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(term));
+    })
+    .sort(sortAdminsFirst);
 
   const resolveReport = async (report: Report) => {
     await updateDoc(doc(db, 'reports', report.id), { resolved: true });
@@ -187,7 +195,7 @@ const AdminUserDashboard: React.FC = () => {
           <h1 className="mt-2 text-3xl font-bold text-stone-900">Reshelved Platform Management</h1>
           <p className="mt-1 text-sm text-stone-500">Manage active listings, reports, and registered users.</p>
         </div>
-        <button onClick={fetchAdminData} className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-stone-200 text-stone-700 rounded-xl hover:bg-stone-50 transition text-sm font-semibold">
+        <button onClick={fetchAdminData} className="inline-flex cursor-pointer items-center justify-center gap-2 px-4 py-2 border border-stone-200 text-stone-700 rounded-xl hover:bg-stone-50 transition text-sm font-semibold">
           <i className="las la-redo-alt text-lg" /> Refresh
         </button>
       </div>
@@ -202,7 +210,7 @@ const AdminUserDashboard: React.FC = () => {
 
       <div className="flex gap-1 bg-stone-100 rounded-xl p-1 mb-6 overflow-x-auto">
         {tabs.map((item) => (
-          <button key={item.key} onClick={() => setTab(item.key)} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition ${tab === item.key ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}>
+          <button key={item.key} onClick={() => setTab(item.key)} className={`cursor-pointer flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition ${tab === item.key ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}>
             {item.label}
             {item.count !== undefined && <span className={`px-1.5 py-0.5 rounded-full text-xs ${tab === item.key ? 'bg-primary-100 text-primary-700' : 'bg-stone-200 text-stone-600'}`}>{item.count}</span>}
           </button>
@@ -213,13 +221,13 @@ const AdminUserDashboard: React.FC = () => {
         <>
           {tab === 'overview' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Panel title="Latest Active Listings" action={<button onClick={() => setTab('listings')} className="text-sm font-semibold text-primary-600">View all</button>}>
+              <Panel title="Latest Active Listings" action={<button onClick={() => setTab('listings')} className="cursor-pointer text-sm font-semibold text-primary-600">View all</button>}>
                 <div className="space-y-3">
                   {activeListings.slice(0, 6).map((listing) => <ListingPreview key={listing.id} listing={listing} />)}
                   {activeListings.length === 0 && <EmptyState text="No active listings yet" />}
                 </div>
               </Panel>
-              <Panel title="Latest Reports" action={<button onClick={() => setTab('reports')} className="text-sm font-semibold text-primary-600">View all</button>}>
+              <Panel title="Latest Reports" action={<button onClick={() => setTab('reports')} className="cursor-pointer text-sm font-semibold text-primary-600">View all</button>}>
                 <div className="space-y-3">
                   {openReports.slice(0, 6).map((report) => <ReportPreview key={report.id} report={report} />)}
                   {openReports.length === 0 && <EmptyState text="No open reports" />}
@@ -291,11 +299,11 @@ const ImageBox: React.FC<{ image?: string }> = ({ image }) => image ? <img src={
 
 const ListingRow: React.FC<{ listing: Listing; onToggle: (listing: Listing) => void; onDelete: (listing: Listing) => void; onUnflag: (listing: Listing) => void }> = ({ listing, onToggle, onDelete, onUnflag }) => {
   const image = normalizeImages(listing.images)[0];
-  return <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-4"><ImageBox image={image} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2 flex-wrap"><Link to={`/listing/${listing.id}`} className="font-bold text-stone-900 hover:text-primary-700 truncate">{listing.title}</Link>{listing.flagged && <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-xs font-semibold">Flagged</span>}</div><p className="text-sm text-stone-500 mt-1 truncate">by {listing.author} · Listed by {listing.userName}</p><p className="text-xs text-stone-400 mt-1">{listing.location} · {listing.condition} · {getPriceLabel(listing)} · Expires {formatDateTime(listing.expiresAt)}</p></div><div className="flex items-center gap-2 shrink-0"><Link to={`/listing/${listing.id}`} className="px-3 py-2 rounded-lg border border-stone-200 text-stone-700 text-sm font-semibold hover:bg-stone-50">View</Link>{listing.flagged && <button onClick={() => onUnflag(listing)} className="px-3 py-2 rounded-lg border border-blue-200 text-blue-700 text-sm font-semibold hover:bg-blue-50">Unflag</button>}<button onClick={() => onToggle(listing)} className="px-3 py-2 rounded-lg border border-orange-200 text-orange-700 text-sm font-semibold hover:bg-orange-50">Disable</button><button onClick={() => onDelete(listing)} className="px-3 py-2 rounded-lg border border-red-200 text-red-700 text-sm font-semibold hover:bg-red-50">Delete</button></div></div>;
+  return <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-4"><ImageBox image={image} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2 flex-wrap"><Link to={`/listing/${listing.id}`} className="font-bold text-stone-900 hover:text-primary-700 truncate">{listing.title}</Link>{listing.flagged && <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-xs font-semibold">Flagged</span>}</div><p className="text-sm text-stone-500 mt-1 truncate">by {listing.author} · Listed by {listing.userName}</p><p className="text-xs text-stone-400 mt-1">{listing.location} · {listing.condition} · {getPriceLabel(listing)} · Expires {formatDateTime(listing.expiresAt)}</p></div><div className="flex items-center gap-2 shrink-0"><Link to={`/listing/${listing.id}`} className="px-3 py-2 rounded-lg border border-stone-200 text-stone-700 text-sm font-semibold hover:bg-stone-50">View</Link>{listing.flagged && <button onClick={() => onUnflag(listing)} className="cursor-pointer px-3 py-2 rounded-lg border border-blue-200 text-blue-700 text-sm font-semibold hover:bg-blue-50">Unflag</button>}<button onClick={() => onToggle(listing)} className="cursor-pointer px-3 py-2 rounded-lg border border-orange-200 text-orange-700 text-sm font-semibold hover:bg-orange-50">Disable</button><button onClick={() => onDelete(listing)} className="cursor-pointer px-3 py-2 rounded-lg border border-red-200 text-red-700 text-sm font-semibold hover:bg-red-50">Delete</button></div></div>;
 };
 
-const ReportRow: React.FC<{ report: Report; onResolve: (report: Report) => void; onReopen: (report: Report) => void }> = ({ report, onResolve, onReopen }) => <div className={`bg-white rounded-2xl p-4 border ${report.resolved ? 'border-stone-200 opacity-70' : 'border-red-200'}`}><div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${report.resolved ? 'bg-stone-100 text-stone-500' : 'bg-red-50 text-red-600'}`}>{report.resolved ? 'Resolved' : 'Open'}</span><span className="px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 text-xs font-semibold">{report.targetType}</span><h3 className="font-bold text-stone-900 truncate">{report.targetName}</h3></div><p className="text-sm text-stone-600 mt-2"><strong>Reason:</strong> {report.reason}</p>{report.details && <p className="text-sm text-stone-500 mt-1">{report.details}</p>}<p className="text-xs text-stone-400 mt-2">Reported by {report.reporterName} · {formatDateTime(report.createdAt)}</p></div><div className="flex items-center gap-2 shrink-0">{report.targetType === 'listing' && <Link to={`/listing/${report.targetId}`} className="px-3 py-2 rounded-lg border border-stone-200 text-stone-700 text-sm font-semibold hover:bg-stone-50">View</Link>}{report.resolved ? <button onClick={() => onReopen(report)} className="px-3 py-2 rounded-lg border border-orange-200 text-orange-700 text-sm font-semibold hover:bg-orange-50">Reopen</button> : <button onClick={() => onResolve(report)} className="px-3 py-2 rounded-lg border border-green-200 text-green-700 text-sm font-semibold hover:bg-green-50">Resolve</button>}</div></div></div>;
+const ReportRow: React.FC<{ report: Report; onResolve: (report: Report) => void; onReopen: (report: Report) => void }> = ({ report, onResolve, onReopen }) => <div className={`bg-white rounded-2xl p-4 border ${report.resolved ? 'border-stone-200 opacity-70' : 'border-red-200'}`}><div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${report.resolved ? 'bg-stone-100 text-stone-500' : 'bg-red-50 text-red-600'}`}>{report.resolved ? 'Resolved' : 'Open'}</span><span className="px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 text-xs font-semibold">{report.targetType}</span><h3 className="font-bold text-stone-900 truncate">{report.targetName}</h3></div><p className="text-sm text-stone-600 mt-2"><strong>Reason:</strong> {report.reason}</p>{report.details && <p className="text-sm text-stone-500 mt-1">{report.details}</p>}<p className="text-xs text-stone-400 mt-2">Reported by {report.reporterName} · {formatDateTime(report.createdAt)}</p></div><div className="flex items-center gap-2 shrink-0">{report.targetType === 'listing' && <Link to={`/listing/${report.targetId}`} className="px-3 py-2 rounded-lg border border-stone-200 text-stone-700 text-sm font-semibold hover:bg-stone-50">View</Link>}{report.resolved ? <button onClick={() => onReopen(report)} className="cursor-pointer px-3 py-2 rounded-lg border border-orange-200 text-orange-700 text-sm font-semibold hover:bg-orange-50">Reopen</button> : <button onClick={() => onResolve(report)} className="cursor-pointer px-3 py-2 rounded-lg border border-green-200 text-green-700 text-sm font-semibold hover:bg-green-50">Resolve</button>}</div></div></div>;
 
-const UserRow: React.FC<{ user: UserProfile; currentUserId?: string }> = ({ user, currentUserId }) => <div className="p-4 flex items-center justify-between gap-4"><div className="min-w-0"><p className="font-semibold text-stone-900 truncate">{user.displayName || 'Unnamed user'} {user.uid === currentUserId ? '(You)' : ''}</p><p className="text-sm text-stone-500 truncate">{user.email}</p><p className="text-xs text-stone-400 mt-1">Joined {formatDateTime(user.createdAt)} · Last seen {formatDateTime(user.lastSeen)}</p></div><div className="flex items-center gap-2 shrink-0">{user.isAdmin && <span className="px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 text-xs font-semibold">Admin</span>}{isUserOnline(user) && <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-xs font-semibold">Online</span>}{user.deactivated && <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-xs font-semibold">Banned</span>}</div></div>;
+const UserRow: React.FC<{ user: UserProfile; currentUserId?: string }> = ({ user, currentUserId }) => <div className={`p-4 flex items-center justify-between gap-4 ${user.isAdmin ? 'bg-primary-50/40' : ''}`}><div className="min-w-0"><p className="font-semibold text-stone-900 truncate">{user.displayName || 'Unnamed user'} {user.uid === currentUserId ? '(You)' : ''}</p><p className="text-sm text-stone-500 truncate">{user.email}</p><p className="text-xs text-stone-400 mt-1">Joined {formatDateTime(user.createdAt)} · Last seen {formatDateTime(user.lastSeen)}</p></div><div className="flex items-center gap-2 shrink-0">{user.isAdmin && <span className="px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 text-xs font-semibold">Admin</span>}{isUserOnline(user) && <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-xs font-semibold">Online</span>}{user.deactivated && <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-xs font-semibold">Banned</span>}</div></div>;
 
 export default AdminUserDashboard;
