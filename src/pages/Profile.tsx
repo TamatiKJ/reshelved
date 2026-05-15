@@ -262,15 +262,15 @@ const Profile: React.FC = () => {
   const expiredListings = listings.filter(l => !l.active || l.expiresAt <= Date.now());
 
   if (loading) {
-    return <div className="max-w-4xl mx-auto px-4 py-8"><div className="animate-pulse space-y-4"><div className="flex items-center gap-4"><div className="w-20 h-20 bg-stone-200 rounded-full" /><div className="space-y-2"><div className="h-6 bg-stone-200 rounded w-40" /><div className="h-4 bg-stone-100 rounded w-24" /></div></div></div></div>;
+    return <div className="max-w-4xl mx-auto px-4 py-8 pb-10 sm:pb-20"><div className="animate-pulse space-y-4"><div className="flex items-center gap-4"><div className="w-20 h-20 bg-stone-200 rounded-full" /><div className="space-y-2"><div className="h-6 bg-stone-200 rounded w-40" /><div className="h-4 bg-stone-100 rounded w-24" /></div></div></div></div>;
   }
 
   if (!profile) {
-    return <div className="max-w-4xl mx-auto px-4 py-16 text-center"><h2 className="text-xl font-bold text-stone-700">User not found</h2><p className="text-stone-500 mt-2">This profile does not exist or you do not have permission to view it.</p><Link to="/browse" className="mt-4 inline-block text-primary-600 font-medium">Back to Browse</Link></div>;
+    return <div className="max-w-4xl mx-auto px-4 py-16 text-center pb-10 sm:pb-20"><h2 className="text-xl font-bold text-stone-700">User not found</h2><p className="text-stone-500 mt-2">This profile does not exist or you do not have permission to view it.</p><Link to="/browse" className="mt-4 inline-block text-primary-600 font-medium">Back to Browse</Link></div>;
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-10 sm:pb-20">
       <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 sm:p-8">
         {saveMessage && <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">{saveMessage}</div>}
         {saveError && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{saveError}</div>}
