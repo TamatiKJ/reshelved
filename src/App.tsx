@@ -13,6 +13,7 @@ import Messages from './pages/Messages';
 import Profile from './pages/Profile';
 import Admin from './pages/AdminUserDashboard';
 import Notifications from './pages/Notifications';
+import LegalPage from './pages/LegalPage';
 
 const ScrollToTop: React.FC = () => {
   const { pathname, search } = useLocation();
@@ -102,6 +103,10 @@ const AppContent: React.FC = () => {
                   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                   <Route path="/my-listings" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                   <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+                  <Route path="/privacy-policy" element={<LegalPage slug="privacy-policy" />} />
+                  <Route path="/terms" element={<LegalPage slug="terms" />} />
+                  <Route path="/cookies" element={<LegalPage slug="cookies" />} />
+                  <Route path="/contact" element={<LegalPage slug="contact" />} />
                   <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
                 </Routes>
               </main>
