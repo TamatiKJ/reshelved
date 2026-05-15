@@ -24,28 +24,64 @@ const formatBytes = (bytes: number) => {
   return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 };
 
-const compressListingImage = (file: File): Promise<Blob> => {
+const loadImage = (src: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
     const image = new Image();
-    const objectUrl = URL.createObjectURL(file);
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Could not read this image. Try a JPG, PNG, or WebP file.'));
+    image.src = src;
+  });
+};
 
-    image.onload = () => {
-      URL.revokeObjectURL(objectUrl);
+const cropListingImage = async (file: File, cropSrc: string, zoom: number, offsetX: number, offsetY: number): Promise<File> => {
+  const image = await loadImage(cropSrc);
+  const canvas = document.createElement('canvas');
+  canvas.width = MAX_LISTING_IMAGE_SIZE;
+  canvas.height = MAX_LISTING_IMAGE_SIZE;
 
-      const ratio = Math.min(1, MAX_LISTING_IMAGE_SIZE / Math.max(image.width, image.height));
-      const width = Math.round(image.width * ratio);
-      const height = Math.round(image.height * ratio);
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Image processing is not supported in this browser.');
 
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Image processing is not supported in this browser.'));
+  const cropSize = Math.min(image.naturalWidth, image.naturalHeight) / zoom;
+  const maxX = Math.max(0, (image.naturalWidth - cropSize) / 2);
+  const maxY = Math.max(0, (image.naturalHeight - cropSize) / 2);
+  const sx = Math.min(Math.max(0, image.naturalWidth / 2 - cropSize / 2 + (offsetX / 100) * maxX), image.naturalWidth - cropSize);
+  const sy = Math.min(Math.max(0, image.naturalHeight / 2 - cropSize / 2 + (offsetY / 100) * maxY), image.naturalHeight - cropSize);
+
+  ctx.drawImage(image, sx, sy, cropSize, cropSize, 0, 0, MAX_LISTING_IMAGE_SIZE, MAX_LISTING_IMAGE_SIZE);
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((result) => {
+      if (!result) {
+        reject(new Error('Could not convert image to WebP.'));
         return;
       }
+      resolve(result);
+    }, 'image/webp', 0.84);
+  });
 
-      ctx.drawImage(image, 0, 0, width, height);
+  const safeFileName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '-');
+  return new File([blob], `${safeFileName}-cropped.webp`, { type: 'image/webp' });
+};
+
+const compressListingImage = async (file: File): Promise<Blob> => {
+  if (file.type === 'image/webp' && file.name.endsWith('-cropped.webp')) return file;
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await loadImage(objectUrl);
+    const ratio = Math.min(1, MAX_LISTING_IMAGE_SIZE / Math.max(image.naturalWidth, image.naturalHeight));
+    const width = Math.round(image.naturalWidth * ratio);
+    const height = Math.round(image.naturalHeight * ratio);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Image processing is not supported in this browser.');
+    ctx.drawImage(image, 0, 0, width, height);
+
+    return await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((blob) => {
         if (!blob) {
           reject(new Error('Could not convert image to WebP.'));
@@ -53,15 +89,10 @@ const compressListingImage = (file: File): Promise<Blob> => {
         }
         resolve(blob);
       }, 'image/webp', 0.82);
-    };
-
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error('Could not read this image. Try a JPG, PNG, or WebP file.'));
-    };
-
-    image.src = objectUrl;
-  });
+    });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 };
 
 const CreateListing: React.FC = () => {
@@ -79,6 +110,12 @@ const CreateListing: React.FC = () => {
   const [previews, setPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [cropQueue, setCropQueue] = useState<File[]>([]);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [cropSrc, setCropSrc] = useState('');
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropX, setCropX] = useState(0);
+  const [cropY, setCropY] = useState(0);
   const [uploadProgress, setUploadProgress] = useState({
     active: false,
     done: false,
@@ -91,25 +128,75 @@ const CreateListing: React.FC = () => {
     percent: 0
   });
 
+  const openCropEditor = (file: File, queue: File[]) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCropFile(file);
+      setCropQueue(queue);
+      setCropSrc(reader.result as string);
+      setCropZoom(1);
+      setCropX(0);
+      setCropY(0);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (images.length + files.length > 4) {
+    const selectedFiles = Array.from(e.target.files || []);
+    e.target.value = '';
+
+    if (images.length + selectedFiles.length > 4) {
       setError('Maximum 4 images allowed');
       return;
     }
-    const validFiles = files.filter(f => f.type.startsWith('image/') && f.size < 5 * 1024 * 1024);
-    if (validFiles.length !== files.length) setError('Some files were skipped. Images must be under 5MB.');
-    setImages(prev => [...prev, ...validFiles]);
-    validFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => setPreviews(prev => [...prev, reader.result as string]);
-      reader.readAsDataURL(file);
-    });
+
+    const validFiles = selectedFiles.filter(f => f.type.startsWith('image/') && f.size < 5 * 1024 * 1024);
+    if (validFiles.length !== selectedFiles.length) setError('Some files were skipped. Images must be under 5MB.');
+    if (validFiles.length === 0) return;
+
+    const [firstFile, ...remainingFiles] = validFiles;
+    openCropEditor(firstFile, remainingFiles);
+  };
+
+  const addCroppedImage = async () => {
+    if (!cropFile || !cropSrc) return;
+    try {
+      const croppedFile = await cropListingImage(cropFile, cropSrc, cropZoom, cropX, cropY);
+      const previewUrl = URL.createObjectURL(croppedFile);
+      setImages(prev => [...prev, croppedFile]);
+      setPreviews(prev => [...prev, previewUrl]);
+
+      const [nextFile, ...remainingFiles] = cropQueue;
+      if (nextFile && images.length + 1 < 4) {
+        openCropEditor(nextFile, remainingFiles);
+      } else {
+        setCropFile(null);
+        setCropSrc('');
+        setCropQueue([]);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Could not crop this image.');
+    }
+  };
+
+  const skipCurrentCrop = () => {
+    const [nextFile, ...remainingFiles] = cropQueue;
+    if (nextFile) {
+      openCropEditor(nextFile, remainingFiles);
+      return;
+    }
+    setCropFile(null);
+    setCropSrc('');
+    setCropQueue([]);
   };
 
   const removeImage = (index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index));
-    setPreviews(prev => prev.filter((_, i) => i !== index));
+    setPreviews(prev => {
+      const removed = prev[index];
+      if (removed?.startsWith('blob:')) URL.revokeObjectURL(removed);
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const uploadSingleFile = async (listingId: string, file: File, index: number, totalFiles: number): Promise<string> => {
@@ -222,9 +309,7 @@ const CreateListing: React.FC = () => {
       };
 
       const docRef = await addDoc(collection(db, 'listings'), listingPayload);
-      if (images.length > 0) {
-        await uploadListingImages(docRef.id, [...images]);
-      }
+      if (images.length > 0) await uploadListingImages(docRef.id, [...images]);
       setUploadProgress({
         active: true,
         done: true,
@@ -257,20 +342,10 @@ const CreateListing: React.FC = () => {
           <div className="mb-4 rounded-xl border border-green-200 bg-green-50 p-4">
             <div className="flex items-center justify-between gap-3 text-sm">
               <div className="min-w-0 flex items-start gap-3">
-                {uploadProgress.done ? (
-                  <i className="las la-check-circle text-2xl text-green-600 leading-none mt-0.5" />
-                ) : (
-                  <i className="las la-cloud-upload-alt text-2xl text-green-600 leading-none mt-0.5" />
-                )}
+                {uploadProgress.done ? <i className="las la-check-circle text-2xl text-green-600 leading-none mt-0.5" /> : <i className="las la-cloud-upload-alt text-2xl text-green-600 leading-none mt-0.5" />}
                 <div className="min-w-0">
-                  <p className="font-semibold text-green-700 truncate">
-                    {uploadProgress.phase}{uploadProgress.fileName ? `: ${uploadProgress.fileName}` : ''}
-                  </p>
-                  {!uploadProgress.done && (
-                    <p className="text-green-600 mt-0.5">
-                      File {uploadProgress.currentFile} of {uploadProgress.totalFiles} · {formatBytes(uploadProgress.bytesTransferred)} / {formatBytes(uploadProgress.totalBytes)}
-                    </p>
-                  )}
+                  <p className="font-semibold text-green-700 truncate">{uploadProgress.phase}{uploadProgress.fileName ? `: ${uploadProgress.fileName}` : ''}</p>
+                  {!uploadProgress.done && <p className="text-green-600 mt-0.5">File {uploadProgress.currentFile} of {uploadProgress.totalFiles} · {formatBytes(uploadProgress.bytesTransferred)} / {formatBytes(uploadProgress.totalBytes)}</p>}
                 </div>
               </div>
               <span className="font-bold text-green-700">{uploadProgress.percent}%</span>
@@ -299,29 +374,21 @@ const CreateListing: React.FC = () => {
                 </label>
               )}
             </div>
+            <p className="text-xs text-stone-500 mt-2">After choosing a photo, crop it so the right part of the book is visible.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Book Title *</label>
-              <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm disabled:bg-stone-50" placeholder="e.g. Things Fall Apart" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Author *</label>
-              <input type="text" required value={author} onChange={(e) => setAuthor(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm disabled:bg-stone-50" placeholder="e.g. Chinua Achebe" />
-            </div>
+            <div><label className="block text-sm font-medium text-stone-700 mb-1">Book Title *</label><input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm disabled:bg-stone-50" placeholder="e.g. Things Fall Apart" /></div>
+            <div><label className="block text-sm font-medium text-stone-700 mb-1">Author *</label><input type="text" required value={author} onChange={(e) => setAuthor(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm disabled:bg-stone-50" placeholder="e.g. Chinua Achebe" /></div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={loading} rows={3} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm resize-none disabled:bg-stone-50" placeholder="Tell us about the book condition, edition, and notes." />
-          </div>
+          <div><label className="block text-sm font-medium text-stone-700 mb-1">Description</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={loading} rows={3} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm resize-none disabled:bg-stone-50" placeholder="Tell us about the book condition, edition, and notes." /></div>
 
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-2">Listing Type *</label>
             <div className="grid grid-cols-3 gap-3">
               {listingTypes.map((t) => (
-                <button key={t.value} type="button" disabled={loading} onClick={() => setType(t.value)} className={`p-3 rounded-xl border-2 text-center transition disabled:opacity-60 ${type === t.value ? 'border-primary-500 bg-primary-50' : 'border-stone-200 hover:border-stone-300'}`}>
+                <button key={t.value} type="button" disabled={loading} onClick={() => setType(t.value)} className={`cursor-pointer p-3 rounded-xl border-2 text-center transition disabled:cursor-not-allowed disabled:opacity-60 ${type === t.value ? 'border-primary-500 bg-primary-50' : 'border-stone-200 hover:border-stone-300'}`}>
                   <i className={`${t.icon} text-3xl text-primary-600`} />
                   <div className="text-sm font-semibold text-stone-800 mt-1">{t.label}</div>
                   <div className="text-xs text-stone-500 mt-0.5">{t.desc}</div>
@@ -330,47 +397,49 @@ const CreateListing: React.FC = () => {
             </div>
           </div>
 
-          {type === 'sell' && (
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Price (KSh) *</label>
-              <input type="number" required min="0" value={price} onChange={(e) => setPrice(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm disabled:bg-stone-50" placeholder="e.g. 500" />
-            </div>
-          )}
+          {type === 'sell' && <div><label className="block text-sm font-medium text-stone-700 mb-1">Price (KSh) *</label><input type="number" required min="0" value={price} onChange={(e) => setPrice(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm disabled:bg-stone-50" placeholder="e.g. 500" /></div>}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Condition *</label>
-              <select value={condition} onChange={(e) => setCondition(e.target.value as Listing['condition'])} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white disabled:bg-stone-50">
-                {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Category *</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white disabled:bg-stone-50">
-                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Location *</label>
-              <select value={location} onChange={(e) => setLocation(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white disabled:bg-stone-50">
-                {KENYAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
+            <div><label className="block text-sm font-medium text-stone-700 mb-1">Condition *</label><select value={condition} onChange={(e) => setCondition(e.target.value as Listing['condition'])} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white disabled:bg-stone-50">{CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
+            <div><label className="block text-sm font-medium text-stone-700 mb-1">Category *</label><select value={category} onChange={(e) => setCategory(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white disabled:bg-stone-50">{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
+            <div><label className="block text-sm font-medium text-stone-700 mb-1">Location *</label><select value={location} onChange={(e) => setLocation(e.target.value)} disabled={loading} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white disabled:bg-stone-50">{KENYAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
           </div>
 
           <div className="bg-accent-50 border border-accent-200 rounded-xl p-4 flex items-start gap-3">
             <i className="las la-info-circle text-2xl text-accent-600" />
-            <div className="text-sm text-accent-800">
-              <p className="font-medium">Your listing will publish after images finish uploading</p>
-              <p className="text-accent-600 mt-0.5">Images are converted to WebP before upload so they load faster on Reshelved.</p>
-            </div>
+            <div className="text-sm text-accent-800"><p className="font-medium">Your listing will publish after images finish uploading</p><p className="text-accent-600 mt-0.5">Images are cropped and converted to WebP before upload so they look clean and load faster.</p></div>
           </div>
 
-          <button type="submit" disabled={loading} className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
-            {loading ? 'Publishing...' : 'Publish Listing'}
-          </button>
+          <button type="submit" disabled={loading} className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">{loading ? 'Publishing...' : 'Publish Listing'}</button>
         </form>
       </div>
+
+      {cropFile && cropSrc && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div><h2 className="text-lg font-bold text-stone-900">Crop Photo</h2><p className="text-sm text-stone-500">Choose what part should be visible.</p></div>
+              <button type="button" onClick={skipCurrentCrop} className="cursor-pointer text-stone-400 hover:text-stone-700 text-xl">×</button>
+            </div>
+
+            <div className="aspect-square rounded-xl overflow-hidden bg-stone-100 border border-stone-200 relative">
+              <img src={cropSrc} alt="Crop preview" className="w-full h-full object-cover select-none" style={{ transform: `translate(${cropX * 0.6}px, ${cropY * 0.6}px) scale(${cropZoom})`, transformOrigin: 'center' }} />
+              <div className="absolute inset-0 border-4 border-white/70 pointer-events-none rounded-xl" />
+            </div>
+
+            <div className="space-y-4 mt-5">
+              <div><label className="text-sm font-medium text-stone-700">Zoom</label><input type="range" min="1" max="3" step="0.05" value={cropZoom} onChange={(e) => setCropZoom(parseFloat(e.target.value))} className="w-full accent-primary-600 cursor-pointer" /></div>
+              <div><label className="text-sm font-medium text-stone-700">Move left / right</label><input type="range" min="-100" max="100" value={cropX} onChange={(e) => setCropX(parseInt(e.target.value))} className="w-full accent-primary-600 cursor-pointer" /></div>
+              <div><label className="text-sm font-medium text-stone-700">Move up / down</label><input type="range" min="-100" max="100" value={cropY} onChange={(e) => setCropY(parseInt(e.target.value))} className="w-full accent-primary-600 cursor-pointer" /></div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-5">
+              <button type="button" onClick={skipCurrentCrop} className="cursor-pointer py-2.5 border border-stone-200 rounded-xl text-sm font-semibold text-stone-600 hover:bg-stone-50">Skip</button>
+              <button type="button" onClick={addCroppedImage} className="cursor-pointer py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700">Use Photo</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
