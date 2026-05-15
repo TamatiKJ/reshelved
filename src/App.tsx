@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
@@ -16,26 +16,35 @@ import Notifications from './pages/Notifications';
 import LegalPage from './pages/LegalPage';
 
 const ScrollToTop: React.FC = () => {
-  const { pathname, search } = useLocation();
+  const { pathname, search, key } = useLocation();
+
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+  }, []);
 
   useLayoutEffect(() => {
     const html = document.documentElement;
+    const body = document.body;
     const previousScrollBehavior = html.style.scrollBehavior;
     html.style.scrollBehavior = 'auto';
 
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    html.scrollTop = 0;
-    document.body.scrollTop = 0;
-    document.scrollingElement?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    const resetScroll = () => {
+      window.scrollTo(0, 0);
       html.scrollTop = 0;
-      document.body.scrollTop = 0;
-      document.scrollingElement?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      body.scrollTop = 0;
+      document.scrollingElement?.scrollTo(0, 0);
+    };
+
+    resetScroll();
+    requestAnimationFrame(resetScroll);
+    window.setTimeout(resetScroll, 0);
+
+    return () => {
       html.style.scrollBehavior = previousScrollBehavior;
-    });
-  }, [pathname, search]);
+    };
+  }, [pathname, search, key]);
 
   return null;
 };
