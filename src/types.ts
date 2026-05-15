@@ -97,6 +97,7 @@ export interface Contact {
 
 export const CATEGORIES = [
   'Fiction',
+  'Fantasy',
   'Non-Fiction',
   'Academic',
   'Children',
