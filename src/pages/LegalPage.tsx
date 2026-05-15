@@ -21,6 +21,8 @@ const pageDefaults: Record<string, { title: string; content: string }> = {
   }
 };
 
+const getPageDocId = (slug: string) => `legal-${slug}`;
+
 const LegalPage: React.FC<{ slug: string }> = ({ slug }) => {
   const [title, setTitle] = useState(pageDefaults[slug]?.title || 'Page');
   const [content, setContent] = useState(pageDefaults[slug]?.content || '<p>This page is not available yet.</p>');
@@ -30,7 +32,7 @@ const LegalPage: React.FC<{ slug: string }> = ({ slug }) => {
     const fetchPage = async () => {
       setLoading(true);
       try {
-        const snap = await getDoc(doc(db, 'legalPages', slug));
+        const snap = await getDoc(doc(db, 'platform', getPageDocId(slug)));
         if (snap.exists()) {
           const data = snap.data();
           setTitle(data.title || pageDefaults[slug]?.title || 'Page');
@@ -66,7 +68,7 @@ const LegalPage: React.FC<{ slug: string }> = ({ slug }) => {
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
       <h1 className="text-4xl font-bold tracking-tight text-stone-950">{title}</h1>
       <article
-        className="mt-8 max-w-none text-stone-700 leading-7 [&_p]:mb-4 [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:text-2xl [&_h2]:font-bold [&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:text-xl [&_h3]:font-bold [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-primary-700 [&_a]:font-semibold"
+        className="mt-8 max-w-none text-stone-700 leading-7 [&_blockquote]:my-5 [&_blockquote]:border-l-4 [&_blockquote]:border-stone-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-stone-600 [&_p]:mb-4 [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:text-2xl [&_h2]:font-bold [&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:text-xl [&_h3]:font-bold [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-primary-700 [&_a]:font-semibold [&_a]:underline"
         dangerouslySetInnerHTML={{ __html: content }}
       />
     </div>
