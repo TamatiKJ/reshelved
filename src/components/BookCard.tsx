@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { arrayRemove, arrayUnion, doc, setDoc } from 'firebase/firestore';
+import { arrayRemove, arrayUnion, collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import type { Listing } from '../types';
+import type { Listing, Rating } from '../types';
 
 const typeLabels: Record<Listing['type'], string> = {
   swap: 'Swap',
@@ -32,12 +32,19 @@ const normalizeImages = (images?: unknown): string[] => {
     .filter((image) => image.length > 0);
 };
 
+const getStarLabel = (average: number) => {
+  const rounded = Math.max(0, Math.min(5, Math.round(average)));
+  return `${'★'.repeat(rounded)}${'☆'.repeat(5 - rounded)}`;
+};
+
 const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
   const navigate = useNavigate();
   const { currentUser, userProfile, refreshProfile } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [bookmarking, setBookmarking] = useState(false);
   const [failedImages, setFailedImages] = useState<string[]>([]);
+  const [sellerPhoto, setSellerPhoto] = useState(listing.userPhoto || '');
+  const [sellerRating, setSellerRating] = useState<{ average: number; count: number }>({ average: 0, count: 0 });
   const images = useMemo(() => normalizeImages(listing.images).filter((image) => !failedImages.includes(image)), [listing.images, failedImages]);
   const coverImage = images[0];
   const hasImages = Boolean(coverImage);
@@ -52,6 +59,37 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
   useEffect(() => {
     setCurrentImageIndex(0);
   }, [coverImage]);
+
+  useEffect(() => {
+    setSellerPhoto(listing.userPhoto || '');
+  }, [listing.userPhoto]);
+
+  useEffect(() => {
+    const fetchSellerMeta = async () => {
+      if (!listing.userId) return;
+      try {
+        const userSnap = await getDoc(doc(db, 'users', listing.userId));
+        if (userSnap.exists()) {
+          const photoURL = userSnap.data().photoURL;
+          if (typeof photoURL === 'string') setSellerPhoto(photoURL);
+        }
+
+        const ratingsSnap = await getDocs(query(collection(db, 'ratings'), where('toUserId', '==', listing.userId)));
+        const ratings: Rating[] = [];
+        ratingsSnap.forEach((item) => ratings.push({ id: item.id, ...item.data() } as Rating));
+        if (ratings.length > 0) {
+          const average = ratings.reduce((sum, rating) => sum + (rating.rating || 0), 0) / ratings.length;
+          setSellerRating({ average, count: ratings.length });
+        } else {
+          setSellerRating({ average: 0, count: 0 });
+        }
+      } catch (err) {
+        console.error('Error loading seller card data:', err);
+      }
+    };
+
+    fetchSellerMeta();
+  }, [listing.userId]);
 
   useEffect(() => {
     if (images.length <= 1) return;
@@ -114,22 +152,9 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
       <div className="relative aspect-[1.45/1] rounded-[18px] bg-stone-100 overflow-hidden">
         {hasImages ? (
           <>
-            <img
-              src={coverImage}
-              alt={listing.title}
-              className="absolute inset-0 w-full h-full object-cover bg-stone-100"
-              loading="eager"
-              onError={() => handleImageError(coverImage)}
-            />
+            <img src={coverImage} alt={listing.title} className="absolute inset-0 w-full h-full object-cover bg-stone-100" loading="eager" onError={() => handleImageError(coverImage)} />
             {images.length > 1 && images.map((image, index) => (
-              <img
-                key={`${image}-${index}`}
-                src={image}
-                alt={listing.title}
-                className={`absolute inset-0 w-full h-full object-cover bg-stone-100 transition-opacity duration-700 ease-in-out ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
-                loading={index === 0 ? 'eager' : 'lazy'}
-                onError={() => handleImageError(image)}
-              />
+              <img key={`${image}-${index}`} src={image} alt={listing.title} className={`absolute inset-0 w-full h-full object-cover bg-stone-100 transition-opacity duration-700 ease-in-out ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'}`} loading={index === 0 ? 'eager' : 'lazy'} onError={() => handleImageError(image)} />
             ))}
           </>
         ) : (
@@ -146,62 +171,35 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
         </div>
 
         <div className="absolute top-3 right-3 flex items-center gap-2">
-          {isOwner && (
-            <button
-              type="button"
-              onClick={handleEdit}
-              className="cursor-pointer w-9 h-9 rounded-xl bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50"
-              aria-label="Edit listing"
-            >
-              <i className="las la-pen text-lg" />
-            </button>
-          )}
-          {currentUser && (
-            <button
-              type="button"
-              onClick={handleBookmark}
-              disabled={bookmarking}
-              aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'}
-              className={`cursor-pointer w-9 h-9 rounded-xl flex items-center justify-center shadow-sm backdrop-blur-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${isBookmarked ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-white/95 text-primary-600 hover:bg-primary-50'}`}
-            >
-              <i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-lg`} />
-            </button>
-          )}
+          {isOwner && <button type="button" onClick={handleEdit} className="cursor-pointer w-9 h-9 rounded-xl bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50" aria-label="Edit listing"><i className="las la-pen text-lg" /></button>}
+          {currentUser && <button type="button" onClick={handleBookmark} disabled={bookmarking} aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'} className={`cursor-pointer w-9 h-9 rounded-xl flex items-center justify-center shadow-sm backdrop-blur-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${isBookmarked ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-white/95 text-primary-600 hover:bg-primary-50'}`}><i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-lg`} /></button>}
         </div>
       </div>
 
       <div className="px-1.5 pt-3.5 pb-1">
-        <h3 className="text-[16px] font-bold text-stone-950 leading-tight line-clamp-1 group-hover:text-primary-700 transition">
-          {listing.title}
-        </h3>
+        <h3 className="text-[16px] font-bold text-stone-950 leading-tight line-clamp-1 group-hover:text-primary-700 transition">{listing.title}</h3>
         <p className="text-[14px] text-stone-500 mt-0.5 line-clamp-1">by {listing.author}</p>
 
-        <div className="flex items-center gap-2 mt-3">
-          {listing.userPhoto ? (
-            <img src={listing.userPhoto} alt={listing.userName} className="w-7 h-7 rounded-full object-cover bg-stone-100" />
+        <div className="flex items-start gap-2 mt-3">
+          {sellerPhoto ? (
+            <img src={sellerPhoto} alt={listing.userName} className="w-7 h-7 rounded-full object-cover bg-stone-100" />
           ) : (
-            <div className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 flex items-center justify-center text-[10px] font-bold">
-              {listing.userName?.[0]?.toUpperCase() || 'U'}
-            </div>
+            <div className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 flex items-center justify-center text-[10px] font-bold">{listing.userName?.[0]?.toUpperCase() || 'U'}</div>
           )}
           <div className="min-w-0">
             <p className="text-xs font-semibold text-stone-700 truncate">Listed by {listing.userName || 'Reshelved user'}</p>
+            {sellerRating.count > 0 && (
+              <p className="mt-0.5 text-xs font-semibold text-accent-500 leading-none">
+                {getStarLabel(sellerRating.average)} <span className="text-stone-500">({sellerRating.count})</span>
+              </p>
+            )}
           </div>
         </div>
 
         <div className="mt-4 rounded-2xl bg-[#f5eee3]/50 border border-stone-200/60 p-2.5 grid grid-cols-3 divide-x divide-stone-300/50">
-          <div className="px-1.5 min-w-0">
-            <p className="text-[10px] font-semibold text-stone-500">Condition</p>
-            <p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{listing.condition}</p>
-          </div>
-          <div className="px-2.5 min-w-0">
-            <p className="text-[10px] font-semibold text-stone-500">Location</p>
-            <p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{listing.location}</p>
-          </div>
-          <div className="px-2.5 min-w-0">
-            <p className="text-[10px] font-semibold text-stone-500">Price</p>
-            <p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{getDisplayPrice(listing)}</p>
-          </div>
+          <div className="px-1.5 min-w-0"><p className="text-[10px] font-semibold text-stone-500">Condition</p><p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{listing.condition}</p></div>
+          <div className="px-2.5 min-w-0"><p className="text-[10px] font-semibold text-stone-500">Location</p><p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{listing.location}</p></div>
+          <div className="px-2.5 min-w-0"><p className="text-[10px] font-semibold text-stone-500">Price</p><p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{getDisplayPrice(listing)}</p></div>
         </div>
       </div>
     </article>
