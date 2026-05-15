@@ -252,6 +252,7 @@ const ListingDetail: React.FC = () => {
   }
 
   const isOwner = currentUser?.uid === listing.userId;
+  const canEdit = isOwner || Boolean(userProfile?.isAdmin);
   const isExpired = listing.expiresAt < Date.now();
   const avgRating = ratings.length > 0 ? ratings.reduce((s, r) => s + r.rating, 0) / ratings.length : 0;
   const typeLabels: Record<string, string> = { swap: 'Swap', donate: 'Free / Donate', sell: 'For Sale' };
@@ -392,7 +393,16 @@ const ListingDetail: React.FC = () => {
               </div>
             )}
 
-            {(isOwner || userProfile?.isAdmin) && (
+            {canEdit && (
+              <Link
+                to={`/listing/${listing.id}/edit`}
+                className="block w-full py-2.5 border border-primary-200 text-primary-700 hover:bg-primary-50 rounded-xl transition text-sm font-medium text-center"
+              >
+                Edit Listing
+              </Link>
+            )}
+
+            {canEdit && (
               <button
                 onClick={handleDelete}
                 className="w-full py-2.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl transition text-sm font-medium"
