@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { KENYAN_CITIES } from '../types';
 
+const LINK_BLUE = '#1485dc';
+
 const getAuthErrorMessage = (error: any, fallback: string) => {
   switch (error?.code) {
     case 'auth/email-already-in-use':
@@ -15,6 +17,8 @@ const getAuthErrorMessage = (error: any, fallback: string) => {
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
       return 'Invalid email or password.';
+    case 'auth/popup-closed-by-user':
+      return 'Google sign in was closed before it finished.';
     default:
       return error?.message || fallback;
   }
@@ -22,21 +26,101 @@ const getAuthErrorMessage = (error: any, fallback: string) => {
 
 const AuthLogo: React.FC = () => (
   <Link to="/" className="inline-flex items-center justify-center" aria-label="Reshelved home">
-    <img src="/reshelved-logo.svg" alt="Reshelved" className="h-9 w-auto" />
+    <img src="/reshelved-logo.svg" alt="Reshelved" className="h-10 w-auto" />
   </Link>
 );
 
+const GoogleIcon: React.FC = () => (
+  <svg className="h-4 w-4" viewBox="0 0 48 48" aria-hidden="true">
+    <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303C33.651 32.657 29.223 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
+    <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
+    <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
+    <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
+  </svg>
+);
+
+const AuthFooter: React.FC = () => (
+  <footer className="w-full border-t border-stone-200 bg-white/80 px-4 py-5 text-sm text-stone-600">
+    <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-x-5 gap-y-2">
+      <Link to="/contact" className="hover:text-stone-900">Support</Link>
+      <span className="hidden h-4 w-px bg-stone-200 sm:inline-block" />
+      <Link to="/contact" className="hover:text-stone-900">Contact</Link>
+      <span className="hidden h-4 w-px bg-stone-200 sm:inline-block" />
+      <Link to="/terms" className="hover:text-stone-900">Terms of Use</Link>
+      <span className="hidden h-4 w-px bg-stone-200 sm:inline-block" />
+      <Link to="/privacy-policy" className="hover:text-stone-900">Privacy Policy</Link>
+      <span className="hidden h-4 w-px bg-stone-200 sm:inline-block" />
+      <Link to="/cookies" className="hover:text-stone-900">Cookie Policy</Link>
+      <span className="hidden h-4 w-px bg-stone-200 sm:inline-block" />
+      <span>© 2026 Reshelved.</span>
+    </div>
+  </footer>
+);
+
+const AuthShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="min-h-screen bg-stone-50 flex flex-col">
+    <main className="flex flex-1 items-center justify-center px-4 py-10 sm:py-14">
+      {children}
+    </main>
+    <AuthFooter />
+  </div>
+);
+
+const Divider: React.FC = () => (
+  <div className="flex items-center gap-3 py-1 text-xs text-stone-400">
+    <div className="h-px flex-1 bg-stone-200" />
+    <span>or</span>
+    <div className="h-px flex-1 bg-stone-200" />
+  </div>
+);
+
 export const Login: React.FC = () => {
-  const { login } = useAuth();
+  const { login, loginWithGoogle, resetPassword } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setMessage('');
+    setGoogleLoading(true);
+    try {
+      await loginWithGoogle();
+      navigate('/browse');
+    } catch (err: any) {
+      setError(getAuthErrorMessage(err, 'Failed to sign in with Google'));
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    setError('');
+    setMessage('');
+    if (!email.trim()) {
+      setError('Enter your email first, then click Forgot password.');
+      return;
+    }
+    setResetLoading(true);
+    try {
+      await resetPassword(email);
+      setMessage('Password reset email sent. Check your inbox.');
+    } catch (err: any) {
+      setError(getAuthErrorMessage(err, 'Failed to send password reset email'));
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setMessage('');
     setLoading(true);
     try {
       await login(email, password);
@@ -49,61 +133,93 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-stone-50 to-primary-50">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
+    <AuthShell>
+      <section className="w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
+        <div className="text-center">
           <AuthLogo />
-          <h1 className="text-2xl font-bold text-stone-800 mt-6">Welcome back</h1>
-          <p className="text-stone-500 mt-1">Log in to your account</p>
+          <h1 className="mt-7 text-xl font-semibold text-stone-950">Log in to Reshelved</h1>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg border border-stone-200 p-6 sm:p-8">
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{error}</div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm"
-                placeholder="you@example.com"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Password</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm"
-                placeholder="••••••••"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:opacity-50"
-            >
-              {loading ? 'Logging in...' : 'Log In'}
-            </button>
-          </form>
-          <p className="text-center text-sm text-stone-500 mt-6">
-            Don't have an account?{' '}
-            <Link to="/register" className="text-primary-600 font-semibold hover:text-primary-700">Sign up</Link>
-          </p>
+        <div className="mt-7 space-y-3">
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={googleLoading || loading}
+            className="flex w-full items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-900 transition hover:bg-stone-50 disabled:opacity-60"
+          >
+            <GoogleIcon />
+            {googleLoading ? 'Connecting...' : 'Continue with Google'}
+          </button>
+          <Divider />
         </div>
-      </div>
-    </div>
+
+        {error && (
+          <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        )}
+        {message && (
+          <div className="mt-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>
+        )}
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <div>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="text-xs font-medium text-stone-800">Email</label>
+            </div>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+              autoComplete="email"
+            />
+          </div>
+
+          <div>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="text-xs font-medium text-stone-800">Password</label>
+              <button
+                type="button"
+                onClick={handlePasswordReset}
+                disabled={resetLoading}
+                className="text-xs font-medium hover:underline disabled:opacity-60"
+                style={{ color: LINK_BLUE }}
+              >
+                {resetLoading ? 'Sending...' : 'Forgot password?'}
+              </button>
+            </div>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+              autoComplete="current-password"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading || googleLoading}
+            className="w-full rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:opacity-50"
+          >
+            {loading ? 'Logging in...' : 'Log in'}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-stone-600">
+          Don&apos;t have an account?{' '}
+          <Link to="/register" className="font-semibold hover:underline" style={{ color: LINK_BLUE }}>
+            Sign up
+          </Link>
+        </p>
+      </section>
+    </AuthShell>
   );
 };
 
 export const Register: React.FC = () => {
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -112,6 +228,20 @@ export const Register: React.FC = () => {
   const [location, setLocation] = useState('Nairobi');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      await loginWithGoogle();
+      navigate('/browse');
+    } catch (err: any) {
+      setError(getAuthErrorMessage(err, 'Failed to sign up with Google'));
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,87 +266,106 @@ export const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-stone-50 to-primary-50">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
+    <AuthShell>
+      <section className="w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
+        <div className="text-center">
           <AuthLogo />
-          <h1 className="text-2xl font-bold text-stone-800 mt-6">Create your account</h1>
-          <p className="text-stone-500 mt-1">Join the Reshelved community</p>
+          <h1 className="mt-7 text-xl font-semibold text-stone-950">Create your Reshelved account</h1>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg border border-stone-200 p-6 sm:p-8">
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{error}</div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Full Name</label>
-              <input
-                type="text"
-                required
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm"
-                placeholder="John Doe"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm"
-                placeholder="you@example.com"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Location</label>
-              <select
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white"
-              >
-                {KENYAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Password</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm"
-                placeholder="At least 6 characters"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Confirm Password</label>
-              <input
-                type="password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm"
-                placeholder="••••••••"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:opacity-50"
-            >
-              {loading ? 'Creating account...' : 'Create Account'}
-            </button>
-          </form>
-          <p className="text-center text-sm text-stone-500 mt-6">
-            Already have an account?{' '}
-            <Link to="/login" className="text-primary-600 font-semibold hover:text-primary-700">Log in</Link>
-          </p>
+        <div className="mt-7 space-y-3">
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={googleLoading || loading}
+            className="flex w-full items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-900 transition hover:bg-stone-50 disabled:opacity-60"
+          >
+            <GoogleIcon />
+            {googleLoading ? 'Connecting...' : 'Continue with Google'}
+          </button>
+          <Divider />
         </div>
-      </div>
-    </div>
+
+        {error && (
+          <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        )}
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-stone-800">Full name</label>
+            <input
+              type="text"
+              required
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+              autoComplete="name"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-stone-800">Email</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+              autoComplete="email"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-stone-800">Location</label>
+            <select
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="w-full rounded-md border border-stone-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+            >
+              {KENYAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-stone-800">Password</label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+              autoComplete="new-password"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-stone-800">Confirm password</label>
+            <input
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+              autoComplete="new-password"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading || googleLoading}
+            className="w-full rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:opacity-50"
+          >
+            {loading ? 'Creating account...' : 'Create account'}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-stone-600">
+          Already have an account?{' '}
+          <Link to="/login" className="font-semibold hover:underline" style={{ color: LINK_BLUE }}>
+            Log in
+          </Link>
+        </p>
+      </section>
+    </AuthShell>
   );
 };
