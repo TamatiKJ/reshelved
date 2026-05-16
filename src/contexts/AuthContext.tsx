@@ -12,7 +12,7 @@ import {
   browserSessionPersistence,
   User
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import type { UserProfile } from '../types';
 
@@ -58,6 +58,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const syncPublicProfile = async (profile: UserProfile) => {
+    const ratingSnap = await getDocs(query(collection(db, 'ratings'), where('toUserId', '==', profile.uid))).catch(() => null);
+    let ratingAverage = 0;
+    let ratingCount = 0;
+    if (ratingSnap) {
+      const ratings = ratingSnap.docs.map((item) => Number(item.data().rating || 0)).filter((rating) => rating > 0);
+      ratingCount = ratings.length;
+      ratingAverage = ratingCount ? ratings.reduce((sum, rating) => sum + rating, 0) / ratingCount : 0;
+    }
+
+    await setDoc(doc(db, 'publicProfiles', profile.uid), {
+      uid: profile.uid,
+      displayName: profile.displayName || 'Reshelved User',
+      photoURL: profile.photoURL || '',
+      location: profile.location || '',
+      ratingAverage,
+      ratingCount,
+      updatedAt: Date.now()
+    }, { merge: true }).catch((err) => console.error('Error syncing public profile:', err));
+  };
+
+  const syncConversationProfile = async (profile: UserProfile) => {
+    const snap = await getDocs(query(collection(db, 'conversations'), where('participants', 'array-contains', profile.uid))).catch(() => null);
+    if (!snap) return;
+    await Promise.all(snap.docs.map((item) => updateDoc(doc(db, 'conversations', item.id), {
+      [`participantNames.${profile.uid}`]: profile.displayName || 'Reshelved User',
+      [`participantPhotos.${profile.uid}`]: profile.photoURL || ''
+    }).catch(() => undefined)));
+  };
+
   const updatePresence = async (uid: string, online: boolean) => {
     await setDoc(doc(db, 'users', uid), {
       online,
@@ -101,11 +131,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lastSeen: normalizedProfile.lastSeen,
         deactivated: normalizedProfile.deactivated
       }, { merge: true });
+      syncPublicProfile(normalizedProfile).catch((err) => console.error('Public profile sync failed:', err));
+      syncConversationProfile(normalizedProfile).catch((err) => console.error('Conversation avatar sync failed:', err));
       return normalizedProfile;
     }
 
     const newProfile = buildUserProfile(user, displayName, location);
     await setDoc(userRef, newProfile, { merge: true });
+    await syncPublicProfile(newProfile);
     setUserProfile(newProfile);
     return newProfile;
   };
@@ -121,6 +154,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isAdmin: profile.isAdmin || isAdminEmail(auth.currentUser?.email || profile.email)
         };
         setUserProfile(normalizedProfile);
+        syncPublicProfile(normalizedProfile).catch((err) => console.error('Public profile sync failed:', err));
+        syncConversationProfile(normalizedProfile).catch((err) => console.error('Conversation avatar sync failed:', err));
         if (auth.currentUser?.email && auth.currentUser.email !== profile.email) {
           await setDoc(doc(db, 'users', uid), { email: auth.currentUser.email }, { merge: true });
         }
@@ -172,6 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     await setDoc(doc(db, 'users', cred.user.uid), profile, { merge: true });
+    await syncPublicProfile(profile);
     setCurrentUser(cred.user);
     setUserProfile(profile);
   };
