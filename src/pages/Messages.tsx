@@ -5,7 +5,6 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import type { Conversation, Message, Rating, UserProfile } from '../types';
 
-const BLUE = '#1665CC';
 const MAX_CHAT_IMAGE_WIDTH = 900;
 const MAX_CHAT_IMAGE_BYTES = 700 * 1024;
 
@@ -134,20 +133,34 @@ const Messages: React.FC = () => {
     const userIds = Array.from(new Set(convs.flatMap((conv) => conv.participants)));
     const meta: Record<string, ParticipantMeta> = {};
     await Promise.all(userIds.map(async (uid) => {
+      const fallback = convs.find((conv) => conv.participants.includes(uid))?.participantPhotos?.[uid] || '';
+      meta[uid] = { photoURL: fallback, location: '', avgRating: 0, reviewCount: 0 };
       try {
-        const [userSnap, ratingsSnap] = await Promise.all([
-          getDoc(doc(db, 'users', uid)),
-          getDocs(query(collection(db, 'ratings'), where('toUserId', '==', uid))).catch(() => null)
-        ]);
-        const user = userSnap.exists() ? { uid, ...userSnap.data() } as UserProfile : null;
+        const publicSnap = await getDoc(doc(db, 'publicProfiles', uid)).catch(() => null);
+        if (publicSnap?.exists()) {
+          const data = publicSnap.data();
+          meta[uid] = {
+            photoURL: data.photoURL || fallback,
+            location: data.location || '',
+            avgRating: Number(data.ratingAverage || 0),
+            reviewCount: Number(data.ratingCount || 0)
+          };
+        }
+
+        const userSnap = await getDoc(doc(db, 'users', uid)).catch(() => null);
+        if (userSnap?.exists()) {
+          const user = { uid, ...userSnap.data() } as UserProfile;
+          meta[uid] = { ...meta[uid], photoURL: user.photoURL || meta[uid].photoURL, location: user.location || meta[uid].location };
+        }
+
+        const ratingsSnap = await getDocs(query(collection(db, 'ratings'), where('toUserId', '==', uid))).catch(() => null);
         const ratings: Rating[] = [];
         ratingsSnap?.forEach((item) => ratings.push({ id: item.id, ...item.data() } as Rating));
-        const avgRating = ratings.length ? ratings.reduce((sum, item) => sum + item.rating, 0) / ratings.length : 0;
-        const fallback = convs.find((conv) => conv.participants.includes(uid))?.participantPhotos?.[uid] || '';
-        meta[uid] = { photoURL: user?.photoURL || fallback, location: user?.location || '', avgRating, reviewCount: ratings.length };
+        if (ratings.length > 0) {
+          meta[uid] = { ...meta[uid], avgRating: ratings.reduce((sum, item) => sum + item.rating, 0) / ratings.length, reviewCount: ratings.length };
+        }
       } catch {
-        const fallback = convs.find((conv) => conv.participants.includes(uid))?.participantPhotos?.[uid] || '';
-        meta[uid] = { photoURL: fallback, location: '', avgRating: 0, reviewCount: 0 };
+        // Keep denormalized/fallback data when rules block private user reads.
       }
     }));
     setParticipantMeta(meta);
