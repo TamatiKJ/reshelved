@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import type { Listing } from '../types';
 import BookCard from './BookCard';
 
-const RecentListings: React.FC<{ excludeId?: string; limit?: number }> = ({ excludeId, limit = 4 }) => {
+const RecentListings: React.FC<{ excludeId?: string; limit?: number }> = ({ excludeId }) => {
   const [listings, setListings] = useState<Listing[]>([]);
 
   useEffect(() => {
@@ -13,13 +13,13 @@ const RecentListings: React.FC<{ excludeId?: string; limit?: number }> = ({ excl
         const snap = await getDocs(collection(db, 'listings'));
         const items: Listing[] = [];
         snap.forEach((item) => items.push({ id: item.id, ...item.data() } as Listing));
-        setListings(items.filter((item) => item.id !== excludeId && item.active && item.expiresAt > Date.now()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, limit));
+        setListings(items.filter((item) => item.id !== excludeId && item.active && item.expiresAt > Date.now()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 4));
       } catch (error) {
         console.error('Could not load recent listings:', error);
       }
     };
     fetchRecent();
-  }, [excludeId, limit]);
+  }, [excludeId]);
 
   if (listings.length === 0) return null;
 
