@@ -17,8 +17,6 @@ const getAuthErrorMessage = (error: any, fallback: string) => {
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
       return 'Invalid email or password.';
-    case 'auth/popup-closed-by-user':
-      return 'Google sign in was closed before it finished.';
     default:
       return error?.message || fallback;
   }
@@ -28,15 +26,6 @@ const AuthLogo: React.FC = () => (
   <Link to="/" className="inline-flex items-center justify-center" aria-label="Reshelved home">
     <img src="/reshelved-logo.svg" alt="Reshelved" className="h-8 w-auto" />
   </Link>
-);
-
-const GoogleIcon: React.FC = () => (
-  <svg className="h-4 w-4" viewBox="0 0 48 48" aria-hidden="true">
-    <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303C33.651 32.657 29.223 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
-    <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
-    <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
-    <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
-  </svg>
 );
 
 const AuthFooter: React.FC = () => (
@@ -76,38 +65,15 @@ const AuthShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </div>
 );
 
-const Divider: React.FC = () => (
-  <div className="flex items-center gap-3 py-1 text-xs text-stone-400">
-    <div className="h-px flex-1 bg-stone-200" />
-    <span>or</span>
-    <div className="h-px flex-1 bg-stone-200" />
-  </div>
-);
-
 export const Login: React.FC = () => {
-  const { login, loginWithGoogle, resetPassword } = useAuth();
+  const { login, resetPassword } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
-
-  const handleGoogleSignIn = async () => {
-    setError('');
-    setMessage('');
-    setGoogleLoading(true);
-    try {
-      await loginWithGoogle();
-      navigate('/browse');
-    } catch (err: any) {
-      setError(getAuthErrorMessage(err, 'Failed to sign in with Google'));
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
 
   const handlePasswordReset = async () => {
     setError('');
@@ -150,27 +116,14 @@ export const Login: React.FC = () => {
           <h1 className="mt-7 text-xl font-semibold text-stone-950">Log in to Reshelved</h1>
         </div>
 
-        <div className="mt-7 space-y-3">
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={googleLoading || loading}
-            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-900 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <GoogleIcon />
-            {googleLoading ? 'Connecting...' : 'Continue with Google'}
-          </button>
-          <Divider />
-        </div>
-
         {error && (
-          <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+          <div className="mt-6 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
         )}
         {message && (
-          <div className="mt-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>
+          <div className="mt-6 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-7 space-y-4">
           <div>
             <div className="mb-1 flex items-center justify-between gap-3">
               <label className="text-xs font-medium text-stone-800">Email</label>
@@ -210,7 +163,7 @@ export const Login: React.FC = () => {
 
           <button
             type="submit"
-            disabled={loading || googleLoading}
+            disabled={loading}
             className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? 'Logging in...' : 'Log in'}
@@ -229,7 +182,7 @@ export const Login: React.FC = () => {
 };
 
 export const Register: React.FC = () => {
-  const { register, loginWithGoogle } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -237,20 +190,6 @@ export const Register: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-
-  const handleGoogleSignIn = async () => {
-    setError('');
-    setGoogleLoading(true);
-    try {
-      await loginWithGoogle();
-      navigate('/browse');
-    } catch (err: any) {
-      setError(getAuthErrorMessage(err, 'Failed to sign up with Google'));
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -282,24 +221,11 @@ export const Register: React.FC = () => {
           <h1 className="mt-7 text-xl font-semibold text-stone-950">Create your Reshelved account</h1>
         </div>
 
-        <div className="mt-7 space-y-3">
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={googleLoading || loading}
-            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-900 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <GoogleIcon />
-            {googleLoading ? 'Connecting...' : 'Continue with Google'}
-          </button>
-          <Divider />
-        </div>
-
         {error && (
-          <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+          <div className="mt-6 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-7 space-y-4">
           <div>
             <label className="mb-1 block text-xs font-medium text-stone-800">Full name</label>
             <input
@@ -350,7 +276,7 @@ export const Register: React.FC = () => {
 
           <button
             type="submit"
-            disabled={loading || googleLoading}
+            disabled={loading}
             className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? 'Creating account...' : 'Create account'}
