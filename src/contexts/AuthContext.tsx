@@ -3,6 +3,9 @@ import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  sendPasswordResetEmail,
   signOut,
   updateProfile,
   setPersistence,
@@ -21,6 +24,8 @@ interface AuthContextType {
   loading: boolean;
   register: (email: string, password: string, displayName: string, location: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -69,6 +74,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const normalizedProfile = {
         ...existingProfile,
         uid: existingProfile.uid || user.uid,
+        displayName: existingProfile.displayName || displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
+        email: existingProfile.email || user.email || '',
+        photoURL: existingProfile.photoURL || user.photoURL || '',
+        location: existingProfile.location || location,
         isAdmin: existingProfile.isAdmin || isAdminEmail(existingProfile.email || user.email),
         online: true,
         lastSeen: Date.now(),
@@ -83,6 +92,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserProfile(normalizedProfile);
       await setDoc(userRef, {
         uid: normalizedProfile.uid,
+        displayName: normalizedProfile.displayName,
+        email: normalizedProfile.email,
+        photoURL: normalizedProfile.photoURL,
+        location: normalizedProfile.location,
         isAdmin: normalizedProfile.isAdmin,
         online: true,
         lastSeen: normalizedProfile.lastSeen,
@@ -171,6 +184,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const loginWithGoogle = async () => {
+    await setPersistence(auth, browserSessionPersistence);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const cred = await signInWithPopup(auth, provider);
+    const profile = await ensureUserProfile(cred.user);
+    setCurrentUser(cred.user);
+    setUserProfile(profile);
+  };
+
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email.trim().toLowerCase());
+  };
+
   const logout = async () => {
     if (auth.currentUser) {
       await updatePresence(auth.currentUser.uid, false).catch((err) => console.error('Error updating presence:', err));
@@ -222,7 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentUser]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, userProfile, loading, register, login, logout, refreshProfile }}>
+    <AuthContext.Provider value={{ currentUser, userProfile, loading, register, login, loginWithGoogle, resetPassword, logout, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
