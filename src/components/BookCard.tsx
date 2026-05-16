@@ -47,6 +47,7 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
   const hasImages = Boolean(coverImage);
   const isBookmarked = Boolean(userProfile?.bookmarks?.includes(listing.id));
   const isOwner = Boolean(currentUser && currentUser.uid === listing.userId);
+  const displayPrice = getDisplayPrice(listing);
 
   useEffect(() => {
     setCurrentImageIndex(0);
@@ -149,23 +150,148 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
   };
 
   return (
-    <article onClick={handleCardClick} role="link" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleCardClick(); } }} className="group block h-full cursor-pointer bg-white rounded-2xl border border-stone-200 p-2 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
-      <div className="relative aspect-[1.45/1] rounded-xl bg-stone-100 overflow-hidden">
-        {hasImages ? <>{<img src={coverImage} alt={listing.title} className="absolute inset-0 w-full h-full object-cover bg-stone-100" loading="eager" onError={() => handleImageError(coverImage)} />}{images.length > 1 && images.map((image, index) => <img key={`${image}-${index}`} src={image} alt={listing.title} className={`absolute inset-0 w-full h-full object-cover bg-stone-100 transition-opacity duration-700 ease-in-out ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'}`} loading={index === 0 ? 'eager' : 'lazy'} onError={() => handleImageError(image)} />)}</> : <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-stone-100"><i className="las la-book-open text-5xl text-stone-300" /></div>}
-        <div className="absolute top-3 left-3"><span className="inline-flex cursor-default items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/95 text-primary-700 shadow-sm text-xs font-bold backdrop-blur-sm"><i className={`${typeIcons[listing.type]} cursor-default text-base leading-none`} />{typeLabels[listing.type]}</span></div>
-        <div className="absolute top-3 right-3 flex items-center gap-2">{isOwner && <button type="button" onClick={handleEdit} className="cursor-pointer w-9 h-9 rounded-lg bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50" aria-label="Edit listing"><i className="las la-pen text-lg" /></button>}{currentUser && <button type="button" onClick={handleBookmark} disabled={bookmarking} aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'} className={`cursor-pointer w-9 h-9 rounded-lg flex items-center justify-center shadow-sm backdrop-blur-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${isBookmarked ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-white/95 text-primary-600 hover:bg-primary-50'}`}><i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-lg`} /></button>}</div>
-      </div>
-      <div className="px-1.5 pt-3.5 pb-1">
-        <h3 className="text-[16px] font-bold text-stone-950 leading-tight line-clamp-1 group-hover:text-primary-700 transition">{listing.title}</h3>
-        <p className="text-sm text-stone-500 mt-0.5 line-clamp-1">by {listing.author}</p>
-        <div className="flex items-start gap-2 mt-3">
-          {sellerPhoto ? <img src={sellerPhoto} alt={listing.userName} className="w-7 h-7 rounded-full object-cover bg-stone-100" /> : <div className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 flex items-center justify-center text-[10px] font-bold">{listing.userName?.[0]?.toUpperCase() || 'U'}</div>}
-          <div className="min-w-0"><p className="text-xs font-semibold text-stone-700 truncate">Listed by {listing.userName || 'Reshelved user'}</p>{sellerRating.count > 0 && <p className="mt-0.5 text-xs font-semibold text-accent-500 leading-none">{getStarLabel(sellerRating.average)} <span className="text-stone-500">({sellerRating.count})</span></p>}</div>
+    <article
+      onClick={handleCardClick}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          handleCardClick();
+        }
+      }}
+      className="group block h-full cursor-pointer overflow-hidden rounded-[30px] border border-white/20 bg-[#1427A8] shadow-[0_16px_45px_rgba(15,23,42,0.16)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.24)]"
+    >
+      <div className="relative aspect-[1.45/1] overflow-hidden bg-stone-100">
+        {hasImages ? (
+          <>
+            <img
+              src={coverImage}
+              alt={listing.title}
+              className="absolute inset-0 h-full w-full bg-stone-100 object-cover transition duration-700 group-hover:scale-105"
+              loading="eager"
+              onError={() => handleImageError(coverImage)}
+            />
+            {images.length > 1 && images.map((image, index) => (
+              <img
+                key={`${image}-${index}`}
+                src={image}
+                alt={listing.title}
+                className={`absolute inset-0 h-full w-full bg-stone-100 object-cover transition-all duration-700 ease-in-out group-hover:scale-105 ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
+                loading={index === 0 ? 'eager' : 'lazy'}
+                onError={() => handleImageError(image)}
+              />
+            ))}
+          </>
+        ) : (
+          <div className="absolute inset-0 flex h-full w-full items-center justify-center bg-stone-100">
+            <i className="las la-book-open text-5xl text-stone-300" />
+          </div>
+        )}
+
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 to-transparent" />
+
+        <div className="absolute left-4 top-4">
+          <span className="inline-flex cursor-default items-center gap-1.5 rounded-full bg-white/95 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-primary-700 shadow-sm backdrop-blur-sm">
+            <i className={`${typeIcons[listing.type]} cursor-default text-base leading-none`} />
+            {typeLabels[listing.type]}
+          </span>
         </div>
-        <div className="mt-4 rounded-xl bg-[#FFF4E2]/50 border border-stone-200/60 p-2.5 grid grid-cols-3 divide-x divide-stone-300/50">
-          <div className="px-1.5 min-w-0"><p className="text-[10px] font-semibold text-stone-500">Condition</p><p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{listing.condition}</p></div>
-          <div className="px-2.5 min-w-0"><p className="text-[10px] font-semibold text-stone-500">Location</p><p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{listing.location}</p></div>
-          <div className="px-2.5 min-w-0"><p className="text-[10px] font-semibold text-stone-500">Price</p><p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{getDisplayPrice(listing)}</p></div>
+
+        <div className="absolute right-4 top-4 flex items-center gap-2">
+          {sellerRating.count > 0 && (
+            <div className="flex cursor-default items-center gap-1.5 rounded-full bg-[#4da9e8]/85 px-3.5 py-1.5 text-white shadow-sm backdrop-blur-md">
+              <i className="las la-star text-base text-[#F7AF31]" />
+              <span className="text-sm font-extrabold">{sellerRating.average.toFixed(1)}</span>
+            </div>
+          )}
+          {isOwner && (
+            <button
+              type="button"
+              onClick={handleEdit}
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/95 text-primary-600 shadow-sm backdrop-blur-sm transition hover:bg-primary-50"
+              aria-label="Edit listing"
+            >
+              <i className="las la-pen text-lg" />
+            </button>
+          )}
+          {currentUser && (
+            <button
+              type="button"
+              onClick={handleBookmark}
+              disabled={bookmarking}
+              aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'}
+              className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow-sm backdrop-blur-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${isBookmarked ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-white/95 text-primary-600 hover:bg-primary-50'}`}
+            >
+              <i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-lg`} />
+            </button>
+          )}
+        </div>
+
+        {images.length > 1 && (
+          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5">
+            {images.slice(0, 4).map((image, index) => (
+              <span
+                key={`${image}-dot-${index}`}
+                className={`h-1.5 rounded-full transition-all ${index === currentImageIndex ? 'w-5 bg-white' : 'w-1.5 bg-white/60'}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-gradient-to-r from-[#1427A8] via-[#1457B8] to-[#22A6CF] px-6 pb-6 pt-7 text-white sm:px-7">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="line-clamp-1 font-['Work_Sans'] text-[22px] font-bold leading-tight text-white transition group-hover:text-white">
+              {listing.title}
+            </h3>
+            <p className="mt-1 line-clamp-1 text-[14px] text-white/70">by {listing.author}</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-[22px] font-extrabold leading-none text-[#8AF0B0]">{displayPrice}</p>
+            {listing.type === 'sell' && <p className="mt-1 text-xs font-medium text-white/65">price</p>}
+          </div>
+        </div>
+
+        <div className="mt-5 flex items-center gap-3 text-white/70">
+          <i className="las la-map-marker-alt text-[23px] leading-none" />
+          <span className="line-clamp-1 text-[15px] font-medium">{listing.location}, Nairobi</span>
+        </div>
+
+        <div className="mt-7 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-3 text-white">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <i className="las la-book-open shrink-0 text-[27px] leading-none text-white/90" />
+            <span className="line-clamp-1 text-[14px] font-semibold">{listing.condition}</span>
+          </div>
+
+          <div className="h-8 w-px bg-white/25" />
+
+          <div className="flex min-w-0 items-center gap-2.5">
+            <i className={`${typeIcons[listing.type]} shrink-0 text-[27px] leading-none text-white/90`} />
+            <span className="line-clamp-1 text-[14px] font-semibold">{typeLabels[listing.type]}</span>
+          </div>
+
+          <div className="h-8 w-px bg-white/25" />
+
+          <div className="flex min-w-0 items-center gap-2.5">
+            <i className="las la-layer-group shrink-0 text-[27px] leading-none text-white/90" />
+            <span className="line-clamp-1 text-[14px] font-semibold">{listing.category}</span>
+          </div>
+        </div>
+
+        <div className="mt-5 flex items-center gap-2 border-t border-white/15 pt-4">
+          {sellerPhoto ? (
+            <img src={sellerPhoto} alt={listing.userName} className="h-7 w-7 rounded-full bg-white/10 object-cover" />
+          ) : (
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-[10px] font-bold text-white">
+              {listing.userName?.[0]?.toUpperCase() || 'U'}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-xs font-semibold text-white/80">Listed by {listing.userName || 'Reshelved user'}</p>
+            {sellerRating.count > 0 && <p className="mt-0.5 text-[11px] font-semibold leading-none text-[#F7AF31]">{getStarLabel(sellerRating.average)} <span className="text-white/60">({sellerRating.count})</span></p>}
+          </div>
         </div>
       </div>
     </article>
