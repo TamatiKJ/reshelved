@@ -51,6 +51,40 @@ body {
   min-height: 100vh;
 }
 
+.admin-input {
+  width: 100%;
+  border: 1px solid #e7e5e4;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  outline: none;
+  background: #ffffff;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.admin-input:focus {
+  border-color: #1665CC;
+  box-shadow: 0 0 0 2px rgba(22, 101, 204, 0.1);
+}
+
+.admin-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #292524;
+}
+
+@media (min-width: 1024px) {
+  .max-w-7xl > .grid.grid-cols-1.lg\:grid-cols-3.gap-8.xl\:gap-10 {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  }
+
+  .max-w-7xl > .grid.grid-cols-1.lg\:grid-cols-3.gap-8.xl\:gap-10 > .lg\:col-span-2,
+  .max-w-7xl > .grid.grid-cols-1.lg\:grid-cols-3.gap-8.xl\:gap-10 > .lg\:col-span-1 {
+    grid-column: span 1 / span 1 !important;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 6px;
 }
