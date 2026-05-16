@@ -11,12 +11,6 @@ const typeLabels: Record<Listing['type'], string> = {
   sell: 'Sell'
 };
 
-const typeIcons: Record<Listing['type'], string> = {
-  swap: 'las la-sync',
-  donate: 'las la-gift',
-  sell: 'las la-tag'
-};
-
 const normalizeImages = (images?: unknown): string[] => {
   if (!Array.isArray(images)) return [];
   return images.filter((image): image is string => typeof image === 'string').map((image) => image.trim()).filter((image) => image.length > 0);
@@ -25,6 +19,15 @@ const normalizeImages = (images?: unknown): string[] => {
 const getStarLabel = (average: number) => {
   const rounded = Math.max(0, Math.min(5, Math.round(average)));
   return `${'★'.repeat(rounded)}${'☆'.repeat(5 - rounded)}`;
+};
+
+const formatListingValue = (listing: Listing) => {
+  if (listing.type === 'sell') {
+    const amount = Number(listing.price || 0);
+    return amount > 0 ? `KSh ${amount.toLocaleString()}` : 'For Sale';
+  }
+
+  return typeLabels[listing.type];
 };
 
 const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
@@ -36,17 +39,21 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
   const [sellerPhoto, setSellerPhoto] = useState(listing.userPhoto || '');
   const [sellerRating, setSellerRating] = useState<{ average: number; count: number }>({ average: Number((listing as any).sellerRatingAverage || 0), count: Number((listing as any).sellerRatingCount || 0) });
   const images = useMemo(() => normalizeImages(listing.images).filter((image) => !failedImages.includes(image)), [listing.images, failedImages]);
-  const coverImage = images[0];
-  const hasImages = Boolean(coverImage);
+  const activeImage = images[currentImageIndex] || images[0];
+  const hasImages = Boolean(activeImage);
   const isBookmarked = Boolean(userProfile?.bookmarks?.includes(listing.id));
   const isOwner = Boolean(currentUser && currentUser.uid === listing.userId);
+  const listingValue = formatListingValue(listing);
 
   useEffect(() => {
     setCurrentImageIndex(0);
     setFailedImages([]);
   }, [listing.id]);
 
-  useEffect(() => { setCurrentImageIndex(0); }, [coverImage]);
+  useEffect(() => {
+    if (currentImageIndex >= images.length) setCurrentImageIndex(0);
+  }, [images.length, currentImageIndex]);
+
   useEffect(() => { setSellerPhoto(listing.userPhoto || ''); }, [listing.userPhoto]);
 
   useEffect(() => {
@@ -104,13 +111,12 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
 
   useEffect(() => {
     if (images.length <= 1) return;
-    const startDelay = window.setTimeout(() => {
-      const interval = window.setInterval(() => {
-        setCurrentImageIndex((current) => (current + 1) % images.length);
-      }, 3200);
-      return () => window.clearInterval(interval);
-    }, 1800);
-    return () => window.clearTimeout(startDelay);
+
+    const interval = window.setInterval(() => {
+      setCurrentImageIndex((current) => (current + 1) % images.length);
+    }, 3500);
+
+    return () => window.clearInterval(interval);
   }, [images.length]);
 
   const handleImageError = (image: string) => setFailedImages((current) => current.includes(image) ? current : [...current, image]);
@@ -156,25 +162,14 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
     >
       <div className="relative aspect-[1.42/1] overflow-hidden rounded-[18px] bg-stone-100">
         {hasImages ? (
-          <>
-            <img
-              src={coverImage}
-              alt={listing.title}
-              className="absolute inset-0 h-full w-full bg-stone-100 object-cover transition duration-700 group-hover:scale-105"
-              loading="eager"
-              onError={() => handleImageError(coverImage)}
-            />
-            {images.length > 1 && images.map((image, index) => (
-              <img
-                key={`${image}-${index}`}
-                src={image}
-                alt={listing.title}
-                className={`absolute inset-0 h-full w-full bg-stone-100 object-cover transition-all duration-700 ease-in-out group-hover:scale-105 ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
-                loading={index === 0 ? 'eager' : 'lazy'}
-                onError={() => handleImageError(image)}
-              />
-            ))}
-          </>
+          <img
+            key={activeImage}
+            src={activeImage}
+            alt={listing.title}
+            className="absolute inset-0 h-full w-full bg-stone-100 object-cover transition-all duration-700 ease-in-out group-hover:scale-105"
+            loading="eager"
+            onError={() => handleImageError(activeImage)}
+          />
         ) : (
           <div className="absolute inset-0 flex h-full w-full items-center justify-center bg-stone-100">
             <i className="las la-book-open text-5xl text-stone-300" />
@@ -211,17 +206,6 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
             </button>
           )}
         </div>
-
-        {images.length > 1 && (
-          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-white/85 px-2 py-1 shadow-sm">
-            {images.slice(0, 4).map((image, index) => (
-              <span
-                key={`${image}-dot-${index}`}
-                className={`h-1.5 rounded-full transition-all ${index === currentImageIndex ? 'w-5 bg-primary-600' : 'w-1.5 bg-stone-300'}`}
-              />
-            ))}
-          </div>
-        )}
       </div>
 
       <div className="px-1 pb-1 pt-4">
@@ -235,24 +219,20 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
           <span className="line-clamp-1">{listing.location}, Nairobi</span>
         </div>
 
-        <div className="mt-5 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-3 text-stone-600">
-          <div className="flex min-w-0 items-center justify-center gap-2">
-            <i className="las la-book-open shrink-0 text-[24px] leading-none text-stone-500" />
-            <span className="line-clamp-1 text-[14px] font-semibold">{listing.condition}</span>
+        <div className="mt-5 grid grid-cols-3 divide-x divide-stone-200 border-y border-stone-100 text-stone-600">
+          <div className="flex min-w-0 items-center justify-center gap-1 px-2 py-3">
+            <i className="las la-book-open shrink-0 text-[16px] leading-none text-stone-500" />
+            <span className="min-w-0 truncate text-[13px] font-semibold text-stone-700">{listing.condition}</span>
           </div>
 
-          <div className="h-8 w-px bg-stone-200" />
-
-          <div className="flex min-w-0 items-center justify-center gap-2">
-            <i className={`${typeIcons[listing.type]} shrink-0 text-[24px] leading-none text-stone-500`} />
-            <span className="line-clamp-1 text-[14px] font-semibold">{typeLabels[listing.type]}</span>
+          <div className="flex min-w-0 items-center justify-center gap-1 px-2 py-3">
+            <i className="las la-tag shrink-0 text-[16px] leading-none text-stone-500" />
+            <span className="min-w-0 truncate text-[13px] font-semibold text-stone-700">{listingValue}</span>
           </div>
 
-          <div className="h-8 w-px bg-stone-200" />
-
-          <div className="flex min-w-0 items-center justify-center gap-2">
-            <i className="las la-layer-group shrink-0 text-[24px] leading-none text-stone-500" />
-            <span className="line-clamp-1 text-[14px] font-semibold">{listing.category}</span>
+          <div className="flex min-w-0 items-center justify-center gap-1 px-2 py-3">
+            <i className="las la-layer-group shrink-0 text-[16px] leading-none text-stone-500" />
+            <span className="min-w-0 truncate text-[13px] font-semibold text-stone-700">{listing.category}</span>
           </div>
         </div>
 
