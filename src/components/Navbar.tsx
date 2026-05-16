@@ -109,7 +109,7 @@ const Navbar: React.FC = () => {
 
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 bg-white overflow-y-auto">
-          <div className="p-4 min-h-full flex flex-col">
+          <div className="p-5 min-h-full flex flex-col">
             <div className="flex items-center justify-between mb-6">
               <Link to="/" onClick={closeMobile} className="flex items-center" aria-label="Reshelved home">
                 <img src="/reshelved-logo.svg" alt="Reshelved" className="max-h-12 w-auto" />
@@ -136,7 +136,7 @@ const Navbar: React.FC = () => {
               </div>
             )}
 
-            <div className="mt-auto pt-8 space-y-3">
+            <div className="mt-[30px] space-y-3">
               {currentUser ? (
                 <>
                   <Link to="/create" onClick={closeMobile} className="block w-full rounded-xl bg-primary-600 px-5 py-3 text-center text-[16px] font-semibold text-white transition hover:bg-primary-700">List a Book</Link>
