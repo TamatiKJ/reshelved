@@ -76,6 +76,37 @@ body {
   color: #292524;
 }
 
+select {
+  padding-right: 2.75rem !important;
+}
+
+select:focus,
+input:focus,
+textarea:focus {
+  border-color: #1665CC !important;
+  box-shadow: 0 0 0 2px rgba(22, 101, 204, 0.1) !important;
+}
+
+form button:has(.la-sync),
+form button:has(.la-gift),
+form button:has(.la-tag) {
+  border-color: rgba(22, 101, 204, 0.28) !important;
+  background: rgba(22, 101, 204, 0.06) !important;
+}
+
+form button:has(.la-sync):hover,
+form button:has(.la-gift):hover,
+form button:has(.la-tag):hover {
+  border-color: #1665CC !important;
+  background: rgba(22, 101, 204, 0.1) !important;
+}
+
+form button:has(.la-sync) i,
+form button:has(.la-gift) i,
+form button:has(.la-tag) i {
+  color: #1665CC !important;
+}
+
 @media (min-width: 1024px) {
   .max-w-7xl > .grid.grid-cols-1.lg\:grid-cols-3.gap-8.xl\:gap-10 {
     grid-template-columns: minmax(0, 1fr) 360px !important;
