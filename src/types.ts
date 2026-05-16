@@ -51,6 +51,7 @@ export interface Conversation {
   buyerId?: string;
   sellerId?: string;
   conversationKey?: string;
+  hiddenFor?: string[];
 }
 
 export interface Message {
@@ -63,8 +64,10 @@ export interface Message {
   createdAt: number;
   type?: 'text' | 'image' | 'map';
   imageData?: string;
+  imageUrl?: string;
   imageName?: string;
   imageSize?: number;
+  storagePath?: string;
   lat?: number;
   lng?: number;
   mapUrl?: string;
