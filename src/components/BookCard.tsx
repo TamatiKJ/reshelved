@@ -212,8 +212,8 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
         </h3>
         <p className="mt-1 line-clamp-1 text-[15px] text-stone-500">by {listing.author}</p>
 
-        <div className="mt-4 flex items-center gap-2 text-[15px] font-semibold text-stone-700">
-          <i className="las la-map-marker-alt shrink-0 text-[22px] leading-none text-stone-500" />
+        <div className="mt-4 flex items-center gap-2 text-[12px] font-semibold text-stone-700">
+          <i className="las la-map-marker-alt shrink-0 text-[18px] leading-none text-stone-500" />
           <span className="line-clamp-1">{listing.location}, Nairobi</span>
         </div>
 
