@@ -70,6 +70,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const AppContent: React.FC = () => {
   const { loading } = useAuth();
+  const location = useLocation();
+  const isAdminRoute = location.pathname === '/admin';
 
   if (loading) {
     return (
@@ -98,7 +100,7 @@ const AppContent: React.FC = () => {
           path="*"
           element={
             <div className="min-h-screen bg-stone-50 flex flex-col">
-              <Navbar />
+              {!isAdminRoute && <Navbar />}
               <main className="flex-1">
                 <Routes>
                   <Route path="/" element={<Home />} />
@@ -119,7 +121,7 @@ const AppContent: React.FC = () => {
                   <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
                 </Routes>
               </main>
-              <Footer />
+              {!isAdminRoute && <Footer />}
             </div>
           }
         />
