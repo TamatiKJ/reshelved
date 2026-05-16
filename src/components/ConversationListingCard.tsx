@@ -1,0 +1,72 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { Link } from 'react-router-dom';
+import { db } from '../firebase';
+import type { Conversation, Listing } from '../types';
+
+type ConversationListingCardProps = {
+  conversation: Conversation;
+};
+
+const getTypeLabel = (type?: string) => {
+  if (type === 'sell') return 'For Sale';
+  if (type === 'swap') return 'Swap';
+  if (type === 'donate') return 'Free / Donate';
+  return 'Book listing';
+};
+
+const ConversationListingCard: React.FC<ConversationListingCardProps> = ({ conversation }) => {
+  const [listing, setListing] = useState<Listing | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const loadListing = async () => {
+      if (!conversation.listingId) return;
+      setLoading(true);
+      try {
+        const snap = await getDoc(doc(db, 'listings', conversation.listingId));
+        if (active && snap.exists()) setListing({ id: snap.id, ...snap.data() } as Listing);
+      } catch (err) {
+        console.error('Could not load conversation listing context:', err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    loadListing();
+    return () => { active = false; };
+  }, [conversation.listingId]);
+
+  const coverImage = useMemo(() => {
+    if (listing?.images?.length) return listing.images[0];
+    return conversation.listingImage || '';
+  }, [listing?.images, conversation.listingImage]);
+
+  const title = listing?.title || conversation.listingTitle || 'Book listing';
+  const type = listing?.type || conversation.listingType;
+  const price = typeof listing?.price === 'number' ? listing.price : conversation.listingPrice;
+  const priceText = type === 'sell' && typeof price === 'number' ? `KSh ${price.toLocaleString()}` : getTypeLabel(type);
+  const author = listing?.author ? `by ${listing.author}` : 'Started from this book listing';
+
+  return (
+    <div className="border-b border-stone-200 bg-[#FFF4E2]/45 px-4 py-3">
+      <Link to={`/listing/${conversation.listingId}`} className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3 transition hover:border-[#1665CC] hover:shadow-sm">
+        <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-stone-100">
+          {coverImage ? <img src={coverImage} alt={title} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center"><i className="las la-book text-2xl text-stone-300" /></div>}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#1665CC]">Chat about this book</p>
+          <h4 className="mt-1 truncate text-sm font-bold text-stone-900">{loading ? 'Loading book details...' : title}</h4>
+          <p className="mt-0.5 truncate text-xs text-stone-500">{author}</p>
+        </div>
+        <div className="hidden text-right sm:block">
+          <span className="inline-flex rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-700">{priceText}</span>
+          <p className="mt-2 text-[11px] font-semibold text-stone-400">View listing</p>
+        </div>
+        <i className="las la-angle-right text-xl text-stone-400" />
+      </Link>
+    </div>
+  );
+};
+
+export default ConversationListingCard;
