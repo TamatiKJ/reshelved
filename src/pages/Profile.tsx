@@ -9,6 +9,8 @@ import BookCard from '../components/BookCard';
 import type { UserProfile, Listing, Rating } from '../types';
 import { KENYAN_CITIES } from '../types';
 
+const getConversationKey = (a: string, b: string) => [a, b].sort().join('_');
+
 const resizeProfilePhoto = (file: File): Promise<Blob> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -155,12 +157,13 @@ const Profile: React.FC = () => {
     setMessageLoading(true);
     setSaveError('');
     try {
+      const conversationKey = getConversationKey(currentUser.uid, targetUserId);
       const q = query(collection(db, 'conversations'), where('participants', 'array-contains', currentUser.uid));
       const snap = await getDocs(q);
       let existingConvId: string | null = null;
       snap.forEach((item) => {
         const data = item.data();
-        if (!data.listingId && Array.isArray(data.participants) && data.participants.includes(targetUserId)) existingConvId = item.id;
+        if (Array.isArray(data.participants) && data.participants.includes(targetUserId)) existingConvId = item.id;
       });
       if (existingConvId) {
         navigate(`/messages/${existingConvId}`);
@@ -172,6 +175,7 @@ const Profile: React.FC = () => {
       const initialMessage = `Hi ${recipientName}, I saw your profile on Reshelved.`;
       const convRef = await addDoc(collection(db, 'conversations'), {
         participants: [currentUser.uid, targetUserId],
+        conversationKey,
         buyerId: currentUser.uid,
         sellerId: targetUserId,
         participantNames: { [currentUser.uid]: senderName, [targetUserId]: recipientName },
@@ -183,7 +187,7 @@ const Profile: React.FC = () => {
         updatedAt: now,
         createdAt: now
       });
-      await addDoc(collection(db, 'messages'), { conversationId: convRef.id, senderId: currentUser.uid, senderName, recipientId: targetUserId, text: initialMessage, createdAt: now });
+      await addDoc(collection(db, 'messages'), { conversationId: convRef.id, senderId: currentUser.uid, senderName, recipientId: targetUserId, text: initialMessage, type: 'text', readBy: [currentUser.uid], createdAt: now });
       await addDoc(collection(db, 'notifications'), { userId: targetUserId, fromUserId: currentUser.uid, fromUserName: senderName, fromAdmin: false, type: 'message', subject: `New message from ${senderName}`, message: initialMessage, conversationId: convRef.id, createdAt: now, read: false });
       navigate(`/messages/${convRef.id}`);
     } catch (err) {
