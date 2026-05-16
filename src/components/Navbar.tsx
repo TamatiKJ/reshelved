@@ -5,6 +5,8 @@ import { useNotifications } from '../hooks/useNotifications';
 
 const navLinkClass = 'relative px-3 py-2 text-stone-700 transition font-semibold text-sm after:absolute after:left-3 after:right-3 after:-bottom-[13px] after:h-[2px] after:bg-primary-600 after:scale-x-0 after:origin-left after:transition-transform hover:text-stone-950 hover:after:scale-x-100';
 const activeMessageClass = 'relative px-3 py-2 text-primary-700 transition font-semibold text-sm after:absolute after:left-3 after:right-3 after:-bottom-[13px] after:h-[2px] after:bg-primary-600 after:scale-x-100';
+const mobileMainLinkClass = 'flex items-center justify-between border-b border-stone-100 py-5 text-[26px] font-bold leading-none text-stone-950';
+const mobileSubLinkClass = 'block py-3 text-[23px] leading-tight text-stone-800';
 
 const Navbar: React.FC = () => {
   const { currentUser, userProfile, logout } = useAuth();
@@ -16,10 +18,13 @@ const Navbar: React.FC = () => {
   const profileName = userProfile?.displayName || currentUser?.displayName || 'User';
   const isAdmin = Boolean(userProfile?.isAdmin);
 
+  const closeMobile = () => setMobileOpen(false);
+
   const handleLogout = async () => {
     await logout();
     navigate('/');
     setMenuOpen(false);
+    setMobileOpen(false);
   };
 
   const MessageBadge = () => messageUnreadCount > 0 ? (
@@ -97,27 +102,54 @@ const Navbar: React.FC = () => {
           <div className="md:hidden flex items-center gap-2">
             {currentUser && <Link to="/messages" className={`relative p-2 rounded-lg transition ${messageUnreadCount > 0 ? 'bg-primary-50' : 'hover:bg-stone-100'}`}><i className={`las la-envelope text-2xl ${messageUnreadCount > 0 ? 'text-primary-700' : 'text-stone-600'}`} /><MessageBadge /></Link>}
             {currentUser && <Link to="/notifications" className="relative p-2 rounded-lg hover:bg-stone-100 transition"><i className="las la-bell text-2xl text-stone-600" />{unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold leading-none">{unreadCount > 9 ? '9+' : unreadCount}</span>}</Link>}
-            <button className="cursor-pointer p-2 rounded-lg hover:bg-stone-100" onClick={() => setMobileOpen(!mobileOpen)}><i className={`las ${mobileOpen ? 'la-times' : 'la-bars'} text-2xl text-stone-600`} /></button>
+            <button className="cursor-pointer p-2 rounded-lg hover:bg-stone-100" onClick={() => setMobileOpen(!mobileOpen)} aria-label={mobileOpen ? 'Close menu' : 'Open menu'}><i className={`las ${mobileOpen ? 'la-times' : 'la-bars'} text-3xl text-stone-900`} /></button>
           </div>
         </div>
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden border-t border-stone-100 bg-white">
-          <div className="px-4 py-3 space-y-1">
-            <Link to="/" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-stone-700 hover:bg-primary-50 font-medium">Home</Link>
-            <Link to="/browse" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-stone-700 hover:bg-primary-50 font-medium">Browse</Link>
-            <a href="/#how-it-works" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-stone-700 hover:bg-primary-50 font-medium">How it Works</a>
-            <Link to="/create" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-primary-700 hover:bg-primary-50 font-medium">List a Book</Link>
-            {currentUser ? (
-              <>
-                <Link to="/messages" onClick={() => setMobileOpen(false)} className={`flex items-center justify-between px-3 py-2 rounded-lg font-medium ${messageUnreadCount > 0 ? 'text-primary-700 bg-primary-50' : 'text-stone-700 hover:bg-primary-50'}`}>Messages {messageUnreadCount > 0 && <span className="px-2 py-0.5 bg-red-500 text-white rounded-full text-xs font-bold">{messageUnreadCount > 9 ? '9+' : messageUnreadCount}</span>}</Link>
-                <Link to="/profile" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-stone-700 hover:bg-primary-50 font-medium">My Profile</Link>
-                <Link to="/my-listings" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-stone-700 hover:bg-primary-50 font-medium">My Listings</Link>
-                {isAdmin && <Link to="/admin" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-white bg-primary-600 hover:bg-primary-700 font-medium">Admin</Link>}
-                <button onClick={() => { handleLogout(); setMobileOpen(false); }} className="cursor-pointer w-full text-left px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 font-medium">Log Out</button>
-              </>
-            ) : <Link to="/register" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded-lg text-white bg-primary-600 font-medium">Join Free</Link>}
+        <div className="md:hidden fixed inset-0 z-50 bg-white overflow-y-auto">
+          <div className="px-7 pt-8 pb-10 min-h-full flex flex-col">
+            <div className="flex items-center justify-between mb-14">
+              <Link to="/" onClick={closeMobile} className="flex items-center" aria-label="Reshelved home">
+                <img src="/reshelved-logo.svg" alt="Reshelved" className="h-7 w-auto" />
+              </Link>
+              <button onClick={closeMobile} className="cursor-pointer p-1 -mr-1 text-stone-950" aria-label="Close menu">
+                <i className="las la-times text-5xl leading-none" />
+              </button>
+            </div>
+
+            <div className="space-y-0">
+              <Link to="/browse" onClick={closeMobile} className={mobileMainLinkClass}>Browse <i className="las la-arrow-right text-2xl" /></Link>
+              <a href="/#how-it-works" onClick={closeMobile} className={mobileMainLinkClass}>How it Works <i className="las la-arrow-right text-2xl" /></a>
+              <Link to="/create" onClick={closeMobile} className={mobileMainLinkClass}>List a Book <i className="las la-arrow-right text-2xl" /></Link>
+              {currentUser && <Link to="/messages" onClick={closeMobile} className={mobileMainLinkClass}>Messages <span className="flex items-center gap-2">{messageUnreadCount > 0 && <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">{messageUnreadCount > 9 ? '9+' : messageUnreadCount}</span>}<i className="las la-arrow-right text-2xl" /></span></Link>}
+              {currentUser && <Link to="/notifications" onClick={closeMobile} className={mobileMainLinkClass}>Notifications <span className="flex items-center gap-2">{unreadCount > 0 && <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>}<i className="las la-arrow-right text-2xl" /></span></Link>}
+              {isAdmin && <Link to="/admin" onClick={closeMobile} className={mobileMainLinkClass}>Admin <i className="las la-arrow-right text-2xl" /></Link>}
+            </div>
+
+            {currentUser && (
+              <div className="mt-10 space-y-1">
+                <Link to="/profile" onClick={closeMobile} className={mobileSubLinkClass}>My Profile</Link>
+                <Link to="/my-listings" onClick={closeMobile} className={mobileSubLinkClass}>My Listings</Link>
+                <button onClick={handleLogout} className="cursor-pointer block w-full py-3 text-left text-[23px] leading-tight text-red-600">Log Out</button>
+              </div>
+            )}
+
+            <div className="mt-auto pt-10 space-y-4">
+              {currentUser ? (
+                <>
+                  <Link to="/create" onClick={closeMobile} className="block w-full rounded-xl bg-primary-600 px-5 py-4 text-center text-2xl font-semibold text-white transition hover:bg-primary-700">List a Book</Link>
+                  <Link to="/browse" onClick={closeMobile} className="block w-full rounded-xl border border-stone-950 px-5 py-4 text-center text-2xl font-semibold text-stone-950 transition hover:bg-stone-50">Find Books</Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/register" onClick={closeMobile} className="block w-full rounded-xl bg-primary-600 px-5 py-4 text-center text-2xl font-semibold text-white transition hover:bg-primary-700">Join Free</Link>
+                  <Link to="/login" onClick={closeMobile} className="block w-full rounded-xl border border-stone-950 px-5 py-4 text-center text-2xl font-semibold text-stone-950 transition hover:bg-stone-50">Log in</Link>
+                </>
+              )}
+              {!currentUser && <Link to="/create" onClick={closeMobile} className="block py-3 text-center text-2xl font-semibold text-stone-950">List a Book</Link>}
+            </div>
           </div>
         </div>
       )}
