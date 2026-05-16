@@ -145,9 +145,9 @@ form button:has(.la-tag) i {
   }
 
   .lg\:col-span-1 .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 {
-    display: flex !important;
+    display: inline-flex !important;
     flex-wrap: nowrap !important;
-    width: 100% !important;
+    width: fit-content !important;
     max-width: 100% !important;
     overflow: hidden;
     font-size: 12px !important;
@@ -157,7 +157,12 @@ form button:has(.la-tag) i {
     padding-left: 0.65rem !important;
     padding-right: 0.65rem !important;
     white-space: nowrap;
-    min-width: 0;
+    min-width: fit-content;
+    flex: 0 0 auto;
+  }
+
+  .lg\:col-span-1 .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 > div:not(.h-6):last-child {
+    padding-right: 0.75rem !important;
   }
 
   .lg\:col-span-1 .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 span {
