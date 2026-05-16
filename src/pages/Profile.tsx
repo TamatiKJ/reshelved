@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { addDoc, collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
-import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateProfile, verifyBeforeUpdateEmail } from 'firebase/auth';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { deleteUser, EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateProfile, verifyBeforeUpdateEmail } from 'firebase/auth';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,6 +11,7 @@ import { KENYAN_CITIES } from '../types';
 
 const getConversationKey = (a: string, b: string) => [a, b].sort().join('_');
 const inputClass = 'w-full px-4 py-2 rounded-lg border border-stone-200 text-sm outline-none focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
+const DEFAULT_RENEW_DAYS = 10;
 
 const PasswordField: React.FC<{ value: string; onChange: (value: string) => void; placeholder?: string; autoComplete: string }> = ({ value, onChange, placeholder, autoComplete }) => {
   const [visible, setVisible] = useState(false);
@@ -62,7 +63,7 @@ const resizeProfilePhoto = (file: File): Promise<Blob> => {
 const Profile: React.FC = () => {
   const { userId } = useParams<{ userId?: string }>();
   const navigate = useNavigate();
-  const { currentUser, userProfile, refreshProfile } = useAuth();
+  const { currentUser, userProfile, refreshProfile, logout } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [bookmarkedListings, setBookmarkedListings] = useState<Listing[]>([]);
@@ -84,7 +85,9 @@ const Profile: React.FC = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
   const [accountLoading, setAccountLoading] = useState(false);
+  const [renewingId, setRenewingId] = useState('');
 
   const targetUserId = userId || currentUser?.uid;
   const isOwnProfile = !userId || userId === currentUser?.uid;
@@ -92,6 +95,15 @@ const Profile: React.FC = () => {
   useEffect(() => { if (targetUserId) fetchData(); }, [targetUserId, currentUser?.uid, userProfile?.bookmarks?.join('|')]);
   useEffect(() => { if (!saveMessage) return; const timer = window.setTimeout(() => setSaveMessage(''), 5000); return () => window.clearTimeout(timer); }, [saveMessage]);
   useEffect(() => { setNewEmail(currentUser?.email || profile?.email || ''); }, [currentUser?.email, profile?.email]);
+
+  const syncPublicProfile = async (profileData: Partial<UserProfile> = {}) => {
+    if (!currentUser) return;
+    const displayName = profileData.displayName || profile?.displayName || userProfile?.displayName || currentUser.displayName || 'Reshelved User';
+    const photoURL = profileData.photoURL || profile?.photoURL || userProfile?.photoURL || currentUser.photoURL || '';
+    const location = profileData.location || profile?.location || userProfile?.location || '';
+    const ratingAverage = ratings.length > 0 ? ratings.reduce((sum, rating) => sum + (rating.rating || 0), 0) / ratings.length : 0;
+    await setDoc(doc(db, 'publicProfiles', currentUser.uid), { uid: currentUser.uid, displayName, photoURL, location, ratingAverage, ratingCount: ratings.length, updatedAt: Date.now() }, { merge: true }).catch(() => undefined);
+  };
 
   const createFallbackProfile = async (): Promise<UserProfile | null> => {
     if (!currentUser || !isOwnProfile) return null;
@@ -113,10 +125,11 @@ const Profile: React.FC = () => {
       deactivated: false
     };
     await setDoc(doc(db, 'users', currentUser.uid), fallback, { merge: true });
+    await setDoc(doc(db, 'publicProfiles', currentUser.uid), { uid: currentUser.uid, displayName: fallback.displayName, photoURL: fallback.photoURL, location: fallback.location, ratingAverage: 0, ratingCount: 0, updatedAt: Date.now() }, { merge: true }).catch(() => undefined);
     return fallback;
   };
 
-  const syncUserDisplayData = async (updates: { displayName?: string; photoURL?: string }) => {
+  const syncUserDisplayData = async (updates: { displayName?: string; photoURL?: string; location?: string }) => {
     if (!currentUser) return;
     const listingSnap = await getDocs(query(collection(db, 'listings'), where('userId', '==', currentUser.uid)));
     await Promise.all(listingSnap.docs.map((item) => updateDoc(doc(db, 'listings', item.id), {
@@ -128,16 +141,21 @@ const Profile: React.FC = () => {
       ...(updates.displayName ? { [`participantNames.${currentUser.uid}`]: updates.displayName } : {}),
       ...(updates.photoURL !== undefined ? { [`participantPhotos.${currentUser.uid}`]: updates.photoURL } : {})
     })));
+    await syncPublicProfile({ displayName: updates.displayName, photoURL: updates.photoURL, location: updates.location });
   };
 
   const fetchData = async () => {
     if (!targetUserId) return;
     setLoading(true);
     try {
-      const snap = await getDoc(doc(db, 'users', targetUserId));
+      const snap = await getDoc(doc(db, 'users', targetUserId)).catch(() => null);
       let p: UserProfile | null = null;
-      if (snap.exists()) p = { uid: targetUserId, ...snap.data() } as UserProfile;
-      else p = await createFallbackProfile();
+      if (snap?.exists()) p = { uid: targetUserId, ...snap.data() } as UserProfile;
+      else {
+        const publicSnap = await getDoc(doc(db, 'publicProfiles', targetUserId)).catch(() => null);
+        if (publicSnap?.exists()) p = { uid: targetUserId, email: '', bio: '', phone: '', bookmarks: [], isAdmin: false, flagged: false, flagCount: 0, createdAt: Date.now(), online: false, lastSeen: 0, deactivated: false, ...publicSnap.data() } as UserProfile;
+        else p = await createFallbackProfile();
+      }
       if (p) {
         setProfile(p);
         setEditName(p.displayName || '');
@@ -231,6 +249,53 @@ const Profile: React.FC = () => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!currentUser) return;
+    if (!window.confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
+    setAccountLoading(true);
+    setSaveError('');
+    setSaveMessage('');
+    try {
+      await reauthenticate(deletePassword);
+      const [listingSnap, conversationSnap] = await Promise.all([
+        getDocs(query(collection(db, 'listings'), where('userId', '==', currentUser.uid))),
+        getDocs(query(collection(db, 'conversations'), where('participants', 'array-contains', currentUser.uid))).catch(() => null)
+      ]);
+      await Promise.all([
+        ...listingSnap.docs.map((item) => updateDoc(doc(db, 'listings', item.id), { active: false, deactivatedOwner: true })),
+        ...(conversationSnap?.docs || []).map((item) => updateDoc(doc(db, 'conversations', item.id), { [`participantNames.${currentUser.uid}`]: 'Deleted account', [`participantPhotos.${currentUser.uid}`]: '' })),
+        setDoc(doc(db, 'users', currentUser.uid), { deactivated: true, deletedAt: Date.now(), online: false, displayName: 'Deleted account', photoURL: '', bio: '', phone: '' }, { merge: true }),
+        setDoc(doc(db, 'publicProfiles', currentUser.uid), { displayName: 'Deleted account', photoURL: '', location: '', deleted: true, updatedAt: Date.now() }, { merge: true })
+      ]);
+      await deleteUser(currentUser);
+      navigate('/');
+    } catch (err: any) {
+      console.error('Account deletion failed:', err);
+      setSaveError(err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential' ? 'Current password is incorrect.' : err?.message || 'Account deletion failed. Try again.');
+    } finally {
+      setAccountLoading(false);
+    }
+  };
+
+  const handleRenewListing = async (listing: Listing) => {
+    setRenewingId(listing.id);
+    setSaveError('');
+    setSaveMessage('');
+    try {
+      const settingsSnap = await getDoc(doc(db, 'platform', 'settings')).catch(() => null);
+      const days = Number(settingsSnap?.exists() ? settingsSnap.data().listingDays : DEFAULT_RENEW_DAYS) || DEFAULT_RENEW_DAYS;
+      const expiresAt = Date.now() + Math.min(Math.max(days, 1), 45) * 24 * 60 * 60 * 1000;
+      await updateDoc(doc(db, 'listings', listing.id), { active: true, expiresAt, renewedAt: Date.now() });
+      setListings((current) => current.map((item) => item.id === listing.id ? { ...item, active: true, expiresAt } : item));
+      setSaveMessage('Listing renewed successfully.');
+    } catch (err: any) {
+      console.error('Renew listing failed:', err);
+      setSaveError(err?.message || 'Could not renew listing.');
+    } finally {
+      setRenewingId('');
+    }
+  };
+
   const handleMessageUser = async () => {
     if (!currentUser || !profile || !targetUserId || isOwnProfile || messageLoading) return;
     setMessageLoading(true);
@@ -284,7 +349,7 @@ const Profile: React.FC = () => {
     const profileUpdates: Partial<UserProfile> = { displayName: cleanName, email: currentUser.email || profile?.email || '', bio: editBio.trim(), location: editLocation || profile?.location || 'Lavington', phone: editPhone.trim(), lastSeen: Date.now() };
     await setDoc(doc(db, 'users', currentUser.uid), profileUpdates, { merge: true });
     await updateProfile(currentUser, { displayName: cleanName }).catch((err) => console.error('Auth profile update failed:', err));
-    await syncUserDisplayData({ displayName: cleanName });
+    await syncUserDisplayData({ displayName: cleanName, location: editLocation });
     setProfile((current) => current ? { ...current, ...profileUpdates } as UserProfile : null);
     setListings((current) => current.map((listing) => ({ ...listing, userName: cleanName })));
     await refreshProfile();
@@ -360,11 +425,11 @@ const Profile: React.FC = () => {
         </div>
       </div>
 
-      {isOwnProfile && <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-6 sm:p-8"><button type="button" onClick={() => setAccountOpen((current) => !current)} className="flex w-full cursor-pointer items-center justify-between text-left"><div><h2 className="text-lg font-bold text-stone-800">Account security</h2><p className="mt-1 text-sm text-stone-500">Change your email or password.</p></div><i className={`las ${accountOpen ? 'la-angle-up' : 'la-angle-down'} text-2xl text-stone-500`} /></button>{accountOpen && <div className="mt-5 grid gap-6 lg:grid-cols-2"><div className="rounded-xl border border-stone-200 p-4"><h3 className="font-bold text-stone-800">Change email</h3><p className="mt-1 text-sm text-stone-500">We will send a confirmation email before the change is applied.</p><div className="mt-4 space-y-3"><input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className={inputClass} placeholder="New email address" autoComplete="email" /><PasswordField value={emailPassword} onChange={setEmailPassword} placeholder="Current password" autoComplete="current-password" /><button type="button" onClick={handleChangeEmail} disabled={accountLoading} className="w-full cursor-pointer rounded-lg bg-[#1665CC] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Send confirmation email</button></div></div><div className="rounded-xl border border-stone-200 p-4"><h3 className="font-bold text-stone-800">Change password</h3><p className="mt-1 text-sm text-stone-500">Use your current password to set a new one.</p><div className="mt-4 space-y-3"><PasswordField value={currentPassword} onChange={setCurrentPassword} placeholder="Current password" autoComplete="current-password" /><PasswordField value={newPassword} onChange={setNewPassword} placeholder="New password" autoComplete="new-password" /><PasswordField value={confirmNewPassword} onChange={setConfirmNewPassword} placeholder="Confirm new password" autoComplete="new-password" /><button type="button" onClick={handleChangePassword} disabled={accountLoading} className="w-full cursor-pointer rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Update password</button></div></div></div>}</section>}
+      {isOwnProfile && <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-6 sm:p-8"><button type="button" onClick={() => setAccountOpen((current) => !current)} className="flex w-full cursor-pointer items-center justify-between text-left"><div><h2 className="text-lg font-bold text-stone-800">Account security</h2><p className="mt-1 text-sm text-stone-500">Change your email or password, or delete your account.</p></div><i className={`las ${accountOpen ? 'la-angle-up' : 'la-angle-down'} text-2xl text-stone-500`} /></button>{accountOpen && <div className="mt-5 grid gap-6 lg:grid-cols-2"><div className="rounded-xl border border-stone-200 p-4"><h3 className="font-bold text-stone-800">Change email</h3><p className="mt-1 text-sm text-stone-500">We will send a confirmation email before the change is applied.</p><div className="mt-4 space-y-3"><input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className={inputClass} placeholder="New email address" autoComplete="email" /><PasswordField value={emailPassword} onChange={setEmailPassword} placeholder="Current password" autoComplete="current-password" /><button type="button" onClick={handleChangeEmail} disabled={accountLoading} className="w-full cursor-pointer rounded-lg bg-[#1665CC] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Send confirmation email</button></div></div><div className="rounded-xl border border-stone-200 p-4"><h3 className="font-bold text-stone-800">Change password</h3><p className="mt-1 text-sm text-stone-500">Use your current password to set a new one.</p><div className="mt-4 space-y-3"><PasswordField value={currentPassword} onChange={setCurrentPassword} placeholder="Current password" autoComplete="current-password" /><PasswordField value={newPassword} onChange={setNewPassword} placeholder="New password" autoComplete="new-password" /><PasswordField value={confirmNewPassword} onChange={setConfirmNewPassword} placeholder="Confirm new password" autoComplete="new-password" /><button type="button" onClick={handleChangePassword} disabled={accountLoading} className="w-full cursor-pointer rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Update password</button></div></div><div className="rounded-xl border border-red-200 bg-red-50/40 p-4 lg:col-span-2"><h3 className="font-bold text-red-700">Delete account</h3><p className="mt-1 text-sm text-red-700/80">This deactivates your listings, removes public profile details, and deletes your login account. This cannot be undone.</p><div className="mt-4 max-w-md space-y-3"><PasswordField value={deletePassword} onChange={setDeletePassword} placeholder="Current password" autoComplete="current-password" /><button type="button" onClick={handleDeleteAccount} disabled={accountLoading} className="w-full cursor-pointer rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Delete my account</button></div></div></div>}</section>}
 
       {isOwnProfile && <div className="mt-8"><div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold text-stone-800">Bookmarked Books ({bookmarkedListings.length})</h2><Link to="/browse" className="text-sm font-semibold text-primary-600 hover:text-primary-700">Browse books</Link></div>{bookmarkedListings.length === 0 ? <div className="text-center py-8 bg-white rounded-xl border border-stone-200"><p className="text-stone-500">No bookmarked books yet</p><Link to="/browse" className="mt-2 inline-block text-primary-600 font-medium text-sm">Find books to save</Link></div> : <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">{bookmarkedListings.map(l => <BookCard key={l.id} listing={l} />)}</div>}</div>}
       <div className="mt-8"><h2 className="text-lg font-bold text-stone-800 mb-4">{isOwnProfile ? 'My' : `${profile.displayName}'s`} Active Listings ({activeListings.length})</h2>{activeListings.length === 0 ? <div className="text-center py-8 bg-white rounded-xl border border-stone-200"><p className="text-stone-500">No active listings</p>{isOwnProfile && <Link to="/create" className="mt-2 inline-block cursor-pointer text-primary-600 font-medium text-sm">List a book</Link>}</div> : <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">{activeListings.map(l => <BookCard key={l.id} listing={l} />)}</div>}</div>
-      {isOwnProfile && expiredListings.length > 0 && <div className="mt-8"><h2 className="text-lg font-bold text-stone-800 mb-4">Expired Listings ({expiredListings.length})</h2><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">{expiredListings.map(l => <BookCard key={l.id} listing={l} />)}</div></div>}
+      {isOwnProfile && <div className="mt-10 border-t border-stone-200 pt-8"><h2 className="text-lg font-bold text-stone-800 mb-4">Expired Listings ({expiredListings.length})</h2>{expiredListings.length === 0 ? <div className="text-center py-8 bg-white rounded-xl border border-stone-200"><p className="text-stone-500">No expired listings</p></div> : <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">{expiredListings.map(l => <div key={l.id} className="relative"><BookCard listing={l} /><button type="button" onClick={() => handleRenewListing(l)} disabled={renewingId === l.id} className="mt-3 w-full cursor-pointer rounded-xl bg-[#1665CC] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1254a9] disabled:cursor-not-allowed disabled:opacity-60">{renewingId === l.id ? 'Renewing...' : 'Renew listing'}</button></div>)}</div>}</div>}
       {ratings.length > 0 && <div className="mt-8"><h2 className="text-lg font-bold text-stone-800 mb-4">Reviews ({ratings.length})</h2><div className="space-y-3">{ratings.map(r => <div key={r.id} className="bg-white border border-stone-200 rounded-xl p-4"><div className="flex items-center justify-between"><span className="font-medium text-stone-700">{r.fromUserName}</span><span className="text-accent-500 text-sm">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span></div>{r.review && <p className="text-sm text-stone-600 mt-1">{r.review}</p>}<p className="text-xs text-stone-400 mt-2">{new Date(r.createdAt).toLocaleDateString()} — Re: {r.listingTitle}</p></div>)}</div></div>}
     </div>
   );
