@@ -230,3 +230,47 @@ main aside section button { font-size: 14px; }
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #f5f5f4; }
 ::-webkit-scrollbar-thumb { background: #a8a29e; border-radius: 3px; }
+
+/* Listing detail quick facts, inspired by Best Buy product information clarity. */
+.lg\:col-span-1 .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 {
+  color: #292524 !important;
+  font-weight: 600 !important;
+}
+
+.lg\:col-span-1 .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 i,
+.lg\:col-span-1 .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 span {
+  color: #292524 !important;
+}
+
+/* Create and edit listing type cards: no fill shading, black icons, blue border only on interaction/selection. */
+form button:has(.la-sync),
+form button:has(.la-gift),
+form button:has(.la-tag),
+form button:has(.la-sync):hover,
+form button:has(.la-gift):hover,
+form button:has(.la-tag):hover {
+  background: #ffffff !important;
+}
+
+form button:has(.la-sync) i,
+form button:has(.la-gift) i,
+form button:has(.la-tag) i {
+  color: #292524 !important;
+}
+
+form button.border-\[\#1665CC\]:has(.la-sync),
+form button.border-\[\#1665CC\]:has(.la-gift),
+form button.border-\[\#1665CC\]:has(.la-tag),
+form button.border-primary-500:has(.la-sync),
+form button.border-primary-500:has(.la-gift),
+form button.border-primary-500:has(.la-tag) {
+  border-color: #1665CC !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+form button:has(.la-sync):hover,
+form button:has(.la-gift):hover,
+form button:has(.la-tag):hover {
+  border-color: #1665CC !important;
+}
