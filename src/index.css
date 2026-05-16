@@ -86,24 +86,39 @@ textarea:focus {
   box-shadow: 0 0 0 2px rgba(22, 101, 204, 0.1) !important;
 }
 
+article[role="link"] h3 {
+  font-size: 16px !important;
+}
+
 form button:has(.la-sync),
 form button:has(.la-gift),
 form button:has(.la-tag) {
-  border-color: rgba(22, 101, 204, 0.28) !important;
-  background: rgba(22, 101, 204, 0.06) !important;
+  background: #ffffff !important;
+  border-color: #e7e5e4 !important;
 }
 
 form button:has(.la-sync):hover,
 form button:has(.la-gift):hover,
 form button:has(.la-tag):hover {
   border-color: #1665CC !important;
-  background: rgba(22, 101, 204, 0.1) !important;
+  background: rgba(22, 101, 204, 0.05) !important;
 }
 
 form button:has(.la-sync) i,
 form button:has(.la-gift) i,
 form button:has(.la-tag) i {
   color: #1665CC !important;
+}
+
+form button.border-\[\#1665CC\]:has(.la-sync),
+form button.border-\[\#1665CC\]:has(.la-gift),
+form button.border-\[\#1665CC\]:has(.la-tag),
+form button.border-primary-500:has(.la-sync),
+form button.border-primary-500:has(.la-gift),
+form button.border-primary-500:has(.la-tag) {
+  border-color: #1665CC !important;
+  background: rgba(22, 101, 204, 0.1) !important;
+  box-shadow: 0 0 0 2px rgba(22, 101, 204, 0.08);
 }
 
 button[title="Highlight"],
@@ -119,13 +134,8 @@ button[title="List"]::before {
   line-height: 1;
 }
 
-button[title="Highlight"]::before {
-  content: "\f591";
-}
-
-button[title="List"]::before {
-  content: "\f03a";
-}
+button[title="Highlight"]::before { content: "\f591"; }
+button[title="List"]::before { content: "\f03a"; }
 
 [role="alert"],
 .mb-4.p-3.rounded-xl.text-sm,
