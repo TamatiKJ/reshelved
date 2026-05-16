@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { KENYAN_CITIES } from '../types';
 
-const LINK_BLUE = '#1485dc';
+const LINK_BLUE = '#1665CC';
+const inputClass = 'w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
 
 const getAuthErrorMessage = (error: any, fallback: string) => {
   switch (error?.code) {
@@ -26,7 +26,7 @@ const getAuthErrorMessage = (error: any, fallback: string) => {
 
 const AuthLogo: React.FC = () => (
   <Link to="/" className="inline-flex items-center justify-center" aria-label="Reshelved home">
-    <img src="/reshelved-logo.svg" alt="Reshelved" className="h-10 w-auto" />
+    <img src="/reshelved-logo.svg" alt="Reshelved" className="h-8 w-auto" />
   </Link>
 );
 
@@ -40,7 +40,7 @@ const GoogleIcon: React.FC = () => (
 );
 
 const AuthFooter: React.FC = () => (
-  <footer className="w-full border-t border-stone-200 bg-white/80 px-4 py-5 text-sm text-stone-600">
+  <footer className="w-full border-t border-stone-200 bg-white/80 px-4 py-5 text-[13px] sm:text-[14px] text-stone-600">
     <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-x-5 gap-y-2">
       <Link to="/contact" className="hover:text-stone-900">Support</Link>
       <span className="hidden h-4 w-px bg-stone-200 sm:inline-block" />
@@ -57,10 +57,20 @@ const AuthFooter: React.FC = () => (
   </footer>
 );
 
+const LegalAgreement: React.FC = () => (
+  <p className="mt-6 max-w-md px-3 text-center text-[13px] leading-relaxed text-stone-600 sm:text-[14px]">
+    By continuing, I agree to Reshelved&apos;s{' '}
+    <Link to="/terms" className="underline underline-offset-2 hover:text-stone-900">terms</Link>,{' '}
+    <Link to="/privacy-policy" className="underline underline-offset-2 hover:text-stone-900">privacy policy</Link>, and{' '}
+    <Link to="/cookies" className="underline underline-offset-2 hover:text-stone-900">cookie policy</Link>.
+  </p>
+);
+
 const AuthShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="min-h-screen bg-stone-50 flex flex-col">
-    <main className="flex flex-1 items-center justify-center px-4 py-10 sm:py-14">
+    <main className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:py-14">
       {children}
+      <LegalAgreement />
     </main>
     <AuthFooter />
   </div>
@@ -145,7 +155,7 @@ export const Login: React.FC = () => {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={googleLoading || loading}
-            className="flex w-full items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-900 transition hover:bg-stone-50 disabled:opacity-60"
+            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-900 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <GoogleIcon />
             {googleLoading ? 'Connecting...' : 'Continue with Google'}
@@ -170,7 +180,7 @@ export const Login: React.FC = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+              className={inputClass}
               autoComplete="email"
             />
           </div>
@@ -182,7 +192,7 @@ export const Login: React.FC = () => {
                 type="button"
                 onClick={handlePasswordReset}
                 disabled={resetLoading}
-                className="text-xs font-medium hover:underline disabled:opacity-60"
+                className="cursor-pointer text-xs font-medium hover:underline disabled:cursor-not-allowed disabled:opacity-60"
                 style={{ color: LINK_BLUE }}
               >
                 {resetLoading ? 'Sending...' : 'Forgot password?'}
@@ -193,7 +203,7 @@ export const Login: React.FC = () => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+              className={inputClass}
               autoComplete="current-password"
             />
           </div>
@@ -201,7 +211,7 @@ export const Login: React.FC = () => {
           <button
             type="submit"
             disabled={loading || googleLoading}
-            className="w-full rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:opacity-50"
+            className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? 'Logging in...' : 'Log in'}
           </button>
@@ -225,7 +235,6 @@ export const Register: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [location, setLocation] = useState('Nairobi');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -256,7 +265,7 @@ export const Register: React.FC = () => {
     }
     setLoading(true);
     try {
-      await register(email, password, displayName, location);
+      await register(email, password, displayName, 'Nairobi');
       navigate('/browse');
     } catch (err: any) {
       setError(getAuthErrorMessage(err, 'Failed to create account'));
@@ -278,7 +287,7 @@ export const Register: React.FC = () => {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={googleLoading || loading}
-            className="flex w-full items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-900 transition hover:bg-stone-50 disabled:opacity-60"
+            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-900 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <GoogleIcon />
             {googleLoading ? 'Connecting...' : 'Continue with Google'}
@@ -298,7 +307,7 @@ export const Register: React.FC = () => {
               required
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+              className={inputClass}
               autoComplete="name"
             />
           </div>
@@ -310,20 +319,9 @@ export const Register: React.FC = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+              className={inputClass}
               autoComplete="email"
             />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-stone-800">Location</label>
-            <select
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="w-full rounded-md border border-stone-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
-            >
-              {KENYAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
           </div>
 
           <div>
@@ -333,7 +331,7 @@ export const Register: React.FC = () => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+              className={inputClass}
               autoComplete="new-password"
             />
           </div>
@@ -345,7 +343,7 @@ export const Register: React.FC = () => {
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+              className={inputClass}
               autoComplete="new-password"
             />
           </div>
@@ -353,7 +351,7 @@ export const Register: React.FC = () => {
           <button
             type="submit"
             disabled={loading || googleLoading}
-            className="w-full rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:opacity-50"
+            className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? 'Creating account...' : 'Create account'}
           </button>
