@@ -81,6 +81,7 @@ export interface Rating {
   listingId: string;
   listingTitle: string;
   rating: number;
+  title?: string;
   review: string;
   createdAt: number;
 }
