@@ -9,6 +9,7 @@ import { CATEGORIES, KENYAN_CITIES, CONDITIONS } from '../types';
 
 const PAGE_SIZE = 12;
 const focusFieldClass = 'focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10 outline-none';
+const selectClass = `pl-3 pr-10 py-2.5 rounded-lg border border-stone-200 text-sm bg-white ${focusFieldClass}`;
 
 const Browse: React.FC = () => {
   const { currentUser } = useAuth();
@@ -103,17 +104,17 @@ const Browse: React.FC = () => {
               <i className="las la-search absolute left-3 top-1/2 -translate-y-1/2 text-xl text-stone-400" />
               <input type="text" placeholder="Search title, author, genre, field, condition, or location..." value={search} onChange={(e) => setSearch(e.target.value)} className={`w-full pl-10 pr-4 py-3 rounded-xl border border-stone-200 transition text-sm ${focusFieldClass}`} />
             </div>
-            <button onClick={() => setShowFilters(!showFilters)} className={`cursor-pointer flex items-center justify-center gap-2 px-5 py-3 rounded-xl border transition text-sm font-semibold ${showFilters ? 'bg-primary-50 border-primary-300 text-primary-700' : 'border-stone-200 text-stone-600 hover:bg-stone-50'}`}>
+            <button onClick={() => setShowFilters(!showFilters)} className={`cursor-pointer flex items-center justify-center gap-2 px-5 py-3 rounded-xl border transition text-sm font-semibold ${showFilters ? 'bg-[#1665CC]/10 border-[#1665CC] text-[#1665CC]' : 'border-stone-200 text-stone-600 hover:border-[#1665CC] hover:bg-[#1665CC]/5 hover:text-[#1665CC]'}`}>
               <i className="las la-sliders-h text-lg" /> Filters
             </button>
           </div>
 
           {showFilters && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-stone-100">
-              <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={`px-3 py-2.5 rounded-lg border border-stone-200 text-sm bg-white ${focusFieldClass}`}><option value="all">All Types</option><option value="swap">Swap</option><option value="donate">Donate</option><option value="sell">Sell</option></select>
-              <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={`px-3 py-2.5 rounded-lg border border-stone-200 text-sm bg-white ${focusFieldClass}`}><option value="all">All Categories</option>{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
-              <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} className={`px-3 py-2.5 rounded-lg border border-stone-200 text-sm bg-white ${focusFieldClass}`}><option value="all">All Locations</option>{KENYAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
-              <select value={filterCondition} onChange={(e) => setFilterCondition(e.target.value)} className={`px-3 py-2.5 rounded-lg border border-stone-200 text-sm bg-white ${focusFieldClass}`}><option value="all">All Conditions</option>{CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+              <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={selectClass}><option value="all">All Types</option><option value="swap">Swap</option><option value="donate">Donate</option><option value="sell">Sell</option></select>
+              <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={selectClass}><option value="all">All Categories</option>{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+              <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} className={selectClass}><option value="all">All Locations</option>{KENYAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+              <select value={filterCondition} onChange={(e) => setFilterCondition(e.target.value)} className={selectClass}><option value="all">All Conditions</option>{CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}</select>
             </div>
           )}
         </div>
