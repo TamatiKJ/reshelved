@@ -46,6 +46,23 @@ const openImageZoom = (src: string, alt: string) => {
   document.body.appendChild(modal);
 };
 
+const addBlogEditorHistoryControls = () => {
+  const imageButton = document.querySelector<HTMLButtonElement>('button[title="Image"]');
+  if (!imageButton || document.querySelector('[data-editor-history-controls="true"]')) return;
+
+  const controls = document.createElement("div");
+  controls.dataset.editorHistoryControls = "true";
+  controls.className = "ml-auto flex gap-2";
+  controls.innerHTML = `
+    <button type="button" title="Undo" class="cursor-pointer rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-semibold hover:bg-stone-50"><i class="las la-undo text-lg"></i></button>
+    <button type="button" title="Redo" class="cursor-pointer rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-semibold hover:bg-stone-50"><i class="las la-redo text-lg"></i></button>
+  `;
+
+  controls.querySelector<HTMLButtonElement>('[title="Undo"]')?.addEventListener("click", () => document.execCommand("undo"));
+  controls.querySelector<HTMLButtonElement>('[title="Redo"]')?.addEventListener("click", () => document.execCommand("redo"));
+  imageButton.parentElement?.appendChild(controls);
+};
+
 document.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
   const zoomButton = target.closest<HTMLButtonElement>('button[aria-label="Open larger image"]');
@@ -59,6 +76,8 @@ document.addEventListener("click", (event) => {
   const image = gallery?.querySelector<HTMLImageElement>('img[alt]:not([alt=""])');
   if (image?.src) openImageZoom(image.src, image.alt || "Listing image");
 }, true);
+
+new MutationObserver(addBlogEditorHistoryControls).observe(document.body, { childList: true, subtree: true });
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
