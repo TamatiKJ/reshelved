@@ -118,6 +118,36 @@ form button:has(.la-tag) i {
   color: #1665CC !important;
 }
 
+[role="alert"],
+.mb-4.p-3.rounded-xl.text-sm,
+.mb-4.p-3.bg-primary-50.border.border-primary-200.text-primary-700.rounded-xl.text-sm {
+  animation: reshelvedNoticeFade 3s ease forwards;
+}
+
+.mb-4.p-3.bg-primary-50.border.border-primary-200.text-primary-700.rounded-xl.text-sm {
+  background: #ecfdf5 !important;
+  border-color: #bbf7d0 !important;
+  color: #15803d !important;
+}
+
+@keyframes reshelvedNoticeFade {
+  0%, 82% {
+    opacity: 1;
+    max-height: 120px;
+    margin-bottom: 1rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+  100% {
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+}
+
 @media (min-width: 1024px) {
   .max-w-7xl > .grid.grid-cols-1.lg\:grid-cols-3.gap-8.xl\:gap-10 {
     grid-template-columns: minmax(0, 1fr) 360px !important;
