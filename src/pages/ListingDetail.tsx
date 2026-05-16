@@ -7,6 +7,7 @@ import RecentListings from '../components/RecentListings';
 import type { Listing, Rating } from '../types';
 
 const REVIEWS_STEP = 4;
+const getConversationKey = (a: string, b: string) => [a, b].sort().join('_');
 
 const normalizeImages = (images?: unknown): string[] => {
   if (!Array.isArray(images)) return [];
@@ -81,12 +82,13 @@ const ListingDetail: React.FC = () => {
     setActionLoading(true);
     setMessage('');
     try {
+      const conversationKey = getConversationKey(currentUser.uid, listing.userId);
       const cq = query(collection(db, 'conversations'), where('participants', 'array-contains', currentUser.uid));
       const cSnap = await getDocs(cq);
       let existingConvId: string | null = null;
       cSnap.forEach(d => {
         const data = d.data();
-        if (data.listingId === listing.id && Array.isArray(data.participants) && data.participants.includes(listing.userId)) existingConvId = d.id;
+        if (Array.isArray(data.participants) && data.participants.includes(listing.userId)) existingConvId = d.id;
       });
       if (existingConvId) {
         navigate(`/messages/${existingConvId}`);
@@ -98,6 +100,7 @@ const ListingDetail: React.FC = () => {
       const sellerName = listing.userName || 'Seller';
       const convRef = await addDoc(collection(db, 'conversations'), {
         participants: [currentUser.uid, listing.userId],
+        conversationKey,
         buyerId: currentUser.uid,
         sellerId: listing.userId,
         participantNames: { [currentUser.uid]: buyerName, [listing.userId]: sellerName },
@@ -109,7 +112,7 @@ const ListingDetail: React.FC = () => {
         updatedAt: now,
         createdAt: now
       });
-      await addDoc(collection(db, 'messages'), { conversationId: convRef.id, senderId: currentUser.uid, senderName: buyerName, recipientId: listing.userId, text: initialMessage, createdAt: now });
+      await addDoc(collection(db, 'messages'), { conversationId: convRef.id, senderId: currentUser.uid, senderName: buyerName, recipientId: listing.userId, text: initialMessage, type: 'text', readBy: [currentUser.uid], createdAt: now });
       await addDoc(collection(db, 'notifications'), { userId: listing.userId, fromUserId: currentUser.uid, fromUserName: buyerName, fromAdmin: false, type: 'message', subject: `New message from ${buyerName}`, message: initialMessage, conversationId: convRef.id, listingId: listing.id, createdAt: now, read: false });
       await addDoc(collection(db, 'contacts'), { userId: currentUser.uid, listingId: listing.id, listingTitle: listing.title, sellerId: listing.userId, sellerName, contactedAt: now, reviewPromptShown: false, reviewed: false });
       navigate(`/messages/${convRef.id}`);
