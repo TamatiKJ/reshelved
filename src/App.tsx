@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
@@ -49,6 +49,95 @@ const ScrollToTop: React.FC = () => {
   return null;
 };
 
+type AdminFieldFocus = {
+  tagName: string;
+  type: string;
+  placeholder: string;
+  maxLength: string;
+  label: string;
+  selectionStart: number | null;
+  selectionEnd: number | null;
+};
+
+const normalizeAdminLabel = (value: string) => value
+  .replace(/\d+\s*\/\s*\d+/g, '')
+  .replace(/Square SVG or PNG and at least 512 by 512 pixels\./g, '')
+  .replace(/days/g, '')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const getAdminFieldFocus = (element: Element | null): AdminFieldFocus | null => {
+  if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) return null;
+  const label = normalizeAdminLabel(element.closest('label')?.textContent || '');
+  return {
+    tagName: element.tagName,
+    type: element instanceof HTMLInputElement ? element.type : 'textarea',
+    placeholder: element.getAttribute('placeholder') || '',
+    maxLength: String(element.getAttribute('maxlength') || ''),
+    label,
+    selectionStart: element.selectionStart,
+    selectionEnd: element.selectionEnd
+  };
+};
+
+const AdminFormFocusKeeper: React.FC<{ enabled: boolean }> = ({ enabled }) => {
+  const lastFocusRef = useRef<AdminFieldFocus | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+
+    const rememberFocus = () => {
+      lastFocusRef.current = getAdminFieldFocus(document.activeElement);
+    };
+
+    const restoreFocus = () => {
+      const saved = lastFocusRef.current;
+      if (!saved) return;
+      window.requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
+        const fields = Array.from(document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'));
+        const target = fields.find((field) => {
+          const current = getAdminFieldFocus(field);
+          return current &&
+            current.tagName === saved.tagName &&
+            current.type === saved.type &&
+            current.placeholder === saved.placeholder &&
+            current.maxLength === saved.maxLength &&
+            current.label === saved.label;
+        });
+        if (!target) return;
+        target.focus({ preventScroll: true });
+        if (saved.selectionStart !== null && saved.selectionEnd !== null) {
+          const nextPosition = Math.min(saved.selectionStart + 1, target.value.length);
+          try { target.setSelectionRange(nextPosition, nextPosition); } catch { /* ignore unsupported inputs */ }
+        }
+      });
+    };
+
+    const keepSpaceInField = (event: KeyboardEvent) => {
+      const target = event.target;
+      if ((target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) && event.code === 'Space') {
+        event.stopPropagation();
+      }
+    };
+
+    document.addEventListener('focusin', rememberFocus, true);
+    document.addEventListener('keydown', keepSpaceInField, true);
+    document.addEventListener('input', () => { rememberFocus(); restoreFocus(); }, true);
+    document.addEventListener('keyup', restoreFocus, true);
+
+    return () => {
+      document.removeEventListener('focusin', rememberFocus, true);
+      document.removeEventListener('keydown', keepSpaceInField, true);
+      document.removeEventListener('input', () => { rememberFocus(); restoreFocus(); }, true);
+      document.removeEventListener('keyup', restoreFocus, true);
+    };
+  }, [enabled]);
+
+  return null;
+};
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, loading } = useAuth();
   if (loading) {
@@ -93,6 +182,7 @@ const AppContent: React.FC = () => {
   return (
     <>
       <ScrollToTop />
+      <AdminFormFocusKeeper enabled={isAdminRoute} />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
