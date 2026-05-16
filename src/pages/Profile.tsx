@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { addDoc, collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
-import { updateProfile } from 'firebase/auth';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateProfile, verifyBeforeUpdateEmail } from 'firebase/auth';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,6 +10,19 @@ import type { UserProfile, Listing, Rating } from '../types';
 import { KENYAN_CITIES } from '../types';
 
 const getConversationKey = (a: string, b: string) => [a, b].sort().join('_');
+const inputClass = 'w-full px-4 py-2 rounded-lg border border-stone-200 text-sm outline-none focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
+
+const PasswordField: React.FC<{ value: string; onChange: (value: string) => void; placeholder?: string; autoComplete: string }> = ({ value, onChange, placeholder, autoComplete }) => {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <input type={visible ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} className={`${inputClass} pr-10`} placeholder={placeholder} autoComplete={autoComplete} />
+      <button type="button" onClick={() => setVisible((current) => !current)} className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-stone-500 hover:bg-stone-100 hover:text-stone-800" aria-label={visible ? 'Hide password' : 'Show password'}>
+        <i className={`las ${visible ? 'la-eye-slash' : 'la-eye'} text-xl`} />
+      </button>
+    </div>
+  );
+};
 
 const resizeProfilePhoto = (file: File): Promise<Blob> => {
   return new Promise((resolve, reject) => {
@@ -65,12 +78,20 @@ const Profile: React.FC = () => {
   const [editBio, setEditBio] = useState('');
   const [editLocation, setEditLocation] = useState('');
   const [editPhone, setEditPhone] = useState('');
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [accountLoading, setAccountLoading] = useState(false);
 
   const targetUserId = userId || currentUser?.uid;
   const isOwnProfile = !userId || userId === currentUser?.uid;
 
   useEffect(() => { if (targetUserId) fetchData(); }, [targetUserId, currentUser?.uid, userProfile?.bookmarks?.join('|')]);
-  useEffect(() => { if (!saveMessage) return; const timer = window.setTimeout(() => setSaveMessage(''), 3000); return () => window.clearTimeout(timer); }, [saveMessage]);
+  useEffect(() => { if (!saveMessage) return; const timer = window.setTimeout(() => setSaveMessage(''), 5000); return () => window.clearTimeout(timer); }, [saveMessage]);
+  useEffect(() => { setNewEmail(currentUser?.email || profile?.email || ''); }, [currentUser?.email, profile?.email]);
 
   const createFallbackProfile = async (): Promise<UserProfile | null> => {
     if (!currentUser || !isOwnProfile) return null;
@@ -149,6 +170,64 @@ const Profile: React.FC = () => {
       console.error('Error loading profile:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const reauthenticate = async (password: string) => {
+    if (!currentUser?.email) throw new Error('Your account does not have an email address attached.');
+    if (!password) throw new Error('Enter your current password first.');
+    const credential = EmailAuthProvider.credential(currentUser.email, password);
+    await reauthenticateWithCredential(currentUser, credential);
+  };
+
+  const handleChangeEmail = async () => {
+    if (!currentUser) return;
+    const cleanEmail = newEmail.trim().toLowerCase();
+    if (!cleanEmail || cleanEmail === currentUser.email) {
+      setSaveError('Enter a new email address first.');
+      return;
+    }
+    setAccountLoading(true);
+    setSaveError('');
+    setSaveMessage('');
+    try {
+      await reauthenticate(emailPassword);
+      await verifyBeforeUpdateEmail(currentUser, cleanEmail);
+      setEmailPassword('');
+      setSaveMessage(`Confirmation email sent to ${cleanEmail}. Your email will change after you open that link. Check your inbox and SPAM folder.`);
+    } catch (err: any) {
+      console.error('Email change failed:', err);
+      setSaveError(err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential' ? 'Current password is incorrect.' : err?.message || 'Email change failed. Try again.');
+    } finally {
+      setAccountLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentUser) return;
+    if (newPassword.length < 6) {
+      setSaveError('New password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setSaveError('New passwords do not match.');
+      return;
+    }
+    setAccountLoading(true);
+    setSaveError('');
+    setSaveMessage('');
+    try {
+      await reauthenticate(currentPassword);
+      await updatePassword(currentUser, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setSaveMessage('Password updated successfully.');
+    } catch (err: any) {
+      console.error('Password change failed:', err);
+      setSaveError(err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential' ? 'Current password is incorrect.' : err?.message || 'Password update failed. Try again.');
+    } finally {
+      setAccountLoading(false);
     }
   };
 
@@ -276,10 +355,13 @@ const Profile: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-start gap-6">
           <div className="shrink-0">{profile.photoURL ? <img src={profile.photoURL} alt={profile.displayName} className="w-20 h-20 rounded-full object-cover shrink-0" /> : <div className="w-20 h-20 rounded-full bg-stone-200 text-stone-500 flex items-center justify-center text-3xl font-bold shrink-0">{profile.displayName?.[0]?.toUpperCase() || 'U'}</div>}{isOwnProfile && <label className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50">{uploadingPhoto ? 'Uploading...' : 'Upload Photo'}<input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploadingPhoto} className="hidden" /></label>}</div>
           <div className="flex-1 min-w-0">
-            {editing ? <div className="space-y-3"><input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-stone-200 text-sm" placeholder="Display Name" /><textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-stone-200 text-sm resize-none" rows={2} placeholder="About you..." /><select value={editLocation} onChange={(e) => setEditLocation(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-stone-200 text-sm bg-white">{KENYAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}</select><input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-stone-200 text-sm" placeholder="Phone number" /><div className="flex gap-2"><button onClick={handleSaveProfile} disabled={saving} className="cursor-pointer px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60">{saving ? 'Saving...' : 'Save'}</button><button onClick={() => setEditing(false)} disabled={saving} className="cursor-pointer px-4 py-2 border border-stone-200 rounded-lg text-sm disabled:cursor-not-allowed disabled:opacity-60">Cancel</button></div></div> : <><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-3"><h1 className="text-2xl font-bold text-stone-800">{profile.displayName}</h1>{isOwnProfile && <button onClick={() => { setSaveMessage(''); setSaveError(''); setEditing(true); }} className="cursor-pointer text-sm text-primary-600 hover:text-primary-700 font-medium">Edit</button>}</div>{profile.bio && <p className="text-stone-600 mt-1">{profile.bio}</p>}</div>{!isOwnProfile && currentUser && <button onClick={handleMessageUser} disabled={messageLoading} className="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"><i className="las la-comment text-lg" />{messageLoading ? 'Opening...' : 'Message'}</button>}</div><div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-stone-500">{profile.location && <span className="flex items-center gap-1"><i className="las la-map-marker text-base" />{profile.location}</span>}<span className="flex items-center gap-1"><i className="las la-calendar text-base" />Joined {new Date(profile.createdAt).toLocaleDateString()}</span>{ratings.length > 0 && <span className="flex items-center gap-1"><span className="text-accent-500">★</span>{avgRating.toFixed(1)} ({ratings.length} review{ratings.length !== 1 ? 's' : ''})</span>}</div></>}
+            {editing ? <div className="space-y-3"><input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className={inputClass} placeholder="Display Name" /><textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} className={`${inputClass} resize-none`} rows={2} placeholder="About you..." /><select value={editLocation} onChange={(e) => setEditLocation(e.target.value)} className={`${inputClass} bg-white`}>{KENYAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}</select><input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className={inputClass} placeholder="Phone number" /><div className="flex gap-2"><button onClick={handleSaveProfile} disabled={saving} className="cursor-pointer px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60">{saving ? 'Saving...' : 'Save'}</button><button onClick={() => setEditing(false)} disabled={saving} className="cursor-pointer px-4 py-2 border border-stone-200 rounded-lg text-sm disabled:cursor-not-allowed disabled:opacity-60">Cancel</button></div></div> : <><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-3"><h1 className="text-2xl font-bold text-stone-800">{profile.displayName}</h1>{isOwnProfile && <button onClick={() => { setSaveMessage(''); setSaveError(''); setEditing(true); }} className="cursor-pointer text-sm text-primary-600 hover:text-primary-700 font-medium">Edit</button>}</div>{profile.bio && <p className="text-stone-600 mt-1">{profile.bio}</p>}</div>{!isOwnProfile && currentUser && <button onClick={handleMessageUser} disabled={messageLoading} className="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"><i className="las la-comment text-lg" />{messageLoading ? 'Opening...' : 'Message'}</button>}</div><div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-stone-500">{profile.location && <span className="flex items-center gap-1"><i className="las la-map-marker text-base" />{profile.location}</span>}<span className="flex items-center gap-1"><i className="las la-calendar text-base" />Joined {new Date(profile.createdAt).toLocaleDateString()}</span>{ratings.length > 0 && <span className="flex items-center gap-1"><span className="text-accent-500">★</span>{avgRating.toFixed(1)} ({ratings.length} review{ratings.length !== 1 ? 's' : ''})</span>}</div></>}
           </div>
         </div>
       </div>
+
+      {isOwnProfile && <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-6 sm:p-8"><button type="button" onClick={() => setAccountOpen((current) => !current)} className="flex w-full cursor-pointer items-center justify-between text-left"><div><h2 className="text-lg font-bold text-stone-800">Account security</h2><p className="mt-1 text-sm text-stone-500">Change your email or password.</p></div><i className={`las ${accountOpen ? 'la-angle-up' : 'la-angle-down'} text-2xl text-stone-500`} /></button>{accountOpen && <div className="mt-5 grid gap-6 lg:grid-cols-2"><div className="rounded-xl border border-stone-200 p-4"><h3 className="font-bold text-stone-800">Change email</h3><p className="mt-1 text-sm text-stone-500">We will send a confirmation email before the change is applied.</p><div className="mt-4 space-y-3"><input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className={inputClass} placeholder="New email address" autoComplete="email" /><PasswordField value={emailPassword} onChange={setEmailPassword} placeholder="Current password" autoComplete="current-password" /><button type="button" onClick={handleChangeEmail} disabled={accountLoading} className="w-full cursor-pointer rounded-lg bg-[#1665CC] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Send confirmation email</button></div></div><div className="rounded-xl border border-stone-200 p-4"><h3 className="font-bold text-stone-800">Change password</h3><p className="mt-1 text-sm text-stone-500">Use your current password to set a new one.</p><div className="mt-4 space-y-3"><PasswordField value={currentPassword} onChange={setCurrentPassword} placeholder="Current password" autoComplete="current-password" /><PasswordField value={newPassword} onChange={setNewPassword} placeholder="New password" autoComplete="new-password" /><PasswordField value={confirmNewPassword} onChange={setConfirmNewPassword} placeholder="Confirm new password" autoComplete="new-password" /><button type="button" onClick={handleChangePassword} disabled={accountLoading} className="w-full cursor-pointer rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Update password</button></div></div></div>}</section>}
+
       {isOwnProfile && <div className="mt-8"><div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold text-stone-800">Bookmarked Books ({bookmarkedListings.length})</h2><Link to="/browse" className="text-sm font-semibold text-primary-600 hover:text-primary-700">Browse books</Link></div>{bookmarkedListings.length === 0 ? <div className="text-center py-8 bg-white rounded-xl border border-stone-200"><p className="text-stone-500">No bookmarked books yet</p><Link to="/browse" className="mt-2 inline-block text-primary-600 font-medium text-sm">Find books to save</Link></div> : <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">{bookmarkedListings.map(l => <BookCard key={l.id} listing={l} />)}</div>}</div>}
       <div className="mt-8"><h2 className="text-lg font-bold text-stone-800 mb-4">{isOwnProfile ? 'My' : `${profile.displayName}'s`} Active Listings ({activeListings.length})</h2>{activeListings.length === 0 ? <div className="text-center py-8 bg-white rounded-xl border border-stone-200"><p className="text-stone-500">No active listings</p>{isOwnProfile && <Link to="/create" className="mt-2 inline-block cursor-pointer text-primary-600 font-medium text-sm">List a book</Link>}</div> : <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">{activeListings.map(l => <BookCard key={l.id} listing={l} />)}</div>}</div>
       {isOwnProfile && expiredListings.length > 0 && <div className="mt-8"><h2 className="text-lg font-bold text-stone-800 mb-4">Expired Listings ({expiredListings.length})</h2><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">{expiredListings.map(l => <BookCard key={l.id} listing={l} />)}</div></div>}
