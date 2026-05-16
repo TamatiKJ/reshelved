@@ -19,6 +19,7 @@ const ConversationListingCard: React.FC<ConversationListingCardProps> = ({ conve
   const [listing, setListing] = useState<Listing | null>(null);
   const [listingExists, setListingExists] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [coverFailed, setCoverFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -26,6 +27,7 @@ const ConversationListingCard: React.FC<ConversationListingCardProps> = ({ conve
       if (!conversation.listingId) return;
       setLoading(true);
       setListingExists(true);
+      setCoverFailed(false);
       try {
         const snap = await getDoc(doc(db, 'listings', conversation.listingId));
         if (!active) return;
@@ -60,11 +62,20 @@ const ConversationListingCard: React.FC<ConversationListingCardProps> = ({ conve
   const isActive = Boolean(listingExists && listing?.active !== false && (!listing?.expiresAt || listing.expiresAt > Date.now()));
   const statusLabel = loading ? 'Checking...' : isActive ? 'Active' : 'Deleted';
   const statusClass = isActive ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200';
+  const showCoverImage = Boolean(coverImage && !coverFailed);
 
   const cardContent = (
     <div className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3 transition hover:border-[#1665CC] hover:shadow-sm">
-      <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-stone-100">
-        {coverImage ? <img src={coverImage} alt={title} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center"><i className="las la-book text-2xl text-stone-300" /></div>}
+      <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-stone-100 shadow-sm ring-1 ring-stone-200/70">
+        {showCoverImage ? (
+          <img src={coverImage} alt={title} className="h-full w-full object-cover" onError={() => setCoverFailed(true)} />
+        ) : (
+          <div className="flex h-full w-full flex-col justify-between bg-gradient-to-br from-[#FFF4E2] via-white to-[#F7AF31]/35 px-1.5 py-2 text-center">
+            <span className="text-[7px] font-black uppercase tracking-[0.12em] text-[#1665CC]">Reshelved</span>
+            <span className="line-clamp-3 text-[8px] font-bold leading-tight text-stone-800">{loading ? 'Loading cover' : title}</span>
+            <span className="mx-auto h-1 w-8 rounded-full bg-primary-600/80" />
+          </div>
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
