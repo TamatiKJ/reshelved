@@ -66,7 +66,12 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
         const userSnap = await getDoc(doc(db, 'users', listing.userId));
         if (userSnap.exists()) {
           const photoURL = userSnap.data().photoURL;
-          if (typeof photoURL === 'string') setSellerPhoto(photoURL);
+          if (typeof photoURL === 'string' && photoURL.trim()) {
+            setSellerPhoto(photoURL);
+            if (currentUser?.uid === listing.userId && photoURL !== listing.userPhoto) {
+              await setDoc(doc(db, 'listings', listing.id), { userPhoto: photoURL }, { merge: true }).catch(() => undefined);
+            }
+          }
         }
         const ratingsSnap = await getDocs(query(collection(db, 'ratings'), where('toUserId', '==', listing.userId)));
         const ratings: Rating[] = [];
@@ -83,7 +88,7 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
     };
 
     fetchSellerMeta();
-  }, [listing.userId]);
+  }, [listing.userId, listing.id, listing.userPhoto, currentUser?.uid]);
 
   useEffect(() => {
     if (images.length <= 1) return;
@@ -125,11 +130,11 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
   };
 
   return (
-    <article onClick={handleCardClick} role="link" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleCardClick(); } }} className="group block h-full cursor-pointer bg-white rounded-[22px] border border-stone-200 p-2.5 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
-      <div className="relative aspect-[1.45/1] rounded-[18px] bg-stone-100 overflow-hidden">
+    <article onClick={handleCardClick} role="link" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleCardClick(); } }} className="group block h-full cursor-pointer bg-white rounded-2xl border border-stone-200 p-2 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
+      <div className="relative aspect-[1.45/1] rounded-xl bg-stone-100 overflow-hidden">
         {hasImages ? <>{<img src={coverImage} alt={listing.title} className="absolute inset-0 w-full h-full object-cover bg-stone-100" loading="eager" onError={() => handleImageError(coverImage)} />}{images.length > 1 && images.map((image, index) => <img key={`${image}-${index}`} src={image} alt={listing.title} className={`absolute inset-0 w-full h-full object-cover bg-stone-100 transition-opacity duration-700 ease-in-out ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'}`} loading={index === 0 ? 'eager' : 'lazy'} onError={() => handleImageError(image)} />)}</> : <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-stone-100"><i className="las la-book-open text-5xl text-stone-300" /></div>}
-        <div className="absolute top-3 left-3"><span className="inline-flex cursor-default items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 text-primary-700 shadow-sm text-xs font-bold backdrop-blur-sm"><i className={`${typeIcons[listing.type]} cursor-default text-base leading-none`} />{typeLabels[listing.type]}</span></div>
-        <div className="absolute top-3 right-3 flex items-center gap-2">{isOwner && <button type="button" onClick={handleEdit} className="cursor-pointer w-9 h-9 rounded-xl bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50" aria-label="Edit listing"><i className="las la-pen text-lg" /></button>}{currentUser && <button type="button" onClick={handleBookmark} disabled={bookmarking} aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'} className={`cursor-pointer w-9 h-9 rounded-xl flex items-center justify-center shadow-sm backdrop-blur-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${isBookmarked ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-white/95 text-primary-600 hover:bg-primary-50'}`}><i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-lg`} /></button>}</div>
+        <div className="absolute top-3 left-3"><span className="inline-flex cursor-default items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/95 text-primary-700 shadow-sm text-xs font-bold backdrop-blur-sm"><i className={`${typeIcons[listing.type]} cursor-default text-base leading-none`} />{typeLabels[listing.type]}</span></div>
+        <div className="absolute top-3 right-3 flex items-center gap-2">{isOwner && <button type="button" onClick={handleEdit} className="cursor-pointer w-9 h-9 rounded-lg bg-white/95 text-primary-600 flex items-center justify-center shadow-sm backdrop-blur-sm transition hover:bg-primary-50" aria-label="Edit listing"><i className="las la-pen text-lg" /></button>}{currentUser && <button type="button" onClick={handleBookmark} disabled={bookmarking} aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'} className={`cursor-pointer w-9 h-9 rounded-lg flex items-center justify-center shadow-sm backdrop-blur-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${isBookmarked ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-white/95 text-primary-600 hover:bg-primary-50'}`}><i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-lg`} /></button>}</div>
       </div>
       <div className="px-1.5 pt-3.5 pb-1">
         <h3 className="text-[16px] font-bold text-stone-950 leading-tight line-clamp-1 group-hover:text-primary-700 transition">{listing.title}</h3>
@@ -138,7 +143,7 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
           {sellerPhoto ? <img src={sellerPhoto} alt={listing.userName} className="w-7 h-7 rounded-full object-cover bg-stone-100" /> : <div className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 flex items-center justify-center text-[10px] font-bold">{listing.userName?.[0]?.toUpperCase() || 'U'}</div>}
           <div className="min-w-0"><p className="text-xs font-semibold text-stone-700 truncate">Listed by {listing.userName || 'Reshelved user'}</p>{sellerRating.count > 0 && <p className="mt-0.5 text-xs font-semibold text-accent-500 leading-none">{getStarLabel(sellerRating.average)} <span className="text-stone-500">({sellerRating.count})</span></p>}</div>
         </div>
-        <div className="mt-4 rounded-2xl bg-[#FFF4E2]/50 border border-stone-200/60 p-2.5 grid grid-cols-3 divide-x divide-stone-300/50">
+        <div className="mt-4 rounded-xl bg-[#FFF4E2]/50 border border-stone-200/60 p-2.5 grid grid-cols-3 divide-x divide-stone-300/50">
           <div className="px-1.5 min-w-0"><p className="text-[10px] font-semibold text-stone-500">Condition</p><p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{listing.condition}</p></div>
           <div className="px-2.5 min-w-0"><p className="text-[10px] font-semibold text-stone-500">Location</p><p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{listing.location}</p></div>
           <div className="px-2.5 min-w-0"><p className="text-[10px] font-semibold text-stone-500">Price</p><p className="mt-0.5 text-[14px] sm:text-[12px] font-bold text-stone-800 truncate">{getDisplayPrice(listing)}</p></div>
