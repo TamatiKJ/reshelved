@@ -99,7 +99,6 @@ export const CATEGORIES = [
   'Fiction',
   'Fantasy',
   'Non-Fiction',
-  'Academic',
   'Children',
   'Science & Technology',
   'Business & Economics',
