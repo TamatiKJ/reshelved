@@ -17,13 +17,6 @@ const typeIcons: Record<Listing['type'], string> = {
   sell: 'las la-tag'
 };
 
-const getDisplayPrice = (listing: Listing) => {
-  if (listing.type === 'swap') return 'Swap';
-  if (listing.type === 'donate') return 'Free';
-  if (listing.price && listing.price > 0) return `KSh ${listing.price.toLocaleString()}`;
-  return 'Ask';
-};
-
 const normalizeImages = (images?: unknown): string[] => {
   if (!Array.isArray(images)) return [];
   return images.filter((image): image is string => typeof image === 'string').map((image) => image.trim()).filter((image) => image.length > 0);
@@ -47,7 +40,6 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
   const hasImages = Boolean(coverImage);
   const isBookmarked = Boolean(userProfile?.bookmarks?.includes(listing.id));
   const isOwner = Boolean(currentUser && currentUser.uid === listing.userId);
-  const displayPrice = getDisplayPrice(listing);
 
   useEffect(() => {
     setCurrentImageIndex(0);
@@ -160,9 +152,9 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
           handleCardClick();
         }
       }}
-      className="group block h-full cursor-pointer overflow-hidden rounded-[30px] border border-white/20 bg-[#1427A8] shadow-[0_16px_45px_rgba(15,23,42,0.16)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.24)]"
+      className="group block h-full cursor-pointer overflow-hidden rounded-[24px] border border-stone-200 bg-white p-3 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-xl"
     >
-      <div className="relative aspect-[1.45/1] overflow-hidden bg-stone-100">
+      <div className="relative aspect-[1.42/1] overflow-hidden rounded-[18px] bg-stone-100">
         {hasImages ? (
           <>
             <img
@@ -189,108 +181,96 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
           </div>
         )}
 
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 to-transparent" />
+        {currentUser && (
+          <button
+            type="button"
+            onClick={handleBookmark}
+            disabled={bookmarking}
+            aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'}
+            className={`absolute left-3 top-3 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-stone-200 transition disabled:cursor-not-allowed disabled:opacity-60 ${isBookmarked ? 'text-primary-600 hover:bg-primary-50' : 'text-primary-600 hover:bg-stone-50'}`}
+          >
+            <i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-xl`} />
+          </button>
+        )}
 
-        <div className="absolute left-4 top-4">
-          <span className="inline-flex cursor-default items-center gap-1.5 rounded-full bg-white/95 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-primary-700 shadow-sm backdrop-blur-sm">
-            <i className={`${typeIcons[listing.type]} cursor-default text-base leading-none`} />
-            {typeLabels[listing.type]}
-          </span>
-        </div>
-
-        <div className="absolute right-4 top-4 flex items-center gap-2">
+        <div className="absolute right-3 top-3 flex items-center gap-2">
           {sellerRating.count > 0 && (
-            <div className="flex cursor-default items-center gap-1.5 rounded-full bg-[#4da9e8]/85 px-3.5 py-1.5 text-white shadow-sm backdrop-blur-md">
+            <div className="flex cursor-default items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-stone-700 shadow-sm ring-1 ring-stone-200">
               <i className="las la-star text-base text-[#F7AF31]" />
-              <span className="text-sm font-extrabold">{sellerRating.average.toFixed(1)}</span>
+              <span className="text-sm font-bold">{sellerRating.average.toFixed(1)}</span>
             </div>
           )}
           {isOwner && (
             <button
               type="button"
               onClick={handleEdit}
-              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/95 text-primary-600 shadow-sm backdrop-blur-sm transition hover:bg-primary-50"
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white text-primary-600 shadow-sm ring-1 ring-stone-200 transition hover:bg-primary-50"
               aria-label="Edit listing"
             >
-              <i className="las la-pen text-lg" />
-            </button>
-          )}
-          {currentUser && (
-            <button
-              type="button"
-              onClick={handleBookmark}
-              disabled={bookmarking}
-              aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'}
-              className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow-sm backdrop-blur-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${isBookmarked ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-white/95 text-primary-600 hover:bg-primary-50'}`}
-            >
-              <i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-lg`} />
+              <i className="las la-pen text-xl" />
             </button>
           )}
         </div>
 
         {images.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5">
+          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-white/85 px-2 py-1 shadow-sm">
             {images.slice(0, 4).map((image, index) => (
               <span
                 key={`${image}-dot-${index}`}
-                className={`h-1.5 rounded-full transition-all ${index === currentImageIndex ? 'w-5 bg-white' : 'w-1.5 bg-white/60'}`}
+                className={`h-1.5 rounded-full transition-all ${index === currentImageIndex ? 'w-5 bg-primary-600' : 'w-1.5 bg-stone-300'}`}
               />
             ))}
           </div>
         )}
       </div>
 
-      <div className="bg-gradient-to-r from-[#1427A8] via-[#1457B8] to-[#22A6CF] px-6 pb-6 pt-7 text-white sm:px-7">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h3 className="line-clamp-1 font-['Work_Sans'] text-[22px] font-bold leading-tight text-white transition group-hover:text-white">
-              {listing.title}
-            </h3>
-            <p className="mt-1 line-clamp-1 text-[14px] text-white/70">by {listing.author}</p>
-          </div>
-          <div className="shrink-0 text-right">
-            <p className="text-[22px] font-extrabold leading-none text-[#8AF0B0]">{displayPrice}</p>
-            {listing.type === 'sell' && <p className="mt-1 text-xs font-medium text-white/65">price</p>}
-          </div>
+      <div className="px-1 pb-1 pt-4">
+        <h3 className="reshelved-book-card-title line-clamp-1 font-['Work_Sans'] text-[20px] font-bold leading-tight text-stone-950 transition group-hover:text-primary-700">
+          {listing.title}
+        </h3>
+        <p className="mt-1 line-clamp-1 text-[15px] text-stone-500">by {listing.author}</p>
+
+        <div className="mt-4 flex items-center gap-2 text-[15px] font-semibold text-stone-700">
+          <i className="las la-map-marker-alt shrink-0 text-[22px] leading-none text-stone-500" />
+          <span className="line-clamp-1">{listing.location}, Nairobi</span>
         </div>
 
-        <div className="mt-5 flex items-center gap-3 text-white/70">
-          <i className="las la-map-marker-alt text-[23px] leading-none" />
-          <span className="line-clamp-1 text-[15px] font-medium">{listing.location}, Nairobi</span>
-        </div>
-
-        <div className="mt-7 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-3 text-white">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <i className="las la-book-open shrink-0 text-[27px] leading-none text-white/90" />
+        <div className="mt-5 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-3 text-stone-600">
+          <div className="flex min-w-0 items-center justify-center gap-2">
+            <i className="las la-book-open shrink-0 text-[24px] leading-none text-stone-500" />
             <span className="line-clamp-1 text-[14px] font-semibold">{listing.condition}</span>
           </div>
 
-          <div className="h-8 w-px bg-white/25" />
+          <div className="h-8 w-px bg-stone-200" />
 
-          <div className="flex min-w-0 items-center gap-2.5">
-            <i className={`${typeIcons[listing.type]} shrink-0 text-[27px] leading-none text-white/90`} />
+          <div className="flex min-w-0 items-center justify-center gap-2">
+            <i className={`${typeIcons[listing.type]} shrink-0 text-[24px] leading-none text-stone-500`} />
             <span className="line-clamp-1 text-[14px] font-semibold">{typeLabels[listing.type]}</span>
           </div>
 
-          <div className="h-8 w-px bg-white/25" />
+          <div className="h-8 w-px bg-stone-200" />
 
-          <div className="flex min-w-0 items-center gap-2.5">
-            <i className="las la-layer-group shrink-0 text-[27px] leading-none text-white/90" />
+          <div className="flex min-w-0 items-center justify-center gap-2">
+            <i className="las la-layer-group shrink-0 text-[24px] leading-none text-stone-500" />
             <span className="line-clamp-1 text-[14px] font-semibold">{listing.category}</span>
           </div>
         </div>
 
-        <div className="mt-5 flex items-center gap-2 border-t border-white/15 pt-4">
+        <div className="mt-5 flex items-center gap-3 border-t border-stone-200 pt-4">
           {sellerPhoto ? (
-            <img src={sellerPhoto} alt={listing.userName} className="h-7 w-7 rounded-full bg-white/10 object-cover" />
+            <img src={sellerPhoto} alt={listing.userName} className="h-9 w-9 rounded-full bg-stone-100 object-cover" />
           ) : (
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-[10px] font-bold text-white">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-500">
               {listing.userName?.[0]?.toUpperCase() || 'U'}
             </div>
           )}
           <div className="min-w-0">
-            <p className="truncate text-xs font-semibold text-white/80">Listed by {listing.userName || 'Reshelved user'}</p>
-            {sellerRating.count > 0 && <p className="mt-0.5 text-[11px] font-semibold leading-none text-[#F7AF31]">{getStarLabel(sellerRating.average)} <span className="text-white/60">({sellerRating.count})</span></p>}
+            <p className="truncate text-sm text-stone-500">Listed by <span className="font-bold text-stone-800">{listing.userName || 'Reshelved user'}</span></p>
+            {sellerRating.count > 0 && (
+              <p className="mt-0.5 text-[13px] font-semibold leading-none text-[#F59E0B]">
+                {getStarLabel(sellerRating.average)} <span className="text-stone-500">({sellerRating.count})</span>
+              </p>
+            )}
           </div>
         </div>
       </div>
