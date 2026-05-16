@@ -75,10 +75,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...existingProfile,
         uid: existingProfile.uid || user.uid,
         displayName: existingProfile.displayName || displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
-        email: existingProfile.email || user.email || '',
+        email: user.email || existingProfile.email || '',
         photoURL: existingProfile.photoURL || user.photoURL || '',
         location: existingProfile.location || location,
-        isAdmin: existingProfile.isAdmin || isAdminEmail(existingProfile.email || user.email),
+        isAdmin: existingProfile.isAdmin || isAdminEmail(user.email || existingProfile.email),
         online: true,
         lastSeen: Date.now(),
         deactivated: existingProfile.deactivated || false
@@ -117,9 +117,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profile = snap.data() as UserProfile;
         const normalizedProfile = {
           ...profile,
-          isAdmin: profile.isAdmin || isAdminEmail(profile.email || auth.currentUser?.email)
+          email: auth.currentUser?.email || profile.email || '',
+          isAdmin: profile.isAdmin || isAdminEmail(auth.currentUser?.email || profile.email)
         };
         setUserProfile(normalizedProfile);
+        if (auth.currentUser?.email && auth.currentUser.email !== profile.email) {
+          await setDoc(doc(db, 'users', uid), { email: auth.currentUser.email }, { merge: true });
+        }
       } else if (auth.currentUser) {
         ensureUserProfile(auth.currentUser).catch((err) => console.error('Error syncing missing profile:', err));
       } else {
