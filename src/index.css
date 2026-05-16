@@ -106,16 +106,25 @@ form button:has(.la-tag) i {
   color: #1665CC !important;
 }
 
-button[title="Highlight"] {
+button[title="Highlight"],
+button[title="List"] {
   font-size: 0 !important;
 }
 
-button[title="Highlight"]::before {
-  content: "\f591";
+button[title="Highlight"]::before,
+button[title="List"]::before {
   font-family: "Line Awesome Free";
   font-weight: 900;
   font-size: 18px;
   line-height: 1;
+}
+
+button[title="Highlight"]::before {
+  content: "\f591";
+}
+
+button[title="List"]::before {
+  content: "\f03a";
 }
 
 [role="alert"],
