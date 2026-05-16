@@ -37,17 +37,19 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
   const [bookmarking, setBookmarking] = useState(false);
   const [failedImages, setFailedImages] = useState<string[]>([]);
   const [sellerPhoto, setSellerPhoto] = useState(listing.userPhoto || '');
-  const [sellerRating, setSellerRating] = useState<{ average: number; count: number }>({ average: Number((listing as any).sellerRatingAverage || 0), count: Number((listing as any).sellerRatingCount || 0) });
+  const [sellerRating, setSellerRating] = useState<{ average: number; count: number }>({ average: 0, count: 0 });
   const images = useMemo(() => normalizeImages(listing.images).filter((image) => !failedImages.includes(image)), [listing.images, failedImages]);
   const activeImage = images[currentImageIndex] || images[0];
   const hasImages = Boolean(activeImage);
   const isBookmarked = Boolean(userProfile?.bookmarks?.includes(listing.id));
   const isOwner = Boolean(currentUser && currentUser.uid === listing.userId);
   const listingValue = formatListingValue(listing);
+  const hasReviews = sellerRating.count > 0;
 
   useEffect(() => {
     setCurrentImageIndex(0);
     setFailedImages([]);
+    setSellerRating({ average: 0, count: 0 });
   }, [listing.id]);
 
   useEffect(() => {
@@ -64,9 +66,6 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
         if (publicSnap?.exists()) {
           const data = publicSnap.data();
           if (typeof data.photoURL === 'string' && data.photoURL.trim()) setSellerPhoto(data.photoURL);
-          if (typeof data.ratingCount === 'number') {
-            setSellerRating({ average: Number(data.ratingAverage || 0), count: Number(data.ratingCount || 0) });
-          }
         }
 
         const userSnap = await getDoc(doc(db, 'users', listing.userId)).catch(() => null);
@@ -82,8 +81,6 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
                 displayName: userData.displayName || listing.userName || 'Reshelved user',
                 photoURL,
                 location: userData.location || listing.location || '',
-                ratingAverage: sellerRating.average,
-                ratingCount: sellerRating.count,
                 updatedAt: Date.now()
               }, { merge: true }).catch(() => undefined);
             }
@@ -97,12 +94,13 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
           if (ratings.length > 0) {
             const average = ratings.reduce((sum, rating) => sum + (rating.rating || 0), 0) / ratings.length;
             setSellerRating({ average, count: ratings.length });
-          } else if (!publicSnap?.exists()) {
+          } else {
             setSellerRating({ average: 0, count: 0 });
           }
         }
       } catch (err) {
         console.error('Error loading seller card data:', err);
+        setSellerRating({ average: 0, count: 0 });
       }
     };
 
@@ -189,7 +187,7 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
         )}
 
         <div className="absolute right-3 top-3 flex items-center gap-2">
-          {sellerRating.count > 0 && (
+          {hasReviews && (
             <div className="flex cursor-default items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-stone-700 shadow-sm ring-1 ring-stone-200">
               <i className="las la-star text-base text-[#F7AF31]" />
               <span className="text-sm font-bold">{sellerRating.average.toFixed(1)}</span>
@@ -246,11 +244,9 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
           )}
           <div className="min-w-0">
             <p className="truncate text-sm text-stone-500">Listed by <span className="font-bold text-stone-800">{listing.userName || 'Reshelved user'}</span></p>
-            {sellerRating.count > 0 && (
-              <p className="mt-0.5 text-[13px] font-semibold leading-none text-[#F59E0B]">
-                {getStarLabel(sellerRating.average)} <span className="text-stone-500">({sellerRating.count})</span>
-              </p>
-            )}
+            <p className={`mt-0.5 text-[13px] font-semibold leading-none ${hasReviews ? 'text-[#F59E0B]' : 'text-stone-400'}`}>
+              {getStarLabel(hasReviews ? sellerRating.average : 0)} <span className="text-stone-500">{hasReviews ? `(${sellerRating.count})` : 'No reviews yet'}</span>
+            </p>
           </div>
         </div>
       </div>
