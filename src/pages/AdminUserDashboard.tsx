@@ -9,23 +9,28 @@ import type { Listing, Report, UserProfile } from '../types';
 
 type AdminView = 'overview' | 'listings' | 'users' | 'reports' | 'posts' | 'newPost' | 'categories' | 'tags' | 'media' | 'settings' | 'legalPages';
 type ListingStatusFilter = 'active' | 'inactive' | 'all';
-type BlogPost = { id: string; title: string; content: string; authorName: string; seoTitle: string; slug: string; seoDescription: string; featuredImage: string; category: string; tags: string; status: 'published' | 'draft'; createdAt: number; publishedAt?: number };
+type BlogStatus = 'published' | 'draft' | 'pending';
+type PostFilter = 'all' | 'published' | 'draft';
+type BlogPost = { id: string; title: string; content: string; authorName: string; authorId?: string; seoTitle: string; slug: string; seoDescription: string; featuredImage: string; category: string; tags: string; status: BlogStatus; createdAt: number; publishedAt?: number | null };
 type MediaItem = { id: string; title: string; alt: string; url: string; source: string; size: number; contentType?: string };
 type ConfirmAction = { title: string; message: string; onConfirm: () => Promise<void> | void } | null;
 
-const formatDate = (timestamp?: number) => timestamp ? new Date(timestamp).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not recorded';
+const formatDate = (timestamp?: number | null) => timestamp ? new Date(timestamp).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not recorded';
 const formatBytes = (bytes?: number) => !bytes ? 'Unknown size' : `${bytes >= 1024 * 1024 ? (bytes / 1024 / 1024).toFixed(1) : Math.round(bytes / 1024)} ${bytes >= 1024 * 1024 ? 'MB' : 'KB'}`;
 const getFormat = (type?: string) => type?.split('/')[1]?.toUpperCase() || 'IMAGE';
 const slugify = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 75);
 const firstImage = (images?: unknown) => Array.isArray(images) ? images.find((image) => typeof image === 'string' && image.trim()) : '';
 const safeDays = (value: string | number) => Math.max(1, Math.min(45, Number(value) || 10));
 const isOnline = (user: UserProfile) => Boolean(user.online) && Date.now() - (user.lastSeen || 0) < 2 * 60 * 1000;
+const emptyPost = { title: '', seoTitle: '', slug: '', seoDescription: '', featuredImage: '', category: '', tags: '' };
 
 const AdminUserDashboard: React.FC = () => {
   const { currentUser, userProfile } = useAuth();
   const editorRef = useRef<HTMLDivElement | null>(null);
   const [view, setView] = useState<AdminView>('overview');
   const [listingStatus, setListingStatus] = useState<ListingStatusFilter>('active');
+  const [postFilter, setPostFilter] = useState<PostFilter>('all');
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
   const [listings, setListings] = useState<Listing[]>([]);
@@ -38,7 +43,7 @@ const AdminUserDashboard: React.FC = () => {
   const [openSections, setOpenSections] = useState({ blog: true, legal: true, platform: true });
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [settings, setSettings] = useState({ listingDays: '10', siteTitle: 'Reshelved', siteDescription: '', siteFavicon: '' });
-  const [post, setPost] = useState({ title: '', seoTitle: '', slug: '', seoDescription: '', featuredImage: '', category: '', tags: '' });
+  const [post, setPost] = useState(emptyPost);
   const [postContent, setPostContent] = useState('');
   const [savingPost, setSavingPost] = useState(false);
   const [uploadingFeaturedImage, setUploadingFeaturedImage] = useState(false);
@@ -76,6 +81,7 @@ const AdminUserDashboard: React.FC = () => {
         getDocs(collection(db, 'blogPosts')).catch(() => null),
         getDoc(doc(db, 'platform', 'settings')).catch(() => null)
       ]);
+
       const listingItems: Listing[] = [];
       listingSnap.forEach((item) => listingItems.push({ id: item.id, ...item.data() } as Listing));
       listingItems.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -122,17 +128,26 @@ const AdminUserDashboard: React.FC = () => {
 
   useEffect(() => { fetchAdminData(); }, [userProfile?.isAdmin]);
   useEffect(() => { setSearch(''); setMobileMenuOpen(false); }, [view]);
+  useEffect(() => {
+    if (view === 'newPost' && editorRef.current && editorRef.current.innerHTML !== postContent) {
+      editorRef.current.innerHTML = postContent;
+    }
+  }, [view]);
 
   const activeListings = useMemo(() => listings.filter((listing) => listing.active && listing.expiresAt > Date.now()), [listings]);
   const inactiveListings = useMemo(() => listings.filter((listing) => !listing.active || listing.expiresAt <= Date.now()), [listings]);
   const openReports = useMemo(() => reports.filter((report) => !report.resolved), [reports]);
   const onlineUsers = useMemo(() => users.filter(isOnline), [users]);
   const admins = useMemo(() => users.filter((user) => user.isAdmin), [users]);
+  const publishedPosts = useMemo(() => posts.filter((item) => item.status === 'published'), [posts]);
+  const draftPosts = useMemo(() => posts.filter((item) => item.status === 'draft'), [posts]);
+
   const listedByStatus = listingStatus === 'active' ? activeListings : listingStatus === 'inactive' ? inactiveListings : listings;
   const filteredListings = listedByStatus.filter((listing) => [listing.title, listing.author, listing.userName, listing.location, listing.category, listing.active ? 'active' : 'inactive'].join(' ').toLowerCase().includes(search.toLowerCase()));
   const filteredUsers = users.filter((user) => [user.displayName, user.email, user.location, user.isAdmin ? 'admin' : 'user'].join(' ').toLowerCase().includes(search.toLowerCase()));
   const filteredReports = reports.filter((report) => [report.targetName, report.reporterName, report.reason, report.details, report.resolved ? 'resolved' : 'open'].join(' ').toLowerCase().includes(search.toLowerCase()));
-  const filteredPosts = posts.filter((item) => [item.title, item.authorName, item.category, item.tags, item.status, item.content].join(' ').toLowerCase().includes(search.toLowerCase()));
+  const filteredPostBase = postFilter === 'published' ? publishedPosts : postFilter === 'draft' ? draftPosts : posts;
+  const filteredPosts = filteredPostBase.filter((item) => [item.title, item.authorName, item.category, item.tags, item.status, item.content].join(' ').toLowerCase().includes(search.toLowerCase()));
   const filteredMedia = media.filter((item) => [item.title, item.source, item.contentType].join(' ').toLowerCase().includes(search.toLowerCase()));
 
   const runCommand = (command: string, value?: string) => { editorRef.current?.focus(); document.execCommand(command, false, value); setPostContent(editorRef.current?.innerHTML || ''); };
@@ -181,16 +196,78 @@ const AdminUserDashboard: React.FC = () => {
     finally { setUploadingFavicon(false); }
   };
 
-  const savePost = async (status: 'published' | 'draft') => {
+  const resetPostForm = () => {
+    setEditingPostId(null);
+    setPost(emptyPost);
+    setPostContent('');
+    if (editorRef.current) editorRef.current.innerHTML = '';
+  };
+
+  const startNewPost = () => {
+    resetPostForm();
+    setView('newPost');
+  };
+
+  const openPostForEdit = (item: BlogPost) => {
+    setEditingPostId(item.id);
+    setPost({
+      title: item.title || '',
+      seoTitle: item.seoTitle || item.title || '',
+      slug: item.slug || slugify(item.title || ''),
+      seoDescription: item.seoDescription || '',
+      featuredImage: item.featuredImage || '',
+      category: item.category || '',
+      tags: item.tags || ''
+    });
+    setPostContent(item.content || '');
+    setView('newPost');
+  };
+
+  const savePost = async (status: BlogStatus) => {
     setSavingPost(true);
     try {
       const title = post.title.trim(); if (!title) throw new Error('Add a post title first.');
       const content = postContent || editorRef.current?.innerHTML || '';
-      await addDoc(collection(db, 'blogPosts'), { title, content, authorId: currentUser?.uid || '', authorName: userProfile?.displayName || currentUser?.displayName || 'Admin', seoTitle: post.seoTitle.trim() || title, slug: slugify(post.slug || title), seoDescription: post.seoDescription.trim(), featuredImage: post.featuredImage.trim(), category: post.category.trim(), tags: post.tags.trim(), status, createdAt: Date.now(), publishedAt: status === 'published' ? Date.now() : null });
-      setPost({ title: '', seoTitle: '', slug: '', seoDescription: '', featuredImage: '', category: '', tags: '' }); setPostContent(''); if (editorRef.current) editorRef.current.innerHTML = '';
-      showToast(status === 'published' ? 'Post published.' : 'Draft saved.'); setView('posts'); fetchAdminData();
+      const payload = {
+        title,
+        content,
+        authorId: currentUser?.uid || '',
+        authorName: userProfile?.displayName || currentUser?.displayName || 'Admin',
+        seoTitle: post.seoTitle.trim() || title,
+        slug: slugify(post.slug || title),
+        seoDescription: post.seoDescription.trim(),
+        featuredImage: post.featuredImage.trim(),
+        category: post.category.trim(),
+        tags: post.tags.trim(),
+        status,
+        updatedAt: Date.now(),
+        publishedAt: status === 'published' ? Date.now() : null
+      };
+
+      if (editingPostId) {
+        await updateDoc(doc(db, 'blogPosts', editingPostId), payload);
+      } else {
+        await addDoc(collection(db, 'blogPosts'), { ...payload, createdAt: Date.now() });
+      }
+
+      resetPostForm();
+      showToast(status === 'published' ? 'Post published.' : status === 'pending' ? 'Post marked pending.' : 'Draft saved.');
+      setView('posts');
+      fetchAdminData();
     } catch (error: any) { showToast(error?.message || 'Post could not be saved.'); }
     finally { setSavingPost(false); }
+  };
+
+  const updatePostStatus = async (item: BlogPost, status: BlogStatus) => {
+    try {
+      const updates = { status, updatedAt: Date.now(), publishedAt: status === 'published' ? Date.now() : null };
+      await updateDoc(doc(db, 'blogPosts', item.id), updates);
+      setPosts((current) => current.map((postItem) => postItem.id === item.id ? { ...postItem, ...updates } : postItem));
+      showToast('Post status updated.');
+    } catch (error) {
+      console.error(error);
+      showToast('Post status could not be updated.');
+    }
   };
 
   const saveSettings = async () => {
@@ -217,7 +294,7 @@ const AdminUserDashboard: React.FC = () => {
       <SideItem icon="la-flag" label="Reports" count={openReports.length} active={view === 'reports'} onClick={() => setView('reports')} />
       <SideItem icon="la-photo-video" label="Media" count={media.length} active={view === 'media'} onClick={() => setView('media')} />
       <SectionToggle label="Blog" open={openSections.blog} onClick={() => toggleSection('blog')} />
-      {openSections.blog && <div className="pl-2"><SideItem icon="la-newspaper" label="All Posts" count={posts.length} active={view === 'posts'} onClick={() => setView('posts')} /><SideItem icon="la-plus-circle" label="Add New" active={view === 'newPost'} onClick={() => setView('newPost')} /><SideItem icon="la-folder" label="Categories" active={view === 'categories'} onClick={() => setView('categories')} /><SideItem icon="la-tags" label="Tags" active={view === 'tags'} onClick={() => setView('tags')} /></div>}
+      {openSections.blog && <div className="pl-2"><SideItem icon="la-newspaper" label="All Posts" count={posts.length} active={view === 'posts'} onClick={() => setView('posts')} /><SideItem icon="la-plus-circle" label="Add New" active={view === 'newPost'} onClick={startNewPost} /><SideItem icon="la-folder" label="Categories" active={view === 'categories'} onClick={() => setView('categories')} /><SideItem icon="la-tags" label="Tags" active={view === 'tags'} onClick={() => setView('tags')} /></div>}
       <SectionToggle label="Legal" open={openSections.legal} onClick={() => toggleSection('legal')} />
       {openSections.legal && <div className="pl-2"><SideItem icon="la-file-contract" label="Legal Pages" active={view === 'legalPages'} onClick={() => setView('legalPages')} /></div>}
       <SectionToggle label="Platform" open={openSections.platform} onClick={() => toggleSection('platform')} />
@@ -231,7 +308,7 @@ const AdminUserDashboard: React.FC = () => {
     <div className="h-auto min-h-screen bg-stone-50 lg:h-screen lg:overflow-hidden">
       {toast && <div className="fixed top-6 right-6 z-50 rounded-xl bg-stone-950 px-5 py-3 text-sm font-semibold text-white shadow-xl">{toast}</div>}
       {confirmAction && <ConfirmDialog action={confirmAction} onClose={() => setConfirmAction(null)} />}
-      <AdminHeader title={getViewTitle(view)} onMenu={() => setMobileMenuOpen(true)} onRefresh={fetchAdminData} />
+      <AdminHeader title={editingPostId && view === 'newPost' ? 'Edit Post' : getViewTitle(view)} onMenu={() => setMobileMenuOpen(true)} onRefresh={fetchAdminData} />
       <div className="grid w-full grid-cols-1 lg:h-[calc(100vh-73px)] lg:grid-cols-[270px_1fr]">
         <aside className="hidden border-r border-stone-200 bg-white p-3 lg:block lg:h-full lg:overflow-y-auto"><AdminNav /></aside>
         {mobileMenuOpen && <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setMobileMenuOpen(false)}><aside className="h-full w-[82vw] max-w-[320px] overflow-y-auto bg-white p-3 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="mb-3 flex items-center justify-between px-2 py-2"><span className="font-bold text-stone-950">Admin menu</span><button onClick={() => setMobileMenuOpen(false)} className="cursor-pointer rounded-lg p-2 text-stone-500 hover:bg-stone-100"><i className="las la-times text-2xl" /></button></div><Link to="/" className="mb-3 flex w-full items-center justify-center rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-50">Visit website</Link><AdminNav /></aside></div>}
@@ -246,7 +323,7 @@ const AdminUserDashboard: React.FC = () => {
     if (view === 'users') return <Panel title="Users"><div className="mb-3 flex flex-wrap gap-2 text-sm"><span className="font-semibold text-stone-700">All <span className="text-stone-400">({users.length})</span></span><span className="text-stone-300">|</span><span className="font-semibold text-[#1665CC]">Admins <span className="text-stone-400">({admins.length})</span></span></div><SearchBar value={search} setValue={setSearch} placeholder="Search users..." /><UserTable items={filteredUsers} currentUserId={currentUser?.uid} onUpdate={updateUser} /></Panel>;
     if (view === 'reports') return <Panel title="Reports"><SearchBar value={search} setValue={setSearch} placeholder="Search reports..." /><ReportList items={filteredReports} onResolve={resolveReport} /></Panel>;
     if (view === 'media') return <Panel title="Media Library"><SearchBar value={search} setValue={setSearch} placeholder="Search media..." /><MediaGrid items={filteredMedia} onDelete={deleteMedia} /></Panel>;
-    if (view === 'posts') return <Panel title={`All Posts (${posts.length})`}><div className="mb-3 flex flex-wrap gap-3 text-sm"><span className="font-semibold text-stone-700">All <span className="text-stone-400">({posts.length})</span></span><span className="text-stone-300">|</span><span className="font-semibold text-emerald-700">Published <span className="text-stone-400">({posts.filter((item) => item.status === 'published').length})</span></span><span className="text-stone-300">|</span><span className="font-semibold text-amber-700">Drafts <span className="text-stone-400">({posts.filter((item) => item.status === 'draft').length})</span></span></div><SearchBar value={search} setValue={setSearch} placeholder="Search posts..." /><PostTable items={filteredPosts} /></Panel>;
+    if (view === 'posts') return <Panel title={`All Posts (${posts.length})`}><div className="mb-3 flex flex-wrap gap-2"><StatusFilter label="All" count={posts.length} active={postFilter === 'all'} onClick={() => setPostFilter('all')} /><StatusFilter label="Published" count={publishedPosts.length} active={postFilter === 'published'} onClick={() => setPostFilter('published')} /><StatusFilter label="Drafts" count={draftPosts.length} active={postFilter === 'draft'} onClick={() => setPostFilter('draft')} /></div><SearchBar value={search} setValue={setSearch} placeholder="Search posts..." /><PostTable items={filteredPosts} onEdit={openPostForEdit} onStatusChange={updatePostStatus} /></Panel>;
     if (view === 'newPost') return PostEditor();
     if (view === 'categories') return <SimpleTaxonomy title="Categories" collectionName="blogCategories" />;
     if (view === 'tags') return <SimpleTaxonomy title="Tags" collectionName="blogTags" />;
@@ -256,7 +333,7 @@ const AdminUserDashboard: React.FC = () => {
   }
 
   function PostEditor() {
-    return <div className="grid h-auto grid-cols-1 gap-6 xl:h-[calc(100vh-132px)] xl:grid-cols-[minmax(0,1fr)_300px]"><section className="min-h-0 overflow-y-auto rounded-2xl border border-stone-200 bg-white"><div className="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-5 py-4 backdrop-blur"><input value={post.title} onChange={(e) => setPost((current) => ({ ...current, title: e.target.value, seoTitle: current.seoTitle || e.target.value, slug: current.slug || slugify(e.target.value) }))} placeholder="Title" className="w-full border-0 border-b border-stone-200 px-0 py-4 text-4xl font-bold outline-none focus:border-[#1665CC]" /><div className="mt-4 flex flex-wrap gap-2"><EditorButton label="B" onClick={() => runCommand('bold')} /><EditorButton label="I" onClick={() => runCommand('italic')} /><EditorButton label="H2" onClick={() => runCommand('formatBlock', 'h2')} /><EditorButton label="H3" onClick={() => runCommand('formatBlock', 'h3')} /><EditorButton label="H4" onClick={() => runCommand('formatBlock', 'h4')} /><EditorButton label="✦" onClick={() => runCommand('backColor', '#fff3b0')} title="Highlight" /><EditorButton label="•" onClick={() => runCommand('insertUnorderedList')} title="List" /><EditorButton icon="las la-link" onClick={addLink} title="Link" /><EditorButton icon="las la-border-all" onClick={addTable} title="Table" /><EditorButton icon="las la-images" onClick={addGallery} title="Gallery" /><EditorButton icon="las la-image" onClick={addImageToPost} title="Image" /></div></div><div ref={editorRef} contentEditable suppressContentEditableWarning onInput={(event) => setPostContent(event.currentTarget.innerHTML)} onBlur={(event) => setPostContent(event.currentTarget.innerHTML)} className="min-h-[760px] px-6 py-7 text-lg leading-8 text-stone-800 outline-none empty:before:text-stone-400 empty:before:content-['Start_writing_your_post...'] [&_p]:mb-4 [&_h2]:mt-8 [&_h2]:text-3xl [&_h2]:font-bold [&_h3]:mt-7 [&_h3]:text-2xl [&_h3]:font-bold [&_h4]:mt-6 [&_h4]:text-xl [&_h4]:font-bold [&_img]:my-6 [&_img]:rounded-2xl [&_table]:my-6 [&_td]:border [&_td]:border-stone-200 [&_td]:p-2" /></section><aside className="min-h-0 space-y-4 overflow-y-auto pr-1"><Panel title="Publish"><button disabled={savingPost} onClick={() => savePost('published')} className="w-full cursor-pointer rounded-full bg-primary-600 px-5 py-3 text-sm font-bold text-white hover:bg-primary-700 disabled:opacity-50">Publish</button><button disabled={savingPost} onClick={() => savePost('draft')} className="mt-2 w-full cursor-pointer rounded-full border border-stone-200 px-5 py-3 text-sm font-bold text-stone-700 hover:bg-stone-50 disabled:opacity-50">Save draft</button></Panel><Panel title="Featured image"><label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-stone-300 bg-stone-50 px-4 py-6 text-center text-sm font-semibold text-stone-600 hover:border-[#1665CC] hover:bg-[#1665CC]/5"><input type="file" accept="image/*" onChange={uploadFeaturedImage} className="hidden" />{uploadingFeaturedImage ? 'Uploading...' : 'Upload featured image'}</label>{post.featuredImage && <img src={post.featuredImage} alt="Featured preview" className="mt-3 aspect-video w-full rounded-xl object-cover" />}</Panel><Panel title="SEO Settings"><SeoInput label="SEO title" value={post.seoTitle} limit={60} onChange={(value) => setPost((current) => ({ ...current, seoTitle: value }))} /><SeoInput label="URL slug" value={post.slug} limit={75} onChange={(value) => setPost((current) => ({ ...current, slug: slugify(value) }))} /><SeoTextArea label="SEO meta description" value={post.seoDescription} limit={160} onChange={(value) => setPost((current) => ({ ...current, seoDescription: value }))} /></Panel><Panel title="Organization"><input value={post.category} onChange={(e) => setPost((current) => ({ ...current, category: e.target.value }))} placeholder="Category" className="admin-input" /><input value={post.tags} onChange={(e) => setPost((current) => ({ ...current, tags: e.target.value }))} placeholder="Tags, comma separated" className="admin-input mt-3" /></Panel></aside></div>;
+    return <div className="grid h-auto grid-cols-1 gap-6 xl:h-[calc(100vh-132px)] xl:grid-cols-[minmax(0,1fr)_300px]"><section className="min-h-0 overflow-y-auto rounded-2xl border border-stone-200 bg-white"><div className="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-5 py-4 backdrop-blur"><input value={post.title} onChange={(e) => setPost((current) => ({ ...current, title: e.target.value, seoTitle: current.seoTitle || e.target.value, slug: current.slug || slugify(e.target.value) }))} placeholder="Title" className="w-full border-0 border-b border-stone-200 px-0 py-4 text-4xl font-bold outline-none focus:border-[#1665CC]" /><div className="mt-4 flex flex-wrap gap-2"><EditorButton label="B" onClick={() => runCommand('bold')} /><EditorButton label="I" onClick={() => runCommand('italic')} /><EditorButton label="H2" onClick={() => runCommand('formatBlock', 'h2')} /><EditorButton label="H3" onClick={() => runCommand('formatBlock', 'h3')} /><EditorButton label="H4" onClick={() => runCommand('formatBlock', 'h4')} /><EditorButton label="✦" onClick={() => runCommand('backColor', '#fff3b0')} title="Highlight" /><EditorButton label="•" onClick={() => runCommand('insertUnorderedList')} title="List" /><EditorButton icon="las la-link" onClick={addLink} title="Link" /><EditorButton icon="las la-border-all" onClick={addTable} title="Table" /><EditorButton icon="las la-images" onClick={addGallery} title="Gallery" /><EditorButton icon="las la-image" onClick={addImageToPost} title="Image" /></div></div><div ref={editorRef} contentEditable suppressContentEditableWarning onInput={(event) => setPostContent(event.currentTarget.innerHTML)} onBlur={(event) => setPostContent(event.currentTarget.innerHTML)} className="min-h-[760px] px-6 py-7 text-lg leading-8 text-stone-800 outline-none empty:before:text-stone-400 empty:before:content-['Start_writing_your_post...'] [&_p]:mb-4 [&_h2]:mt-8 [&_h2]:text-3xl [&_h2]:font-bold [&_h3]:mt-7 [&_h3]:text-2xl [&_h3]:font-bold [&_h4]:mt-6 [&_h4]:text-xl [&_h4]:font-bold [&_img]:my-6 [&_img]:rounded-2xl [&_table]:my-6 [&_td]:border [&_td]:border-stone-200 [&_td]:p-2" /></section><aside className="min-h-0 space-y-4 overflow-y-auto pr-1"><Panel title={editingPostId ? 'Update' : 'Publish'}><button disabled={savingPost} onClick={() => savePost('published')} className="w-full cursor-pointer rounded-full bg-primary-600 px-5 py-3 text-sm font-bold text-white hover:bg-primary-700 disabled:opacity-50">{editingPostId ? 'Update & Publish' : 'Publish'}</button><button disabled={savingPost} onClick={() => savePost('draft')} className="mt-2 w-full cursor-pointer rounded-full border border-stone-200 px-5 py-3 text-sm font-bold text-stone-700 hover:bg-stone-50 disabled:opacity-50">Save draft</button><button disabled={savingPost} onClick={() => savePost('pending')} className="mt-2 w-full cursor-pointer rounded-full border border-amber-200 px-5 py-3 text-sm font-bold text-amber-700 hover:bg-amber-50 disabled:opacity-50">Mark pending</button></Panel><Panel title="Featured image"><label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-stone-300 bg-stone-50 px-4 py-6 text-center text-sm font-semibold text-stone-600 hover:border-[#1665CC] hover:bg-[#1665CC]/5"><input type="file" accept="image/*" onChange={uploadFeaturedImage} className="hidden" />{uploadingFeaturedImage ? 'Uploading...' : 'Upload featured image'}</label>{post.featuredImage && <img src={post.featuredImage} alt="Featured preview" className="mt-3 aspect-video w-full rounded-xl object-cover" />}</Panel><Panel title="SEO Settings"><SeoInput label="SEO title" value={post.seoTitle} limit={60} onChange={(value) => setPost((current) => ({ ...current, seoTitle: value }))} /><SeoInput label="URL slug" value={post.slug} limit={75} onChange={(value) => setPost((current) => ({ ...current, slug: slugify(value) }))} /><SeoTextArea label="SEO meta description" value={post.seoDescription} limit={160} onChange={(value) => setPost((current) => ({ ...current, seoDescription: value }))} /></Panel><Panel title="Organization"><input value={post.category} onChange={(e) => setPost((current) => ({ ...current, category: e.target.value }))} placeholder="Category" className="admin-input" /><input value={post.tags} onChange={(e) => setPost((current) => ({ ...current, tags: e.target.value }))} placeholder="Tags, comma separated" className="admin-input mt-3" /></Panel></aside></div>;
   }
 
   function SettingsPanel() { return <Panel title="Platform settings"><div className="grid max-w-2xl gap-5" onKeyDown={(event) => event.stopPropagation()}><label className="admin-label">Active listing duration<div className="mt-2 grid grid-cols-[1fr_120px] items-center gap-3"><input type="range" min="1" max="45" value={safeDays(settings.listingDays)} onChange={(event) => setSettings((current) => ({ ...current, listingDays: event.target.value }))} className="accent-[#1665CC]" /><div className="relative"><input type="number" min="1" max="45" value={settings.listingDays} onChange={(event) => setSettings((current) => ({ ...current, listingDays: String(safeDays(event.target.value)) }))} className="admin-input pr-12" /><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-stone-500">days</span></div></div></label><label className="admin-label">Site title<input type="text" value={settings.siteTitle} onKeyDown={(event) => event.stopPropagation()} onChange={(event) => setSettings((current) => ({ ...current, siteTitle: event.target.value }))} className="admin-input mt-1" /></label><label className="admin-label">Site description<input type="text" value={settings.siteDescription} onKeyDown={(event) => event.stopPropagation()} onChange={(event) => setSettings((current) => ({ ...current, siteDescription: event.target.value }))} className="admin-input mt-1" /></label><label className="admin-label">Site favicon <span className="font-normal normal-case tracking-normal text-stone-500">Square SVG or PNG and at least 512 by 512 pixels.</span><label className="mt-2 flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-stone-300 bg-stone-50 px-4 py-6 text-center text-sm font-semibold text-stone-600 hover:border-[#1665CC] hover:bg-[#1665CC]/5"><input type="file" accept="image/svg+xml,image/png" onChange={uploadFavicon} className="hidden" />{uploadingFavicon ? 'Uploading...' : 'Upload favicon'}</label>{settings.siteFavicon && <div className="mt-3 flex items-center gap-3"><img src={settings.siteFavicon} alt="Site favicon" className="h-16 w-16 rounded-xl border border-stone-200 object-contain p-2" /><span className="text-sm font-normal normal-case tracking-normal text-stone-500">Current favicon</span></div>}</label><button onClick={saveSettings} className="w-fit cursor-pointer rounded-xl bg-[#1665CC] px-5 py-3 text-sm font-bold text-white">Save settings</button></div></Panel>; }
@@ -274,8 +351,8 @@ const ListingTable: React.FC<{ items: Listing[]; compact?: boolean; onToggle?: (
 const UserTable: React.FC<{ items: UserProfile[]; currentUserId?: string; onUpdate: (user: UserProfile, updates: Partial<UserProfile>, message: string) => void }> = ({ items, currentUserId, onUpdate }) => <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="border-b border-stone-200 text-[13px] font-bold uppercase tracking-[2px] text-stone-500"><tr><th className="py-3">Name</th><th>Email</th><th>Joined</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody className="divide-y divide-stone-100">{items.map((user) => <tr key={user.uid}><td className="py-3 font-semibold">{user.displayName || 'Unnamed user'} {user.uid === currentUserId ? <span className="text-stone-400">(You)</span> : null}</td><td>{user.email}</td><td>{formatDate(user.createdAt)}</td><td><span className={`rounded-full px-2 py-1 text-xs font-bold ${user.isAdmin ? 'bg-[#1665CC]/10 text-[#1665CC]' : 'bg-stone-100 text-stone-600'}`}>{user.isAdmin ? 'Admin' : 'User'}</span></td><td><span className={`rounded-full px-2 py-1 text-xs font-bold ${user.deactivated ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{user.deactivated ? 'Banned' : 'Active'}</span></td><td><div className="flex items-center gap-2"><button disabled={user.uid === currentUserId} onClick={() => onUpdate(user, { isAdmin: !user.isAdmin }, user.isAdmin ? 'Admin role removed.' : 'Admin role added.')} className="cursor-pointer rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-bold text-stone-700 disabled:cursor-not-allowed disabled:opacity-40">{user.isAdmin ? 'Remove Admin' : 'Make Admin'}</button><button disabled={user.uid === currentUserId} onClick={() => onUpdate(user, { deactivated: !user.deactivated }, user.deactivated ? 'User restored.' : 'User banned.')} className="cursor-pointer rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-700 disabled:cursor-not-allowed disabled:opacity-40">{user.deactivated ? 'Restore' : 'Ban'}</button></div></td></tr>)}</tbody></table>{items.length === 0 && <Empty text="No users found." />}</div>;
 const ReportList: React.FC<{ items: Report[]; onResolve?: (report: Report) => void }> = ({ items, onResolve }) => <div className="space-y-3">{items.map((report) => <div key={report.id} className="rounded-xl border border-stone-200 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-bold text-stone-950">{report.targetName}</p><p className="text-sm text-stone-500">{report.reason} · {report.reporterName}</p>{report.details && <p className="mt-2 text-sm text-stone-600">{report.details}</p>}</div>{!report.resolved && onResolve && <button onClick={() => onResolve(report)} className="cursor-pointer rounded-lg border border-green-200 px-3 py-2 text-sm font-semibold text-green-700">Resolve</button>}</div></div>)}{items.length === 0 && <Empty text="No reports found." />}</div>;
 const MediaGrid: React.FC<{ items: MediaItem[]; onDelete: (item: MediaItem) => void }> = ({ items, onDelete }) => <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{items.map((item) => <article key={item.id} className="overflow-hidden rounded-2xl border border-stone-200 bg-white"><div className="aspect-square bg-stone-100"><img src={item.url} alt={item.alt} className="h-full w-full object-cover" /></div><div className="space-y-1 p-4 text-sm"><p className="truncate font-bold text-stone-950">{item.title}</p><p className="text-stone-500">{item.source} · {formatBytes(item.size)} · {getFormat(item.contentType)}</p><button onClick={() => onDelete(item)} className="mt-2 cursor-pointer text-sm font-semibold text-red-600 hover:text-red-700">Delete</button></div></article>)}{items.length === 0 && <div className="col-span-full"><Empty text="No images found." /></div>}</div>;
-const PostTable: React.FC<{ items: BlogPost[] }> = ({ items }) => <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="border-b border-stone-200 text-[13px] font-bold uppercase tracking-[2px] text-stone-500"><tr><th className="py-3">Title</th><th>Author</th><th>Date</th><th>Status</th></tr></thead><tbody className="divide-y divide-stone-100">{items.map((post) => <tr key={post.id}><td className="py-3 font-semibold text-stone-950">{post.title}</td><td>{post.authorName}</td><td>{formatDate(post.publishedAt || post.createdAt)}</td><td><span className={`rounded-full px-2 py-1 text-xs font-bold ${post.status === 'published' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>{post.status === 'published' ? 'Published' : 'Draft'}</span></td></tr>)}</tbody></table>{items.length === 0 && <Empty text="No posts yet." />}</div>;
-const SimpleTaxonomy: React.FC<{ title: string; collectionName: string }> = ({ title, collectionName }) => { const [name, setName] = useState(''); const save = async () => { if (!name.trim()) return; await addDoc(collection(db, collectionName), { name: name.trim(), createdAt: Date.now() }); setName(''); }; return <Panel title={title}><div className="flex gap-3"><input value={name} onChange={(event) => setName(event.target.value)} placeholder={`Add ${title.toLowerCase().slice(0, -1)}`} className="admin-input" /><button onClick={save} className="cursor-pointer rounded-xl bg-[#1665CC] px-5 py-3 text-sm font-bold text-white">Add</button></div></Panel>; };
+const PostTable: React.FC<{ items: BlogPost[]; onEdit: (post: BlogPost) => void; onStatusChange: (post: BlogPost, status: BlogStatus) => void }> = ({ items, onEdit, onStatusChange }) => <div className="overflow-x-auto"><table className="w-full min-w-[1080px] text-left text-sm"><thead className="border-b border-stone-200 text-[13px] font-bold uppercase tracking-[2px] text-stone-500"><tr><th className="py-3">Title</th><th>Category</th><th>Tags</th><th>Author</th><th>Date</th><th>Status</th></tr></thead><tbody className="divide-y divide-stone-100">{items.map((item) => <tr key={item.id} onClick={() => onEdit(item)} className="cursor-pointer hover:bg-stone-50"><td className="max-w-[320px] py-3 font-semibold text-stone-950"><span className="line-clamp-1 hover:text-[#1665CC]">{item.title || 'Untitled post'}</span></td><td>{item.category || 'Uncategorized'}</td><td className="max-w-[240px]"><span className="line-clamp-1 text-stone-600">{item.tags || 'No tags'}</span></td><td>{item.authorName || 'Admin'}</td><td>{formatDate(item.publishedAt || item.createdAt)}</td><td><select value={item.status || 'draft'} onClick={(event) => event.stopPropagation()} onChange={(event) => onStatusChange(item, event.target.value as BlogStatus)} className={`rounded-full border px-3 py-1 text-xs font-bold outline-none ${item.status === 'published' ? 'border-green-200 bg-green-50 text-green-700' : item.status === 'pending' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}><option value="draft">Draft</option><option value="pending">Pending</option><option value="published">Published</option></select></td></tr>)}</tbody></table>{items.length === 0 && <Empty text="No posts yet." />}</div>;
+const SimpleTaxonomy: React.FC<{ title: string; collectionName: string }> = ({ title, collectionName }) => { const [name, setName] = useState(''); const save = async () => { if (!name.trim()) return; await addDoc(collection(db, collectionName), { name: name.trim(), createdAt: Date.now() }); setName(''); }; return <Panel title={title}><div className="flex gap-3"><input value={name} onChange={(event) => setName(event.target.value)} placeholder={`Add ${title.toLowerCase()}`} className="admin-input" /><button onClick={save} className="cursor-pointer rounded-xl bg-[#1665CC] px-5 py-3 text-sm font-bold text-white">Add</button></div></Panel>; };
 const EditorButton: React.FC<{ label?: string; icon?: string; onClick: () => void; title?: string }> = ({ label, icon, onClick, title }) => <button type="button" title={title || label} onClick={onClick} className="cursor-pointer rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-semibold hover:bg-stone-50">{icon ? <i className={`${icon} text-lg`} /> : label}</button>;
 const SeoInput: React.FC<{ label: string; value: string; limit: number; onChange: (value: string) => void }> = ({ label, value, limit, onChange }) => <label className="admin-label mb-4 block">{label}<span className={value.length > limit ? 'ml-2 text-red-600' : 'ml-2 text-stone-400'}>{value.length} / {limit}</span><input value={value} maxLength={limit + 20} onKeyDown={(event) => event.stopPropagation()} onChange={(event) => onChange(event.target.value)} className="admin-input mt-1" /></label>;
 const SeoTextArea: React.FC<{ label: string; value: string; limit: number; onChange: (value: string) => void }> = ({ label, value, limit, onChange }) => <label className="admin-label block">{label}<span className={value.length > limit ? 'ml-2 text-red-600' : 'ml-2 text-stone-400'}>{value.length} / {limit}</span><textarea value={value} maxLength={limit + 40} onKeyDown={(event) => event.stopPropagation()} onChange={(event) => onChange(event.target.value)} className="admin-input mt-1 min-h-[120px]" /></label>;
