@@ -5,7 +5,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
 import Browse from './pages/Browse';
-import { Login, Register } from './pages/Auth';
+import { Login, Register, ForgotPassword } from './pages/Auth';
 import CreateListing from './pages/CreateListing';
 import EditListing from './pages/EditListing';
 import ListingDetail from './pages/ListingDetail';
@@ -186,6 +186,7 @@ const AppContent: React.FC = () => {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route
           path="*"
           element={
