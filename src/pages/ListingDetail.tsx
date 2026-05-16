@@ -114,15 +114,27 @@ const ListingDetail: React.FC = () => {
     setActionLoading(true);
     setMessage('');
     try {
-      const conversationKey = getConversationKey(currentUser.uid, listing.userId);
+      const conversationKey = `${getConversationKey(currentUser.uid, listing.userId)}_${listing.id}`;
+      const listingImage = listingImages[0] || normalizeImages(listing.images)[0] || '';
+      const listingPrice = typeof listing.price === 'number' ? listing.price : null;
       const cq = query(collection(db, 'conversations'), where('participants', 'array-contains', currentUser.uid));
       const cSnap = await getDocs(cq);
       let existingConvId: string | null = null;
       cSnap.forEach(d => {
         const data = d.data();
-        if (Array.isArray(data.participants) && data.participants.includes(listing.userId)) existingConvId = d.id;
+        if (Array.isArray(data.participants) && data.participants.includes(listing.userId) && data.listingId === listing.id) existingConvId = d.id;
       });
       if (existingConvId) {
+        await updateDoc(doc(db, 'conversations', existingConvId), {
+          conversationKey,
+          listingId: listing.id,
+          listingTitle: listing.title,
+          listingImage,
+          listingPrice,
+          listingType: listing.type,
+          hiddenFor: arrayRemove(currentUser.uid),
+          updatedAt: Date.now()
+        });
         navigate(`/messages/${existingConvId}`);
         return;
       }
@@ -139,6 +151,9 @@ const ListingDetail: React.FC = () => {
         participantPhotos: { [currentUser.uid]: userProfile?.photoURL || currentUser.photoURL || '', [listing.userId]: sellerPhoto || listing.userPhoto || '' },
         listingId: listing.id,
         listingTitle: listing.title,
+        listingImage,
+        listingPrice,
+        listingType: listing.type,
         lastMessage: initialMessage,
         lastMessageAt: now,
         updatedAt: now,
