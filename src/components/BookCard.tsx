@@ -219,18 +219,18 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
           <span className="line-clamp-1">{listing.location}, Nairobi</span>
         </div>
 
-        <div className="mt-5 grid grid-cols-3 divide-x divide-stone-200 border-y border-stone-100 text-stone-600">
-          <div className="flex min-w-0 items-center justify-center gap-1 px-2 py-3">
+        <div className="mt-4 grid grid-cols-3 divide-x divide-stone-200 text-stone-600">
+          <div className="flex min-w-0 items-center justify-center gap-1 px-1.5 py-1.5">
             <i className="las la-book-open shrink-0 text-[16px] leading-none text-stone-500" />
             <span className="min-w-0 truncate text-[13px] font-semibold text-stone-700">{listing.condition}</span>
           </div>
 
-          <div className="flex min-w-0 items-center justify-center gap-1 px-2 py-3">
+          <div className="flex min-w-0 items-center justify-center gap-1 px-1.5 py-1.5">
             <i className="las la-tag shrink-0 text-[16px] leading-none text-stone-500" />
             <span className="min-w-0 truncate text-[13px] font-semibold text-stone-700">{listingValue}</span>
           </div>
 
-          <div className="flex min-w-0 items-center justify-center gap-1 px-2 py-3">
+          <div className="flex min-w-0 items-center justify-center gap-1 px-1.5 py-1.5">
             <i className="las la-layer-group shrink-0 text-[16px] leading-none text-stone-500" />
             <span className="min-w-0 truncate text-[13px] font-semibold text-stone-700">{listing.category}</span>
           </div>
