@@ -47,6 +47,10 @@ export interface Conversation {
   lastMessage: string;
   lastMessageAt: number;
   createdAt: number;
+  updatedAt?: number;
+  buyerId?: string;
+  sellerId?: string;
+  conversationKey?: string;
 }
 
 export interface Message {
@@ -54,8 +58,19 @@ export interface Message {
   conversationId: string;
   senderId: string;
   senderName: string;
+  recipientId?: string;
   text: string;
   createdAt: number;
+  type?: 'text' | 'image' | 'map';
+  imageData?: string;
+  imageName?: string;
+  imageSize?: number;
+  lat?: number;
+  lng?: number;
+  mapUrl?: string;
+  readBy?: string[];
+  deletedFor?: string[];
+  deleted?: boolean;
 }
 
 export interface Rating {
