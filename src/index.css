@@ -106,6 +106,18 @@ form button:has(.la-tag) i {
   color: #1665CC !important;
 }
 
+button[title="Highlight"] {
+  font-size: 0 !important;
+}
+
+button[title="Highlight"]::before {
+  content: "\f591";
+  font-family: "Line Awesome Free";
+  font-weight: 900;
+  font-size: 18px;
+  line-height: 1;
+}
+
 [role="alert"],
 .mb-4.p-3.rounded-xl.text-sm,
 .mb-4.p-3.bg-primary-50.border.border-primary-200.text-primary-700.rounded-xl.text-sm {
