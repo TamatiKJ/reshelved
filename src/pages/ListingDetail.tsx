@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, query, updateDoc, where } from 'firebase/firestore';
+import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, increment, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import RecentListings from '../components/RecentListings';
@@ -21,7 +21,7 @@ const getRatingCount = (ratings: Rating[], star: number) => ratings.filter((rati
 
 const ListingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [listing, setListing] = useState<Listing | null>(null);
   const [sellerPhoto, setSellerPhoto] = useState('');
@@ -39,17 +39,21 @@ const ListingDetail: React.FC = () => {
   const [reviewTitle, setReviewTitle] = useState('');
   const [reviewText, setReviewText] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [bookmarking, setBookmarking] = useState(false);
   const [message, setMessage] = useState('');
 
   const listingImages = useMemo(() => normalizeImages(listing?.images).filter((image) => !failedImages.includes(image)), [listing?.images, failedImages]);
   const activeImage = listingImages[currentImage] || listingImages[0];
   const filteredRatings = useMemo(() => reviewFilter === 'all' ? ratings : ratings.filter((rating) => rating.rating === reviewFilter), [ratings, reviewFilter]);
+  const isBookmarked = Boolean(listing && userProfile?.bookmarks?.includes(listing.id));
 
   useEffect(() => { if (id) fetchListing(); }, [id]);
   useEffect(() => { setCurrentImage(0); setFailedImages([]); setVisibleReviews(REVIEWS_STEP); setReviewFilter('all'); }, [listing?.id]);
   useEffect(() => { if (currentImage >= listingImages.length) setCurrentImage(0); }, [currentImage, listingImages.length]);
 
   const handleImageError = (image: string) => setFailedImages((current) => current.includes(image) ? current : [...current, image]);
+  const goToNextImage = () => setCurrentImage((current) => listingImages.length ? (current + 1) % listingImages.length : 0);
+  const goToPreviousImage = () => setCurrentImage((current) => listingImages.length ? (current - 1 + listingImages.length) % listingImages.length : 0);
 
   const fetchListing = async () => {
     try {
@@ -78,6 +82,29 @@ const ListingDetail: React.FC = () => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBookmark = async () => {
+    if (!listing) return;
+    if (!currentUser) {
+      navigate('/login');
+      return;
+    }
+    if (bookmarking) return;
+    setBookmarking(true);
+    try {
+      await setDoc(doc(db, 'users', currentUser.uid), {
+        bookmarks: isBookmarked ? arrayRemove(listing.id) : arrayUnion(listing.id),
+        lastSeen: Date.now()
+      }, { merge: true });
+      await refreshProfile();
+      setMessage(isBookmarked ? 'Removed from favorites.' : 'Saved to favorites.');
+    } catch (err) {
+      console.error(err);
+      setMessage('Could not update favorites.');
+    } finally {
+      setBookmarking(false);
     }
   };
 
@@ -222,11 +249,21 @@ const ListingDetail: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 xl:gap-10">
           <div className="lg:col-span-2">
-            <div className="aspect-square bg-stone-100 rounded-2xl overflow-hidden relative bg-no-repeat">
-              {activeImage ? <img src={activeImage} alt={listing.title} className="w-full h-full object-cover" onError={() => handleImageError(activeImage)} /> : <div className="w-full h-full flex items-center justify-center bg-stone-100"><svg className="w-16 h-16 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg></div>}
-              {isExpired && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><span className="px-4 py-2 bg-red-600 text-white font-semibold rounded-full">Listing Expired</span></div>}
+            <div className="flex flex-col gap-4 lg:flex-row">
+              {listingImages.length > 1 && <div className="order-2 flex gap-3 overflow-x-auto pb-1 lg:order-1 lg:w-[76px] lg:flex-col lg:overflow-visible lg:pb-0">{listingImages.map((img, i) => <button key={img} onClick={() => setCurrentImage(i)} className={`h-16 w-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 bg-white transition lg:h-[72px] lg:w-[72px] ${i === currentImage ? 'border-[#1665CC] ring-2 ring-[#1665CC]/10' : 'border-stone-200 hover:border-[#1665CC]'}`} aria-label={`View image ${i + 1}`}><img src={img} alt="" className="h-full w-full object-cover" onError={() => handleImageError(img)} /></button>)}</div>}
+              <div className="order-1 flex-1 lg:order-2">
+                <div className="aspect-square bg-stone-100 rounded-2xl overflow-hidden relative bg-no-repeat">
+                  {activeImage ? <img src={activeImage} alt={listing.title} className="w-full h-full object-cover" onError={() => handleImageError(activeImage)} /> : <div className="w-full h-full flex items-center justify-center bg-stone-100"><svg className="w-16 h-16 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg></div>}
+                  {isExpired && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><span className="px-4 py-2 bg-red-600 text-white font-semibold rounded-full">Listing Expired</span></div>}
+                  <div className="absolute right-4 top-4 flex flex-col gap-3">
+                    <button type="button" onClick={copyLink} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-stone-800 shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50" aria-label="Share listing"><i className="las la-share-alt text-2xl" /></button>
+                    <button type="button" onClick={handleBookmark} disabled={bookmarking} className={`flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 ${isBookmarked ? 'text-[#1665CC]' : 'text-stone-800'}`} aria-label={isBookmarked ? 'Remove from favorites' : 'Save to favorites'}><i className={`${isBookmarked ? 'las' : 'lar'} la-heart text-2xl`} /></button>
+                    <button type="button" onClick={() => window.open(activeImage || listingImages[0], '_blank')} disabled={!activeImage} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-stone-800 shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Open larger image"><i className="las la-search-plus text-2xl" /></button>
+                  </div>
+                  {listingImages.length > 1 && <><button type="button" onClick={goToPreviousImage} className="absolute left-4 top-1/2 hidden h-12 w-12 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white text-stone-800 shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50 sm:flex" aria-label="Previous image"><i className="las la-angle-left text-2xl" /></button><button type="button" onClick={goToNextImage} className="absolute right-4 top-1/2 flex h-12 w-12 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white text-stone-800 shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50" aria-label="Next image"><i className="las la-angle-right text-2xl" /></button><div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold text-white">{currentImage + 1} / {listingImages.length}</div></>}
+                </div>
+              </div>
             </div>
-            {listingImages.length > 1 && <div className="flex gap-2 mt-3">{listingImages.map((img, i) => <button key={img} onClick={() => setCurrentImage(i)} className={`cursor-pointer w-16 h-16 rounded-lg overflow-hidden border-2 transition ${i === currentImage ? 'border-primary-500' : 'border-stone-200 hover:border-stone-300'}`}><img src={img} alt="" className="w-full h-full object-cover" onError={() => handleImageError(img)} /></button>)}</div>}
           </div>
 
           <div className="lg:col-span-1 space-y-5">
