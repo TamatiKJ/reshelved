@@ -26,10 +26,7 @@ const getDisplayPrice = (listing: Listing) => {
 
 const normalizeImages = (images?: unknown): string[] => {
   if (!Array.isArray(images)) return [];
-  return images
-    .filter((image): image is string => typeof image === 'string')
-    .map((image) => image.trim())
-    .filter((image) => image.length > 0);
+  return images.filter((image): image is string => typeof image === 'string').map((image) => image.trim()).filter((image) => image.length > 0);
 };
 
 const getStarLabel = (average: number) => {
@@ -44,7 +41,7 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
   const [bookmarking, setBookmarking] = useState(false);
   const [failedImages, setFailedImages] = useState<string[]>([]);
   const [sellerPhoto, setSellerPhoto] = useState(listing.userPhoto || '');
-  const [sellerRating, setSellerRating] = useState<{ average: number; count: number }>({ average: 0, count: 0 });
+  const [sellerRating, setSellerRating] = useState<{ average: number; count: number }>({ average: Number((listing as any).sellerRatingAverage || 0), count: Number((listing as any).sellerRatingCount || 0) });
   const images = useMemo(() => normalizeImages(listing.images).filter((image) => !failedImages.includes(image)), [listing.images, failedImages]);
   const coverImage = images[0];
   const hasImages = Boolean(coverImage);
@@ -63,24 +60,46 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
     const fetchSellerMeta = async () => {
       if (!listing.userId) return;
       try {
-        const userSnap = await getDoc(doc(db, 'users', listing.userId));
-        if (userSnap.exists()) {
-          const photoURL = userSnap.data().photoURL;
+        const publicSnap = await getDoc(doc(db, 'publicProfiles', listing.userId)).catch(() => null);
+        if (publicSnap?.exists()) {
+          const data = publicSnap.data();
+          if (typeof data.photoURL === 'string' && data.photoURL.trim()) setSellerPhoto(data.photoURL);
+          if (typeof data.ratingCount === 'number') {
+            setSellerRating({ average: Number(data.ratingAverage || 0), count: Number(data.ratingCount || 0) });
+          }
+        }
+
+        const userSnap = await getDoc(doc(db, 'users', listing.userId)).catch(() => null);
+        if (userSnap?.exists()) {
+          const userData = userSnap.data();
+          const photoURL = userData.photoURL;
           if (typeof photoURL === 'string' && photoURL.trim()) {
             setSellerPhoto(photoURL);
             if (currentUser?.uid === listing.userId && photoURL !== listing.userPhoto) {
               await setDoc(doc(db, 'listings', listing.id), { userPhoto: photoURL }, { merge: true }).catch(() => undefined);
+              await setDoc(doc(db, 'publicProfiles', listing.userId), {
+                uid: listing.userId,
+                displayName: userData.displayName || listing.userName || 'Reshelved user',
+                photoURL,
+                location: userData.location || listing.location || '',
+                ratingAverage: sellerRating.average,
+                ratingCount: sellerRating.count,
+                updatedAt: Date.now()
+              }, { merge: true }).catch(() => undefined);
             }
           }
         }
-        const ratingsSnap = await getDocs(query(collection(db, 'ratings'), where('toUserId', '==', listing.userId)));
-        const ratings: Rating[] = [];
-        ratingsSnap.forEach((item) => ratings.push({ id: item.id, ...item.data() } as Rating));
-        if (ratings.length > 0) {
-          const average = ratings.reduce((sum, rating) => sum + (rating.rating || 0), 0) / ratings.length;
-          setSellerRating({ average, count: ratings.length });
-        } else {
-          setSellerRating({ average: 0, count: 0 });
+
+        const ratingsSnap = await getDocs(query(collection(db, 'ratings'), where('toUserId', '==', listing.userId))).catch(() => null);
+        if (ratingsSnap) {
+          const ratings: Rating[] = [];
+          ratingsSnap.forEach((item) => ratings.push({ id: item.id, ...item.data() } as Rating));
+          if (ratings.length > 0) {
+            const average = ratings.reduce((sum, rating) => sum + (rating.rating || 0), 0) / ratings.length;
+            setSellerRating({ average, count: ratings.length });
+          } else if (!publicSnap?.exists()) {
+            setSellerRating({ average: 0, count: 0 });
+          }
         }
       } catch (err) {
         console.error('Error loading seller card data:', err);
