@@ -14,15 +14,19 @@ const legalPages: { slug: LegalPageSlug; label: string }[] = [
 const defaultContent = '<p>Write the page content here.</p>';
 const getPageDocId = (slug: LegalPageSlug) => `legal-${slug}`;
 
-const AdminLegalPagesEditor: React.FC = () => {
+const AdminLegalPagesEditor: React.FC<{ initialPage?: LegalPageSlug }> = ({ initialPage = 'privacy-policy' }) => {
   const editorRef = useRef<HTMLDivElement | null>(null);
-  const [selectedPage, setSelectedPage] = useState<LegalPageSlug>('privacy-policy');
+  const [selectedPage, setSelectedPage] = useState<LegalPageSlug>(initialPage);
   const [title, setTitle] = useState('Privacy Policy');
   const [content, setContent] = useState(defaultContent);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
+
+  useEffect(() => {
+    setSelectedPage(initialPage);
+  }, [initialPage]);
 
   const currentLabel = legalPages.find((page) => page.slug === selectedPage)?.label || 'Page';
 
@@ -98,20 +102,20 @@ const AdminLegalPagesEditor: React.FC = () => {
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200 overflow-visible">
-      <div className="sticky top-16 z-20 border-b border-stone-200 bg-white/95 p-4 backdrop-blur">
+      <div className="border-b border-stone-200 bg-white p-4">
         <h2 className="text-lg font-bold text-stone-900">Footer Legal Pages</h2>
         <p className="text-sm text-stone-500 mt-1">Edit the title and content that appears on the footer pages.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr]">
-        <aside className="border-b border-stone-200 bg-white p-3 lg:sticky lg:top-[145px] lg:self-start lg:border-b-0 lg:border-r">
+        <aside className="border-b border-stone-200 bg-white p-3 lg:border-b-0 lg:border-r">
           <div className="space-y-1">
             {legalPages.map((page) => (
               <button
                 key={page.slug}
                 type="button"
                 onClick={() => setSelectedPage(page.slug)}
-                className={`w-full cursor-pointer rounded-xl px-3 py-2 text-left text-sm font-semibold transition ${selectedPage === page.slug ? 'bg-primary-50 text-primary-700' : 'text-stone-600 hover:bg-stone-50'}`}
+                className={`w-full cursor-pointer rounded-xl px-3 py-2 text-left text-sm font-semibold transition ${selectedPage === page.slug ? 'bg-[#1665CC]/10 text-[#1665CC]' : 'text-stone-600 hover:bg-stone-50'}`}
               >
                 {page.label}
               </button>
@@ -122,19 +126,19 @@ const AdminLegalPagesEditor: React.FC = () => {
         <div className="p-4 sm:p-5 space-y-4">
           {message && <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${messageType === 'success' ? 'border-green-200 bg-green-50 text-green-700' : 'border-red-200 bg-red-50 text-red-700'}`}>{message}</div>}
 
-          <div className="sticky top-16 z-10 rounded-2xl border border-stone-200 bg-white/95 p-4 shadow-sm backdrop-blur">
+          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <label className="block text-sm font-semibold text-stone-700 mb-1">Page Title</label>
             <input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               disabled={loading || saving}
-              className="w-full rounded-xl border border-stone-200 px-4 py-3 text-sm outline-none focus:border-primary-400 disabled:bg-stone-50"
+              className="w-full rounded-xl border border-stone-200 px-4 py-3 text-sm outline-none focus:border-[#1665CC] disabled:bg-stone-50"
             />
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-stone-700 mb-2">Page Content</label>
-            <div className="sticky top-[168px] z-10 flex flex-wrap gap-2 rounded-t-xl border border-b-0 border-stone-200 bg-stone-50 p-2">
+            <div className="flex flex-wrap gap-2 rounded-t-xl border border-b-0 border-stone-200 bg-stone-50 p-2">
               <button type="button" onClick={() => runCommand('formatBlock', 'p')} className="cursor-pointer rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm hover:bg-stone-100">Paragraph</button>
               <button type="button" onClick={() => runCommand('formatBlock', 'h2')} className="cursor-pointer rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm font-semibold hover:bg-stone-100">H2</button>
               <button type="button" onClick={() => runCommand('formatBlock', 'h3')} className="cursor-pointer rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm font-semibold hover:bg-stone-100">H3</button>
@@ -152,20 +156,20 @@ const AdminLegalPagesEditor: React.FC = () => {
               contentEditable={!loading && !saving}
               suppressContentEditableWarning
               onInput={() => setContent(editorRef.current?.innerHTML || '')}
-              className="min-h-[520px] rounded-b-xl border border-stone-200 bg-white px-4 py-3 text-sm leading-7 text-stone-700 outline-none focus:border-primary-400 [&_blockquote]:border-l-4 [&_blockquote]:border-stone-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-stone-600 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:mt-6 [&_h2]:mb-2 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:mt-5 [&_h3]:mb-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-6"
+              className="min-h-[520px] rounded-b-xl border border-stone-200 bg-white px-4 py-3 text-sm leading-7 text-stone-700 outline-none focus:border-[#1665CC] [&_blockquote]:border-l-4 [&_blockquote]:border-stone-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-stone-600 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:mt-6 [&_h2]:mb-2 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:mt-5 [&_h3]:mb-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-6"
             />
           </div>
 
-          <div className="sticky bottom-4 z-10 flex items-center gap-3 rounded-2xl border border-stone-200 bg-white/95 p-3 shadow-sm backdrop-blur">
+          <div className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
             <button
               type="button"
               onClick={savePage}
               disabled={loading || saving}
-              className="cursor-pointer rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="cursor-pointer rounded-xl bg-[#1665CC] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#1257AD] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? 'Saving...' : 'Save Page'}
             </button>
-            <a href={`/${selectedPage}`} target="_blank" rel="noreferrer" className="text-sm font-semibold text-primary-700 hover:text-primary-800">
+            <a href={`/${selectedPage}`} target="_blank" rel="noreferrer" className="text-sm font-semibold text-[#1665CC] hover:text-[#1257AD]">
               Preview page
             </a>
           </div>
