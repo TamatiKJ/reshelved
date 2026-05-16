@@ -44,6 +44,9 @@ export interface Conversation {
   participantPhotos: Record<string, string>;
   listingId: string;
   listingTitle: string;
+  listingImage?: string;
+  listingPrice?: number;
+  listingType?: 'swap' | 'donate' | 'sell';
   lastMessage: string;
   lastMessageAt: number;
   createdAt: number;
