@@ -16,8 +16,8 @@ const normalizeImages = (images?: unknown): string[] => {
 
 const getShareUrl = () => encodeURIComponent(window.location.href);
 const getShareText = (listing: Listing) => encodeURIComponent(`Check out ${listing.title} on Reshelved`);
-
 const getStars = (rating: number) => `${'★'.repeat(Math.round(rating))}${'☆'.repeat(5 - Math.round(rating))}`;
+const getRatingCount = (ratings: Rating[], star: number) => ratings.filter((rating) => rating.rating === star).length;
 
 const ListingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,6 +33,7 @@ const ListingDetail: React.FC = () => {
   const [reportDetails, setReportDetails] = useState('');
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [visibleReviews, setVisibleReviews] = useState(REVIEWS_STEP);
+  const [reviewFilter, setReviewFilter] = useState<'all' | 1 | 2 | 3 | 4 | 5>('all');
   const [showRating, setShowRating] = useState(false);
   const [ratingValue, setRatingValue] = useState(5);
   const [reviewTitle, setReviewTitle] = useState('');
@@ -42,9 +43,10 @@ const ListingDetail: React.FC = () => {
 
   const listingImages = useMemo(() => normalizeImages(listing?.images).filter((image) => !failedImages.includes(image)), [listing?.images, failedImages]);
   const activeImage = listingImages[currentImage] || listingImages[0];
+  const filteredRatings = useMemo(() => reviewFilter === 'all' ? ratings : ratings.filter((rating) => rating.rating === reviewFilter), [ratings, reviewFilter]);
 
   useEffect(() => { if (id) fetchListing(); }, [id]);
-  useEffect(() => { setCurrentImage(0); setFailedImages([]); setVisibleReviews(REVIEWS_STEP); }, [listing?.id]);
+  useEffect(() => { setCurrentImage(0); setFailedImages([]); setVisibleReviews(REVIEWS_STEP); setReviewFilter('all'); }, [listing?.id]);
   useEffect(() => { if (currentImage >= listingImages.length) setCurrentImage(0); }, [currentImage, listingImages.length]);
 
   const handleImageError = (image: string) => setFailedImages((current) => current.includes(image) ? current : [...current, image]);
@@ -193,9 +195,17 @@ const ListingDetail: React.FC = () => {
   const isExpired = listing.expiresAt < Date.now();
   const avgRating = ratings.length > 0 ? ratings.reduce((s, r) => s + r.rating, 0) / ratings.length : 0;
   const typeLabels: Record<string, string> = { swap: 'Swap', donate: 'Free / Donate', sell: 'For Sale' };
-  const shownRatings = ratings.slice(0, visibleReviews);
+  const shownRatings = filteredRatings.slice(0, visibleReviews);
   const shareUrl = getShareUrl();
   const shareText = getShareText(listing);
+  const ratingBreakdown = [5, 4, 3, 2, 1].map((star) => {
+    const count = getRatingCount(ratings, star);
+    return { star, count, percent: ratings.length ? Math.round((count / ratings.length) * 100) : 0 };
+  });
+  const reviewFilters: Array<{ label: string; value: 'all' | 1 | 2 | 3 | 4 | 5; count: number }> = [
+    { label: 'All reviews', value: 'all', count: ratings.length },
+    ...([5, 4, 3, 2, 1] as const).map((star) => ({ label: `${star} star${star === 1 ? '' : 's'}`, value: star, count: getRatingCount(ratings, star) }))
+  ];
   const shareItems = [
     { label: 'WhatsApp', icon: 'lab la-whatsapp', className: 'bg-green-500 text-white', href: `https://wa.me/?text=${shareText}%20${shareUrl}` },
     { label: 'LinkedIn', icon: 'lab la-linkedin-in', className: 'bg-[#0A66C2] text-white', href: `https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl}` },
@@ -229,7 +239,7 @@ const ListingDetail: React.FC = () => {
               <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 leading-tight">{listing.title}</h1><p className="text-stone-500 mt-2">by {listing.author}</p>
             </div>
             {listing.type === 'sell' && listing.price && <div className="text-2xl font-bold text-primary-700">KSh {listing.price.toLocaleString()}</div>}
-            <div className="flex flex-wrap items-center rounded-xl border border-stone-200 bg-white text-sm text-stone-700">
+            <div className="inline-flex w-fit max-w-full flex-wrap items-center rounded-xl border border-stone-200 bg-white text-sm text-stone-700">
               <div className="flex items-center gap-2 px-4 py-3"><i className="las la-map-marker-alt text-lg text-stone-400" /><span>{listing.location}</span></div>
               <div className="h-6 w-px bg-stone-200" />
               <div className="flex items-center gap-2 px-4 py-3"><i className="las la-layer-group text-lg text-stone-400" /><span>{listing.category}</span></div>
@@ -243,7 +253,7 @@ const ListingDetail: React.FC = () => {
           </div>
         </div>
 
-        {ratings.length > 0 && <div className="mt-10"><h2 className="text-lg font-bold text-stone-800 mb-4">Seller Reviews</h2><div className="space-y-3">{shownRatings.map((r) => <div key={r.id} className="bg-white border border-stone-200 rounded-xl p-4"><div className="flex items-center justify-between"><span className="font-medium text-stone-700">{r.fromUserName}</span><span className="text-accent-500 text-sm">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span></div>{r.title && <h3 className="mt-3 text-lg font-extrabold text-stone-800">{r.title}</h3>}{r.review && <p className="text-sm text-stone-600 mt-1">{r.review}</p>}<p className="text-xs text-stone-400 mt-2">{new Date(r.createdAt).toLocaleDateString()} · Review for {r.listingTitle}</p></div>)}</div>{visibleReviews < ratings.length && <button onClick={() => setVisibleReviews((current) => current + REVIEWS_STEP)} className="cursor-pointer mt-4 rounded-xl border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50">Show more reviews</button>}</div>}
+        {ratings.length > 0 && <section className="mt-12 border-t border-stone-200 pt-8"><h2 className="text-2xl font-bold text-stone-900">Seller ratings & reviews</h2><div className="mt-8 grid gap-8 lg:grid-cols-[280px_1fr]"><div><div className="text-5xl font-black tracking-tight text-stone-950">{avgRating.toFixed(1)} out of 5</div><div className="mt-3 flex items-center gap-2"><span className="text-lg text-amber-400">{getStars(avgRating)}</span><span className="text-sm text-stone-600">{ratings.length} review{ratings.length !== 1 ? 's' : ''}</span></div><p className="mt-5 text-sm font-semibold text-stone-600">Based on seller interactions</p></div><div className="space-y-3">{ratingBreakdown.map((item) => <button key={item.star} type="button" onClick={() => { setReviewFilter(item.star as 1 | 2 | 3 | 4 | 5); setVisibleReviews(REVIEWS_STEP); }} className="grid w-full cursor-pointer grid-cols-[64px_1fr_70px] items-center gap-3 text-sm text-left"><span className="font-medium text-stone-600 underline underline-offset-2">{item.star} star{item.star !== 1 ? 's' : ''}</span><span className="h-2.5 overflow-hidden rounded-full bg-stone-200"><span className="block h-full rounded-full bg-[#1665CC]" style={{ width: `${item.percent}%` }} /></span><span className="text-right text-stone-600">{item.percent}% ({item.count})</span></button>)}</div></div><div className="mt-8 flex flex-wrap gap-2 border-t border-stone-200 pt-5">{reviewFilters.map((item) => <button key={String(item.value)} type="button" onClick={() => { setReviewFilter(item.value); setVisibleReviews(REVIEWS_STEP); }} className={`cursor-pointer rounded-full border px-4 py-2 text-sm font-bold transition ${reviewFilter === item.value ? 'border-[#1665CC] bg-[#1665CC] text-white' : 'border-stone-300 bg-white text-stone-700 hover:border-[#1665CC] hover:text-[#1665CC]'}`}>{item.label} <span className={reviewFilter === item.value ? 'text-white/80' : 'text-stone-400'}>({item.count})</span></button>)}</div><div className="mt-8 space-y-0">{shownRatings.length > 0 ? shownRatings.map((r) => <article key={r.id} className="border-t border-stone-200 py-6"><div className="grid gap-4 sm:grid-cols-[160px_1fr]"><div><p className="text-sm text-stone-500">{new Date(r.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p><p className="mt-6 font-semibold text-stone-700">{r.fromUserName}</p></div><div><div className="text-amber-400">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</div><h3 className="mt-4 text-xl font-extrabold text-stone-800">{r.title || r.listingTitle || 'Book exchange review'}</h3>{r.review && <p className="mt-2 max-w-3xl text-sm leading-relaxed text-stone-700">{r.review}</p>}<p className="mt-3 text-xs text-stone-500">Review for {r.listingTitle}</p></div></div></article>) : <div className="rounded-xl border border-stone-200 bg-stone-50 p-5 text-sm text-stone-500">No reviews match this filter.</div>}</div>{visibleReviews < filteredRatings.length && <button onClick={() => setVisibleReviews((current) => current + REVIEWS_STEP)} className="cursor-pointer mt-4 rounded-full border border-stone-800 px-5 py-2.5 text-sm font-bold text-stone-900 hover:bg-stone-50">View more reviews</button>}</section>}
         <RecentListings excludeId={listing.id} limit={3} />
         {showReport && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white rounded-2xl max-w-md w-full p-6"><h3 className="text-lg font-bold text-stone-800">Report Listing</h3><p className="text-sm text-stone-500 mt-1">Help us understand what's wrong</p><div className="mt-4 space-y-3"><select value={reportReason} onChange={(e) => setReportReason(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm bg-white"><option value="">Select a reason...</option><option value="spam">Spam or misleading</option><option value="inappropriate">Inappropriate content</option><option value="fraud">Suspected fraud</option><option value="prohibited">Prohibited item</option><option value="other">Other</option></select><textarea value={reportDetails} onChange={(e) => setReportDetails(e.target.value)} placeholder="Additional details..." rows={3} className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm resize-none" /><div className="flex gap-2"><button onClick={() => setShowReport(false)} className="cursor-pointer flex-1 py-2.5 border border-stone-200 rounded-xl text-sm font-medium">Cancel</button><button onClick={handleReport} disabled={!reportReason || actionLoading} className="cursor-pointer flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50">Submit Report</button></div></div></div></div>}
         {showRating && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white rounded-2xl max-w-md w-full p-6"><h3 className="text-lg font-bold text-stone-800">Leave a Review</h3><p className="text-sm text-stone-500 mt-1">Rate your experience with {listing.userName}</p><div className="mt-4 space-y-3"><div className="flex items-center gap-1">{[1,2,3,4,5].map((star) => <button key={star} onClick={() => setRatingValue(star)} className={`cursor-pointer text-3xl transition ${star <= ratingValue ? 'text-accent-500' : 'text-stone-300'}`}>★</button>)}</div><input value={reviewTitle} onChange={(e) => setReviewTitle(e.target.value)} placeholder="Review title" className="w-full rounded-xl border border-stone-200 px-4 py-3 text-sm outline-none focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10" /><textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder="Share your experience..." rows={3} className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm resize-none focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10 outline-none" /><div className="flex gap-2"><button onClick={() => setShowRating(false)} className="cursor-pointer flex-1 py-2.5 border border-stone-200 rounded-xl text-sm font-medium">Cancel</button><button onClick={handleRating} disabled={actionLoading} className="cursor-pointer flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50">Submit Review</button></div></div></div></div>}
