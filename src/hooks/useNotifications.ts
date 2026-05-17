@@ -23,7 +23,12 @@ export const useNotifications = () => {
 
     const unsub = onSnapshot(q, (snap) => {
       setUnreadCount(snap.size);
-      setMessageUnreadCount(snap.docs.filter((item) => item.data().type === 'message').length);
+      const threads = new Set<string>();
+      snap.docs.forEach((item) => {
+        const data = item.data();
+        if (data.type === 'message') threads.add(data.conversationId || item.id);
+      });
+      setMessageUnreadCount(threads.size);
     });
 
     return unsub;
