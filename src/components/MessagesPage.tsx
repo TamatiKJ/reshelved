@@ -74,13 +74,13 @@ const MessagesPage: React.FC = () => {
       return;
     }
 
-    const markNotificationsRead = async () => {
+    const markLegacyMessageNotificationsRead = async () => {
       try {
         const nq = query(collection(db, 'notifications'), where('userId', '==', currentUser.uid), where('conversationId', '==', conversationId), where('read', '==', false));
         const snap = await getDocs(nq);
         await Promise.all(snap.docs.map((item) => updateDoc(doc(db, 'notifications', item.id), { read: true })));
       } catch (err) {
-        console.error('Could not mark notifications as read:', err);
+        console.error('Could not mark legacy message notifications as read:', err);
       }
     };
 
@@ -99,7 +99,7 @@ const MessagesPage: React.FC = () => {
       if (unread.length > 0) await updateDoc(doc(db, 'conversations', conversationId), { [`unreadCount.${currentUser.uid}`]: 0 }).catch(() => null);
     };
 
-    markNotificationsRead();
+    markLegacyMessageNotificationsRead();
     const q = query(collection(db, 'messages'), where('conversationId', '==', conversationId));
     const unsub = onSnapshot(q, (snap) => {
       const items: Message[] = [];
@@ -107,7 +107,7 @@ const MessagesPage: React.FC = () => {
       items.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
       setMessages(items);
       requestAnimationFrame(() => messagesPaneRef.current?.scrollTo({ top: messagesPaneRef.current.scrollHeight, behavior: 'auto' }));
-      markNotificationsRead();
+      markLegacyMessageNotificationsRead();
       markMessagesDelivered(items);
       markMessagesRead(items);
     }, (err) => {
@@ -203,11 +203,6 @@ const MessagesPage: React.FC = () => {
     }
   };
 
-  const notifyRecipients = async (recipientIds: string[], text: string, subject: string, now: number) => {
-    if (!currentUser || !selectedConv || !conversationId) return;
-    await Promise.all(recipientIds.map((recipientId) => addDoc(collection(db, 'notifications'), { userId: recipientId, fromUserId: currentUser.uid, fromUserName: userProfile?.displayName || currentUser.displayName || 'User', type: 'message', subject, message: text, conversationId, listingId: selectedConv.listingId, createdAt: now, read: false })));
-  };
-
   const buildConversationDeliveryUpdate = (recipientIds: string[], now: number) => {
     const updates: Record<string, unknown> = { lastMessageAt: now, updatedAt: now, hiddenFor: [] };
     if (currentUser) updates[`deliveredAt.${currentUser.uid}`] = now;
@@ -224,7 +219,6 @@ const MessagesPage: React.FC = () => {
     try {
       await addDoc(collection(db, 'messages'), { conversationId, senderId: currentUser.uid, senderName: userProfile?.displayName || currentUser.displayName || 'User', recipientId: recipientIds[0] || '', readBy: [currentUser.uid], deliveredTo: [currentUser.uid], deliveredAt: { [currentUser.uid]: now }, createdAt: now, ...payload });
       await updateDoc(doc(db, 'conversations', conversationId), { ...buildConversationDeliveryUpdate(recipientIds, now), lastMessage: payload.type === 'map' ? 'Location pin' : payload.text, conversationKey: selectedConv.conversationKey || (recipientIds[0] ? getConversationKey(currentUser.uid, recipientIds[0]) : '') });
-      await notifyRecipients(recipientIds, payload.text, `New message from ${userProfile?.displayName || currentUser.displayName || 'User'}`, now);
     } catch (err) {
       console.error('Error sending message:', err);
       setError('Message failed to send. The other user may have blocked you or Firestore rules rejected the write.');
@@ -255,7 +249,6 @@ const MessagesPage: React.FC = () => {
       const uploaded = await uploadChatImage(conversationId, messageRef.id, file);
       await setDoc(messageRef, { conversationId, senderId: currentUser.uid, senderName: userProfile?.displayName || currentUser.displayName || 'User', recipientId: recipientIds[0] || '', readBy: [currentUser.uid], deliveredTo: [currentUser.uid], deliveredAt: { [currentUser.uid]: now }, createdAt: now, type: 'image', text: 'Image', ...uploaded });
       await updateDoc(doc(db, 'conversations', conversationId), { ...buildConversationDeliveryUpdate(recipientIds, now), lastMessage: 'Image', conversationKey: selectedConv.conversationKey || (recipientIds[0] ? getConversationKey(currentUser.uid, recipientIds[0]) : '') });
-      await notifyRecipients(recipientIds, 'Image', `New image from ${userProfile?.displayName || currentUser.displayName || 'User'}`, now);
     } catch (err: any) {
       console.error('Could not send image:', err);
       setError(err?.message || 'Could not send image. The other user may have blocked you.');
