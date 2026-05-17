@@ -9,14 +9,14 @@ import BookCard from '../components/BookCard';
 import type { UserProfile, Listing, Rating } from '../types';
 import { KENYAN_CITIES } from '../types';
 
-const inputClass = 'w-full px-4 py-2 rounded-lg border border-stone-200 text-sm outline-none focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
+const inputClass = 'w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-white text-sm outline-none focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
 const DEFAULT_RENEW_DAYS = 10;
 const getConversationKey = (a: string, b: string) => [a, b].sort().join('_');
 type ProfileTab = 'profile' | 'settings' | 'active' | 'expired' | 'bookmarks';
 
 const PasswordField: React.FC<{ value: string; onChange: (value: string) => void; placeholder?: string; autoComplete: string }> = ({ value, onChange, placeholder, autoComplete }) => {
   const [visible, setVisible] = useState(false);
-  return <div className="relative"><input type={visible ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} className={`${inputClass} pr-10`} placeholder={placeholder} autoComplete={autoComplete} /><button type="button" onClick={() => setVisible(v => !v)} className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-stone-500 hover:bg-stone-100" aria-label={visible ? 'Hide password' : 'Show password'}><i className={`las ${visible ? 'la-eye-slash' : 'la-eye'} text-xl`} /></button></div>;
+  return <div className="relative"><input type={visible ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} className={`${inputClass} pr-10`} placeholder={placeholder} autoComplete={autoComplete} /><button type="button" onClick={() => setVisible(v => !v)} className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-stone-500 hover:bg-stone-100" aria-label={visible ? 'Hide password' : 'Show password'}><i className={`las ${visible ? 'la-eye-slash' : 'la-eye'} text-xl`} /></button></div>;
 };
 
 const resizeProfilePhoto = (file: File): Promise<Blob> => new Promise((resolve, reject) => {
@@ -38,6 +38,13 @@ const resizeProfilePhoto = (file: File): Promise<Blob> => new Promise((resolve, 
   img.src = objectUrl;
 });
 
+const SectionTitle: React.FC<{ title: string; subtitle?: string; action?: React.ReactNode }> = ({ title, subtitle, action }) => (
+  <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div><h2 className="text-xl font-bold text-stone-950">{title}</h2>{subtitle && <p className="mt-1 text-sm text-stone-500">{subtitle}</p>}</div>
+    {action}
+  </div>
+);
+
 const Profile: React.FC = () => {
   const { userId } = useParams<{ userId?: string }>();
   const navigate = useNavigate();
@@ -47,7 +54,7 @@ const Profile: React.FC = () => {
   const [bookmarkedListings, setBookmarkedListings] = useState<Listing[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<ProfileTab>('profile');
+  const [activeTab, setActiveTab] = useState<ProfileTab>('active');
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [messageLoading, setMessageLoading] = useState(false);
@@ -72,6 +79,7 @@ const Profile: React.FC = () => {
   const expiredListings = useMemo(() => listings.filter(l => !l.active || l.expiresAt <= Date.now()), [listings]);
   const avgRating = ratings.length ? ratings.reduce((s, r) => s + r.rating, 0) / ratings.length : 0;
 
+  useEffect(() => { if (!isOwnProfile) setActiveTab('active'); }, [isOwnProfile]);
   useEffect(() => { if (targetUserId) fetchData(); }, [targetUserId, currentUser?.uid, userProfile?.bookmarks?.join('|')]);
   useEffect(() => { if (!saveMessage) return; const timer = window.setTimeout(() => setSaveMessage(''), 5000); return () => window.clearTimeout(timer); }, [saveMessage]);
   useEffect(() => { setNewEmail(currentUser?.email || profile?.email || ''); }, [currentUser?.email, profile?.email]);
@@ -86,18 +94,15 @@ const Profile: React.FC = () => {
 
   const syncPublicProfile = async (profileData: Partial<UserProfile> = {}) => {
     if (!currentUser) return;
-    const displayName = profileData.displayName || profile?.displayName || userProfile?.displayName || currentUser.displayName || 'Reshelved User';
-    const photoURL = profileData.photoURL || profile?.photoURL || userProfile?.photoURL || currentUser.photoURL || '';
-    const location = profileData.location || profile?.location || userProfile?.location || '';
-    await setDoc(doc(db, 'publicProfiles', currentUser.uid), { uid: currentUser.uid, displayName, photoURL, location, ratingAverage: avgRating, ratingCount: ratings.length, updatedAt: Date.now() }, { merge: true }).catch(() => undefined);
+    await setDoc(doc(db, 'publicProfiles', currentUser.uid), { uid: currentUser.uid, displayName: profileData.displayName || profile?.displayName || userProfile?.displayName || currentUser.displayName || 'Reshelved User', photoURL: profileData.photoURL || profile?.photoURL || userProfile?.photoURL || currentUser.photoURL || '', location: profileData.location || profile?.location || userProfile?.location || '', ratingAverage: avgRating, ratingCount: ratings.length, updatedAt: Date.now() }, { merge: true }).catch(() => undefined);
   };
 
   const syncUserDisplayData = async (updates: { displayName?: string; photoURL?: string; location?: string }) => {
     if (!currentUser) return;
     const listingSnap = await getDocs(query(collection(db, 'listings'), where('userId', '==', currentUser.uid)));
-    await Promise.all(listingSnap.docs.map((item) => updateDoc(doc(db, 'listings', item.id), { ...(updates.displayName ? { userName: updates.displayName } : {}), ...(updates.photoURL !== undefined ? { userPhoto: updates.photoURL } : {}) })));
+    await Promise.all(listingSnap.docs.map(item => updateDoc(doc(db, 'listings', item.id), { ...(updates.displayName ? { userName: updates.displayName } : {}), ...(updates.photoURL !== undefined ? { userPhoto: updates.photoURL } : {}) })));
     const conversationSnap = await getDocs(query(collection(db, 'conversations'), where('participants', 'array-contains', currentUser.uid))).catch(() => null);
-    await Promise.all((conversationSnap?.docs || []).map((item) => updateDoc(doc(db, 'conversations', item.id), { ...(updates.displayName ? { [`participantNames.${currentUser.uid}`]: updates.displayName } : {}), ...(updates.photoURL !== undefined ? { [`participantPhotos.${currentUser.uid}`]: updates.photoURL } : {}) })));
+    await Promise.all((conversationSnap?.docs || []).map(item => updateDoc(doc(db, 'conversations', item.id), { ...(updates.displayName ? { [`participantNames.${currentUser.uid}`]: updates.displayName } : {}), ...(updates.photoURL !== undefined ? { [`participantPhotos.${currentUser.uid}`]: updates.photoURL } : {}) })));
     await syncPublicProfile({ displayName: updates.displayName, photoURL: updates.photoURL, location: updates.location });
   };
 
@@ -141,11 +146,8 @@ const Profile: React.FC = () => {
       rSnap?.forEach(d => rs.push({ id: d.id, ...d.data() } as Rating));
       rs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       setRatings(rs);
-    } catch (err) {
-      console.error('Error loading profile:', err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error('Error loading profile:', err); }
+    finally { setLoading(false); }
   };
 
   const reauthenticate = async (password: string) => {
@@ -168,9 +170,8 @@ const Profile: React.FC = () => {
       setListings(current => current.map(listing => ({ ...listing, userName: cleanName })));
       await refreshProfile();
       setSaveMessage('Profile saved.');
-    } catch (err: any) {
-      setSaveError(err?.message || 'Profile failed to save.');
-    } finally { setSaving(false); }
+    } catch (err: any) { setSaveError(err?.message || 'Profile failed to save.'); }
+    finally { setSaving(false); }
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -246,8 +247,7 @@ const Profile: React.FC = () => {
     setMessageLoading(true); setSaveError('');
     try {
       const conversationKey = getConversationKey(currentUser.uid, targetUserId);
-      const q = query(collection(db, 'conversations'), where('participants', 'array-contains', currentUser.uid));
-      const snap = await getDocs(q);
+      const snap = await getDocs(query(collection(db, 'conversations'), where('participants', 'array-contains', currentUser.uid)));
       let existingConvId: string | null = null;
       snap.forEach(item => { const data = item.data(); if (Array.isArray(data.participants) && data.participants.includes(targetUserId)) existingConvId = item.id; });
       if (existingConvId) return navigate(`/messages/${existingConvId}`);
@@ -266,47 +266,48 @@ const Profile: React.FC = () => {
   const removeBookmark = async (listingId: string) => {
     if (!currentUser) return;
     await setDoc(doc(db, 'users', currentUser.uid), { bookmarks: arrayRemove(listingId), lastSeen: Date.now() }, { merge: true });
+    window.dispatchEvent(new CustomEvent('reshelved:bookmark-updated', { detail: { listingId, bookmarked: false } }));
     setBookmarkedListings(current => current.filter(item => item.id !== listingId));
     await refreshProfile();
   };
 
   const tabs = isOwnProfile ? [
-    { id: 'profile' as ProfileTab, label: 'Profile', icon: 'la-user', count: null },
-    { id: 'settings' as ProfileTab, label: 'Settings', icon: 'la-cog', count: null },
     { id: 'active' as ProfileTab, label: 'Active', icon: 'la-book-open', count: activeListings.length },
-    { id: 'expired' as ProfileTab, label: 'Expired', icon: 'la-history', count: expiredListings.length },
-    { id: 'bookmarks' as ProfileTab, label: 'Bookmarked', icon: 'la-heart', count: bookmarkedListings.length }
+    { id: 'expired' as ProfileTab, label: 'Expired', icon: 'la-book-open', count: expiredListings.length },
+    { id: 'bookmarks' as ProfileTab, label: 'Bookmarked', icon: 'la-heart', count: bookmarkedListings.length },
+    { id: 'profile' as ProfileTab, label: 'Profile', icon: 'la-user', count: null },
+    { id: 'settings' as ProfileTab, label: 'Settings', icon: 'la-cog', count: null }
   ] : [];
 
-  if (loading) return <div className="max-w-[996px] mx-auto px-4 py-8 pb-10 sm:pb-20"><div className="animate-pulse space-y-4"><div className="flex items-center gap-4"><div className="w-20 h-20 bg-stone-200 rounded-full" /><div className="space-y-2"><div className="h-6 bg-stone-200 rounded w-40" /><div className="h-4 bg-stone-100 rounded w-24" /></div></div></div></div>;
+  if (loading) return <div className="max-w-[1120px] mx-auto px-4 py-8 pb-10 sm:pb-20"><div className="animate-pulse rounded-3xl border border-stone-200 bg-white p-6"><div className="flex items-center gap-4"><div className="h-20 w-20 rounded-full bg-stone-200" /><div className="space-y-2"><div className="h-6 w-44 rounded bg-stone-200" /><div className="h-4 w-28 rounded bg-stone-100" /></div></div></div></div>;
   if (!profile) return <div className="max-w-[996px] mx-auto px-4 py-16 text-center pb-10 sm:pb-20"><h2 className="text-xl font-bold text-stone-700">User not found</h2><p className="text-stone-500 mt-2">This profile does not exist or you do not have permission to view it.</p><Link to="/browse" className="mt-4 inline-block text-primary-600 font-medium">Back to Browse</Link></div>;
 
-  const renderListings = (items: Listing[], emptyText: string, emptyLink?: React.ReactNode) => items.length === 0 ? <div className="text-center py-8 bg-white rounded-xl border border-stone-200"><p className="text-stone-500">{emptyText}</p>{emptyLink}</div> : <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">{items.map(l => <BookCard key={l.id} listing={l} />)}</div>;
+  const renderListings = (items: Listing[], emptyText: string, emptyLink?: React.ReactNode) => items.length === 0 ? <div className="rounded-3xl border border-stone-200 bg-white px-6 py-12 text-center"><p className="text-sm text-stone-500">{emptyText}</p>{emptyLink}</div> : <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">{items.map(l => <BookCard key={l.id} listing={l} />)}</div>;
 
   return (
-    <div className="max-w-[996px] mx-auto px-4 sm:px-6 py-8 pb-10 sm:pb-20">
-      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 sm:p-8">
-        {saveMessage && <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">{saveMessage}</div>}
-        {saveError && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{saveError}</div>}
-        <div className="flex flex-col sm:flex-row items-start gap-6">
-          <div className="shrink-0">{profile.photoURL ? <img src={profile.photoURL} alt={profile.displayName} className="w-20 h-20 rounded-full object-cover shrink-0" /> : <div className="w-20 h-20 rounded-full bg-stone-200 text-stone-500 flex items-center justify-center text-3xl font-bold shrink-0">{profile.displayName?.[0]?.toUpperCase() || 'U'}</div>}{isOwnProfile && <label className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50">{uploadingPhoto ? 'Uploading...' : 'Upload Photo'}<input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploadingPhoto} className="hidden" /></label>}</div>
-          <div className="flex-1 min-w-0"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-bold text-stone-800">{profile.displayName}</h1>{profile.bio && <p className="text-stone-600 mt-1">{profile.bio}</p>}</div>{!isOwnProfile && currentUser && <button onClick={handleMessageUser} disabled={messageLoading} className="cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"><i className="las la-comment text-lg" />{messageLoading ? 'Opening...' : 'Message'}</button>}</div><div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-stone-500">{profile.location && <span className="flex items-center gap-1"><i className="las la-map-marker text-base" />{profile.location}</span>}<span className="flex items-center gap-1"><i className="las la-calendar text-base" />Joined {new Date(profile.createdAt).toLocaleDateString()}</span>{ratings.length > 0 && <span className="flex items-center gap-1"><span className="text-accent-500">★</span>{avgRating.toFixed(1)} ({ratings.length} review{ratings.length !== 1 ? 's' : ''})</span>}</div></div>
+    <div className="max-w-[1120px] mx-auto px-4 sm:px-6 py-8 pb-10 sm:pb-20">
+      <div className="rounded-3xl border border-stone-200 bg-white p-6 sm:p-8">
+        {saveMessage && <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">{saveMessage}</div>}
+        {saveError && <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{saveError}</div>}
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+          <div className="shrink-0">{profile.photoURL ? <img src={profile.photoURL} alt={profile.displayName} className="h-24 w-24 rounded-full object-cover" /> : <div className="flex h-24 w-24 items-center justify-center rounded-full bg-stone-100 text-3xl font-bold text-stone-500">{profile.displayName?.[0]?.toUpperCase() || 'U'}</div>}{isOwnProfile && <label className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-full border border-stone-200 px-4 py-2 text-xs font-semibold text-stone-700 hover:border-stone-300 hover:bg-stone-50">{uploadingPhoto ? 'Uploading...' : 'Upload photo'}<input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploadingPhoto} className="hidden" /></label>}</div>
+          <div className="min-w-0 flex-1"><div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-3xl font-bold tracking-tight text-stone-950">{profile.displayName}</h1>{profile.bio ? <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">{profile.bio}</p> : isOwnProfile ? <p className="mt-2 text-sm text-stone-500">Add a short bio in Settings so buyers know who they are dealing with.</p> : null}</div>{!isOwnProfile && currentUser && <button onClick={handleMessageUser} disabled={messageLoading} className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"><i className="las la-comment text-lg" />{messageLoading ? 'Opening...' : 'Message'}</button>}</div><div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-stone-500">{profile.location && <span className="flex items-center gap-1.5"><i className="las la-map-marker text-lg" />{profile.location}</span>}<span className="flex items-center gap-1.5"><i className="las la-calendar text-lg" />Joined {new Date(profile.createdAt).toLocaleDateString()}</span>{ratings.length > 0 && <span className="flex items-center gap-1.5"><i className="las la-star text-lg text-[#F7AF31]" />{avgRating.toFixed(1)} ({ratings.length} review{ratings.length !== 1 ? 's' : ''})</span>}</div></div>
         </div>
       </div>
 
-      {isOwnProfile && <div className="mt-6 overflow-x-auto rounded-2xl border border-stone-200 bg-white p-2"><div className="flex min-w-max gap-2">{tabs.map(tab => <button key={tab.id} type="button" onClick={() => { setActiveTab(tab.id); setSaveError(''); setSaveMessage(''); }} className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${activeTab === tab.id ? 'bg-primary-600 text-white shadow-sm' : 'text-stone-600 hover:bg-stone-50'}`}><i className={`las ${tab.icon} text-lg`} />{tab.label}{tab.count !== null && <span className={`rounded-full px-2 py-0.5 text-xs ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-500'}`}>{tab.count}</span>}</button>)}</div></div>}
+      {isOwnProfile && <div className="mt-6 overflow-x-auto border-b border-stone-200"><div className="flex min-w-max gap-7">{tabs.map(tab => <button key={tab.id} type="button" onClick={() => { setActiveTab(tab.id); setSaveError(''); setSaveMessage(''); }} className={`inline-flex cursor-pointer items-center gap-2 border-b-2 px-1 py-4 text-sm font-semibold transition ${activeTab === tab.id ? 'border-stone-950 text-stone-950' : 'border-transparent text-stone-500 hover:text-stone-950'}`}><i className={`las ${tab.icon} text-lg`} />{tab.label}{tab.count !== null && <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">{tab.count}</span>}</button>)}</div></div>}
 
-      {!isOwnProfile && <div className="mt-8"><h2 className="text-lg font-bold text-stone-800 mb-4">{profile.displayName}'s Active Listings ({activeListings.length})</h2>{renderListings(activeListings, 'No active listings')}</div>}
+      {!isOwnProfile && <div className="mt-8"><SectionTitle title={`${profile.displayName}'s active listings`} subtitle={`${activeListings.length} book${activeListings.length === 1 ? '' : 's'} currently listed`} />{renderListings(activeListings, 'No active listings')}</div>}
 
-      {isOwnProfile && activeTab === 'profile' && <section className="mt-8 rounded-2xl border border-stone-200 bg-white p-6 sm:p-8"><h2 className="text-lg font-bold text-stone-800">Profile overview</h2><div className="mt-4 grid gap-4 sm:grid-cols-3"><div className="rounded-xl bg-stone-50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Active listings</p><p className="mt-1 text-2xl font-bold text-stone-900">{activeListings.length}</p></div><div className="rounded-xl bg-stone-50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Expired listings</p><p className="mt-1 text-2xl font-bold text-stone-900">{expiredListings.length}</p></div><div className="rounded-xl bg-stone-50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Bookmarked</p><p className="mt-1 text-2xl font-bold text-stone-900">{bookmarkedListings.length}</p></div></div>{ratings.length > 0 && <div className="mt-8"><h3 className="font-bold text-stone-800 mb-3">Reviews ({ratings.length})</h3><div className="space-y-3">{ratings.map(r => <div key={r.id} className="rounded-xl border border-stone-200 p-4"><div className="flex items-center justify-between"><span className="font-medium text-stone-700">{r.fromUserName}</span><span className="text-accent-500 text-sm">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span></div>{r.review && <p className="text-sm text-stone-600 mt-1">{r.review}</p>}<p className="text-xs text-stone-400 mt-2">{new Date(r.createdAt).toLocaleDateString()} — Re: {r.listingTitle}</p></div>)}</div></div>}</section>}
+      {isOwnProfile && activeTab === 'active' && <div className="mt-8"><SectionTitle title="Active listings" subtitle="Books currently visible to buyers." action={<Link to="/create" className="inline-flex items-center gap-2 rounded-full bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-700"><i className="las la-plus text-lg" />List a book</Link>} />{renderListings(activeListings, 'No active listings', <Link to="/create" className="mt-3 inline-block text-sm font-semibold text-primary-600">List your first book</Link>)}</div>}
 
-      {isOwnProfile && activeTab === 'settings' && <section className="mt-8 grid gap-6 lg:grid-cols-2"><div className="rounded-2xl border border-stone-200 bg-white p-6"><h2 className="text-lg font-bold text-stone-800">Profile settings</h2><div className="mt-4 space-y-3"><input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className={inputClass} placeholder="Display Name" /><textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} className={`${inputClass} resize-none`} rows={3} placeholder="About you..." /><select value={editLocation} onChange={(e) => setEditLocation(e.target.value)} className={`${inputClass} bg-white`}>{KENYAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}</select><input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className={inputClass} placeholder="Phone number" /><button onClick={handleSaveProfile} disabled={saving} className="w-full cursor-pointer rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">{saving ? 'Saving...' : 'Save profile'}</button></div></div><div className="rounded-2xl border border-stone-200 bg-white p-6"><h2 className="text-lg font-bold text-stone-800">Account security</h2><div className="mt-4 space-y-6"><div><h3 className="font-bold text-stone-800">Change email</h3><div className="mt-3 space-y-3"><input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className={inputClass} placeholder="New email address" autoComplete="email" /><PasswordField value={emailPassword} onChange={setEmailPassword} placeholder="Current password" autoComplete="current-password" /><button type="button" onClick={handleChangeEmail} disabled={accountLoading} className="w-full cursor-pointer rounded-lg bg-[#1665CC] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Send confirmation email</button></div></div><div><h3 className="font-bold text-stone-800">Change password</h3><div className="mt-3 space-y-3"><PasswordField value={currentPassword} onChange={setCurrentPassword} placeholder="Current password" autoComplete="current-password" /><PasswordField value={newPassword} onChange={setNewPassword} placeholder="New password" autoComplete="new-password" /><PasswordField value={confirmNewPassword} onChange={setConfirmNewPassword} placeholder="Confirm new password" autoComplete="new-password" /><button type="button" onClick={handleChangePassword} disabled={accountLoading} className="w-full cursor-pointer rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Update password</button></div></div><div className="rounded-xl border border-red-200 bg-red-50/40 p-4"><h3 className="font-bold text-red-700">Delete account</h3><p className="mt-1 text-sm text-red-700/80">This deactivates your listings and deletes your login account.</p><div className="mt-3 space-y-3"><PasswordField value={deletePassword} onChange={setDeletePassword} placeholder="Current password" autoComplete="current-password" /><button type="button" onClick={handleDeleteAccount} disabled={accountLoading} className="w-full cursor-pointer rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Delete my account</button></div></div></div></div></section>}
+      {isOwnProfile && activeTab === 'expired' && <div className="mt-8"><SectionTitle title="Expired listings" subtitle="Renew books you still want people to find." />{expiredListings.length === 0 ? <div className="rounded-3xl border border-stone-200 bg-white px-6 py-12 text-center"><p className="text-sm text-stone-500">No expired listings</p></div> : <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">{expiredListings.map(l => <div key={l.id}><BookCard listing={l} /><button type="button" onClick={() => handleRenewListing(l)} disabled={renewingId === l.id} className="mt-3 w-full cursor-pointer rounded-full bg-[#1665CC] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1254a9] disabled:cursor-not-allowed disabled:opacity-60">{renewingId === l.id ? 'Renewing...' : 'Renew listing'}</button></div>)}</div>}</div>}
 
-      {isOwnProfile && activeTab === 'active' && <div className="mt-8"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold text-stone-800">Active Listings ({activeListings.length})</h2><Link to="/create" className="text-sm font-semibold text-primary-600 hover:text-primary-700">List a book</Link></div>{renderListings(activeListings, 'No active listings', <Link to="/create" className="mt-2 inline-block cursor-pointer text-primary-600 font-medium text-sm">List a book</Link>)}</div>}
+      {isOwnProfile && activeTab === 'bookmarks' && <div className="mt-8"><SectionTitle title="Bookmarked books" subtitle="Books you saved for later." action={<Link to="/browse" className="text-sm font-semibold text-primary-600 hover:text-primary-700">Browse books</Link>} />{bookmarkedListings.length === 0 ? <div className="rounded-3xl border border-stone-200 bg-white px-6 py-12 text-center"><p className="text-sm text-stone-500">No bookmarked books yet</p><Link to="/browse" className="mt-3 inline-block text-sm font-semibold text-primary-600">Find books to save</Link></div> : <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">{bookmarkedListings.map(l => <div key={l.id}><BookCard listing={l} /><button type="button" onClick={() => removeBookmark(l.id)} className="mt-3 w-full cursor-pointer rounded-full border border-stone-200 px-4 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-50">Remove bookmark</button></div>)}</div>}</div>}
 
-      {isOwnProfile && activeTab === 'expired' && <div className="mt-8"><h2 className="text-lg font-bold text-stone-800 mb-4">Expired Listings ({expiredListings.length})</h2>{expiredListings.length === 0 ? <div className="text-center py-8 bg-white rounded-xl border border-stone-200"><p className="text-stone-500">No expired listings</p></div> : <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">{expiredListings.map(l => <div key={l.id} className="relative"><BookCard listing={l} /><button type="button" onClick={() => handleRenewListing(l)} disabled={renewingId === l.id} className="mt-3 w-full cursor-pointer rounded-xl bg-[#1665CC] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1254a9] disabled:cursor-not-allowed disabled:opacity-60">{renewingId === l.id ? 'Renewing...' : 'Renew listing'}</button></div>)}</div>}</div>}
+      {isOwnProfile && activeTab === 'profile' && <section className="mt-8 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]"><div className="rounded-3xl border border-stone-200 bg-white p-6"><h2 className="text-xl font-bold text-stone-950">Profile details</h2><div className="mt-5 space-y-4 text-sm"><div><p className="font-semibold text-stone-950">Name</p><p className="mt-1 text-stone-600">{profile.displayName}</p></div><div><p className="font-semibold text-stone-950">Location</p><p className="mt-1 text-stone-600">{profile.location || 'Not set'}</p></div><div><p className="font-semibold text-stone-950">Phone</p><p className="mt-1 text-stone-600">{profile.phone || 'Not set'}</p></div><div><p className="font-semibold text-stone-950">Bio</p><p className="mt-1 leading-6 text-stone-600">{profile.bio || 'No bio added yet.'}</p></div></div></div><div className="rounded-3xl border border-stone-200 bg-white p-6"><h2 className="text-xl font-bold text-stone-950">Reviews</h2>{ratings.length === 0 ? <p className="mt-4 text-sm text-stone-500">No reviews yet.</p> : <div className="mt-5 space-y-3">{ratings.map(r => <div key={r.id} className="rounded-2xl border border-stone-200 p-4"><div className="flex items-center justify-between gap-4"><span className="font-medium text-stone-800">{r.fromUserName}</span><span className="text-sm text-[#F59E0B]">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span></div>{r.review && <p className="mt-2 text-sm leading-6 text-stone-600">{r.review}</p>}<p className="mt-2 text-xs text-stone-400">{new Date(r.createdAt).toLocaleDateString()} · Re: {r.listingTitle}</p></div>)}</div>}</div></section>}
 
-      {isOwnProfile && activeTab === 'bookmarks' && <div className="mt-8"><div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold text-stone-800">Bookmarked Books ({bookmarkedListings.length})</h2><Link to="/browse" className="text-sm font-semibold text-primary-600 hover:text-primary-700">Browse books</Link></div>{bookmarkedListings.length === 0 ? <div className="text-center py-8 bg-white rounded-xl border border-stone-200"><p className="text-stone-500">No bookmarked books yet</p><Link to="/browse" className="mt-2 inline-block text-primary-600 font-medium text-sm">Find books to save</Link></div> : <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">{bookmarkedListings.map(l => <div key={l.id}><BookCard listing={l} /><button type="button" onClick={() => removeBookmark(l.id)} className="mt-3 w-full cursor-pointer rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-50">Remove bookmark</button></div>)}</div>}</div>}
+      {isOwnProfile && activeTab === 'settings' && <section className="mt-8 grid gap-6 lg:grid-cols-2"><div className="rounded-3xl border border-stone-200 bg-white p-6"><h2 className="text-xl font-bold text-stone-950">Profile settings</h2><div className="mt-5 space-y-3"><input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className={inputClass} placeholder="Display name" /><textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} className={`${inputClass} resize-none`} rows={3} placeholder="About you..." /><select value={editLocation} onChange={(e) => setEditLocation(e.target.value)} className={`${inputClass} bg-white`}>{KENYAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}</select><input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className={inputClass} placeholder="Phone number" /><button onClick={handleSaveProfile} disabled={saving} className="w-full cursor-pointer rounded-full bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60">{saving ? 'Saving...' : 'Save profile'}</button></div></div><div className="rounded-3xl border border-stone-200 bg-white p-6"><h2 className="text-xl font-bold text-stone-950">Account security</h2><div className="mt-5 space-y-6"><div><h3 className="font-bold text-stone-900">Change email</h3><div className="mt-3 space-y-3"><input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className={inputClass} placeholder="New email address" autoComplete="email" /><PasswordField value={emailPassword} onChange={setEmailPassword} placeholder="Current password" autoComplete="current-password" /><button type="button" onClick={handleChangeEmail} disabled={accountLoading} className="w-full cursor-pointer rounded-full bg-[#1665CC] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1254a9] disabled:cursor-not-allowed disabled:opacity-60">Send confirmation email</button></div></div><div><h3 className="font-bold text-stone-900">Change password</h3><div className="mt-3 space-y-3"><PasswordField value={currentPassword} onChange={setCurrentPassword} placeholder="Current password" autoComplete="current-password" /><PasswordField value={newPassword} onChange={setNewPassword} placeholder="New password" autoComplete="new-password" /><PasswordField value={confirmNewPassword} onChange={setConfirmNewPassword} placeholder="Confirm new password" autoComplete="new-password" /><button type="button" onClick={handleChangePassword} disabled={accountLoading} className="w-full cursor-pointer rounded-full bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60">Update password</button></div></div><div className="rounded-2xl border border-red-200 bg-red-50 p-4"><h3 className="font-bold text-red-700">Delete account</h3><p className="mt-1 text-sm text-red-700/80">This deactivates your listings and deletes your login account.</p><div className="mt-3 space-y-3"><PasswordField value={deletePassword} onChange={setDeletePassword} placeholder="Current password" autoComplete="current-password" /><button type="button" onClick={handleDeleteAccount} disabled={accountLoading} className="w-full cursor-pointer rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60">Delete my account</button></div></div></div></div></section>}
     </div>
   );
 };
