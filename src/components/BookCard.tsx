@@ -183,7 +183,13 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
             aria-pressed={isBookmarked}
             className="absolute left-3 top-3 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-stone-200 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <i className={`${isBookmarked ? 'las la-bookmark text-primary-600' : 'lar la-bookmark text-stone-500'} text-xl leading-none`} />
+            {isBookmarked ? (
+              <svg viewBox="0 0 24 24" className="h-5 w-5 text-primary-600" fill="currentColor" aria-hidden="true">
+                <path d="M6 3.5C6 2.67 6.67 2 7.5 2h9c.83 0 1.5.67 1.5 1.5V22l-6-4-6 4V3.5z" />
+              </svg>
+            ) : (
+              <i className="lar la-bookmark text-xl leading-none text-stone-500" />
+            )}
           </button>
         )}
 
