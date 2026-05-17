@@ -22,6 +22,12 @@ const getShareText = (listing: Listing) => encodeURIComponent(`Check out ${listi
 const getStars = (rating: number) => `${'★'.repeat(Math.round(rating))}${'☆'.repeat(5 - Math.round(rating))}`;
 const getRatingCount = (ratings: Rating[], star: number) => ratings.filter((rating) => rating.rating === star).length;
 
+const SolidBookmarkIcon = ({ className = 'h-5 w-5 text-primary-600' }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+    <path d="M6 3.5C6 2.67 6.67 2 7.5 2h9c.83 0 1.5.67 1.5 1.5V22l-6-4-6 4V3.5z" />
+  </svg>
+);
+
 const ListingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { currentUser, userProfile, refreshProfile } = useAuth();
@@ -53,6 +59,16 @@ const ListingDetail: React.FC = () => {
   useEffect(() => { if (id) fetchListing(); }, [id]);
   useEffect(() => { setCurrentImage(0); setFailedImages([]); setVisibleReviews(REVIEWS_STEP); setReviewFilter('all'); }, [listing?.id]);
   useEffect(() => { if (currentImage >= listingImages.length) setCurrentImage(0); }, [currentImage, listingImages.length]);
+  useEffect(() => {
+    if (!message) return;
+    const timeout = window.setTimeout(() => setMessage(''), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [message]);
+
+  const flashMessage = (text: string) => {
+    setMessage('');
+    window.setTimeout(() => setMessage(text), 0);
+  };
 
   const handleImageError = (image: string) => setFailedImages((current) => current.includes(image) ? current : [...current, image]);
   const goToNextImage = () => setCurrentImage((current) => listingImages.length ? (current + 1) % listingImages.length : 0);
@@ -102,10 +118,10 @@ const ListingDetail: React.FC = () => {
         lastSeen: Date.now()
       }, { merge: true });
       await refreshProfile();
-      setMessage(isBookmarked ? 'Removed from favorites.' : 'Saved to favorites.');
+      flashMessage(isBookmarked ? 'Removed from favorites.' : 'Saved to favorites.');
     } catch (err) {
       console.error(err);
-      setMessage('Could not update favorites.');
+      flashMessage('Could not update favorites.');
     } finally {
       setBookmarking(false);
     }
@@ -168,7 +184,7 @@ const ListingDetail: React.FC = () => {
       navigate(`/messages/${convRef.id}`);
     } catch (err) {
       console.error(err);
-      setMessage('Failed to start conversation. Check your Firestore rules.');
+      flashMessage('Failed to start conversation. Check your Firestore rules.');
     } finally {
       setActionLoading(false);
     }
@@ -181,7 +197,7 @@ const ListingDetail: React.FC = () => {
       await addDoc(collection(db, 'reports'), { reporterId: currentUser.uid, reporterName: userProfile?.displayName || 'User', targetType: 'listing', targetId: listing.id, targetName: listing.title, reason: reportReason, details: reportDetails, createdAt: Date.now(), resolved: false });
       await updateDoc(doc(db, 'listings', listing.id), { flagCount: increment(1), flagged: true });
       setShowReport(false);
-      setMessage('Report submitted. Thank you for helping keep Reshelved safe.');
+      flashMessage('Report submitted. Thank you for helping keep Reshelved safe.');
     } catch (err) {
       console.error(err);
     } finally {
@@ -207,7 +223,7 @@ const ListingDetail: React.FC = () => {
       setShowRating(false);
       setReviewTitle('');
       setReviewText('');
-      setMessage('Review submitted!');
+      flashMessage('Review submitted!');
       fetchListing();
     } catch (err) {
       console.error(err);
@@ -236,18 +252,23 @@ const ListingDetail: React.FC = () => {
       await deleteDoc(doc(db, 'ratings', reviewId));
       setRatings((current) => current.filter((rating) => rating.id !== reviewId));
       setVisibleReviews(REVIEWS_STEP);
-      setMessage('Review deleted.');
+      flashMessage('Review deleted.');
     } catch (err) {
       console.error(err);
-      setMessage('Could not delete review. Check your Firestore rules.');
+      flashMessage('Could not delete review. Check your Firestore rules.');
     } finally {
       setActionLoading(false);
     }
   };
 
   const copyLink = async () => {
-    await navigator.clipboard.writeText(window.location.href);
-    setMessage('Listing link copied.');
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      flashMessage('Listing link copied.');
+    } catch (err) {
+      console.error(err);
+      flashMessage('Could not copy the link.');
+    }
   };
 
   if (loading) return <div className="bg-white"><div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 pb-10 sm:pb-20"><div className="animate-pulse"><div className="aspect-square bg-stone-200 rounded-2xl max-w-4xl" /><div className="mt-6 space-y-4"><div className="h-8 bg-stone-200 rounded w-1/2" /><div className="h-4 bg-stone-200 rounded w-1/3" /><div className="h-4 bg-stone-100 rounded w-full" /></div></div></div></div>;
@@ -282,10 +303,10 @@ const ListingDetail: React.FC = () => {
     <div className="bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 pb-10 sm:pb-20">
         <nav className="mb-6 text-sm text-stone-500" aria-label="Breadcrumb"><Link to="/" className="hover:text-primary-700 font-medium">Home</Link><span className="mx-2">&gt;</span><Link to="/browse" className="hover:text-primary-700 font-medium">Browse</Link><span className="mx-2">&gt;</span><span className="text-stone-800 font-semibold">{listing.title}</span></nav>
-        {message && <div className="mb-4 p-3 bg-primary-50 border border-primary-200 text-primary-700 rounded-xl text-sm">{message}</div>}
+        {message && <div className="mb-4 p-3 bg-primary-50 border border-primary-200 text-primary-700 rounded-xl text-sm transition-opacity duration-300">{message}</div>}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 xl:gap-10">
-          <div className="lg:col-span-2"><div className="flex flex-col gap-4 lg:flex-row">{listingImages.length > 1 && <div className="order-2 flex gap-3 overflow-x-auto pb-1 lg:order-1 lg:w-[76px] lg:flex-col lg:overflow-visible lg:pb-0">{listingImages.map((img, i) => <button key={img} onClick={() => setCurrentImage(i)} className={`h-16 w-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 bg-white transition lg:h-[72px] lg:w-[72px] ${i === currentImage ? 'border-[#1665CC] ring-2 ring-[#1665CC]/10' : 'border-stone-200 hover:border-[#1665CC]'}`} aria-label={`View image ${i + 1}`}><img src={img} alt="" className="h-full w-full object-cover" onError={() => handleImageError(img)} /></button>)}</div>}<div className="order-1 flex-1 lg:order-2"><div className="aspect-square bg-stone-100 rounded-2xl overflow-hidden relative bg-no-repeat">{activeImage ? <img src={activeImage} alt={listing.title} className="w-full h-full object-cover" onError={() => handleImageError(activeImage)} /> : <div className="w-full h-full flex items-center justify-center bg-stone-100"><svg className="w-16 h-16 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg></div>}{isExpired && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><span className="px-4 py-2 bg-red-600 text-white font-semibold rounded-full">Listing Expired</span></div>}<div className="absolute right-4 top-4 flex flex-col gap-3"><button type="button" onClick={copyLink} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-stone-800 shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50" aria-label="Share listing"><i className="las la-share-alt text-2xl" /></button><button type="button" onClick={handleBookmark} disabled={bookmarking} className={`flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 ${isBookmarked ? 'text-[#1665CC]' : 'text-stone-800'}`} aria-label={isBookmarked ? 'Remove from favorites' : 'Save to favorites'}><i className={`${isBookmarked ? 'las' : 'lar'} la-heart text-2xl`} /></button><button type="button" onClick={() => window.open(activeImage || listingImages[0], '_blank')} disabled={!activeImage} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-stone-800 shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Open larger image"><i className="las la-search-plus text-2xl" /></button></div>{listingImages.length > 1 && <><button type="button" onClick={goToPreviousImage} className="absolute left-4 top-1/2 hidden h-12 w-12 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white text-stone-800 shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50 sm:flex" aria-label="Previous image"><i className="las la-angle-left text-2xl" /></button><button type="button" onClick={goToNextImage} className="absolute right-4 top-1/2 flex h-12 w-12 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white text-stone-800 shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50" aria-label="Next image"><i className="las la-angle-right text-2xl" /></button><div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold text-white">{currentImage + 1} / {listingImages.length}</div></>}</div></div></div></div>
+          <div className="lg:col-span-2"><div className="flex flex-col gap-4 lg:flex-row">{listingImages.length > 1 && <div className="order-2 flex gap-3 overflow-x-auto pb-1 lg:order-1 lg:w-[76px] lg:flex-col lg:overflow-visible lg:pb-0">{listingImages.map((img, i) => <button key={img} onClick={() => setCurrentImage(i)} className={`h-16 w-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 bg-white transition lg:h-[72px] lg:w-[72px] ${i === currentImage ? 'border-[#1665CC] ring-2 ring-[#1665CC]/10' : 'border-stone-200 hover:border-[#1665CC]'}`} aria-label={`View image ${i + 1}`}><img src={img} alt="" className="h-full w-full object-cover" onError={() => handleImageError(img)} /></button>)}</div>}<div className="order-1 flex-1 lg:order-2"><div className="aspect-square bg-stone-100 rounded-2xl overflow-hidden relative bg-no-repeat">{activeImage ? <img src={activeImage} alt={listing.title} className="w-full h-full object-cover" onError={() => handleImageError(activeImage)} /> : <div className="w-full h-full flex items-center justify-center bg-stone-100"><svg className="w-16 h-16 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg></div>}{isExpired && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><span className="px-4 py-2 bg-red-600 text-white font-semibold rounded-full">Listing Expired</span></div>}<div className="absolute right-4 top-4 flex flex-col gap-3"><button type="button" onClick={copyLink} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-stone-800 shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50" aria-label="Copy listing link"><i className="las la-share-alt text-2xl" /></button><button type="button" onClick={handleBookmark} disabled={bookmarking} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60" aria-label={isBookmarked ? 'Remove from favorites' : 'Save to favorites'} aria-pressed={isBookmarked}>{isBookmarked ? <SolidBookmarkIcon className="h-6 w-6 text-primary-600" /> : <i className="lar la-bookmark text-2xl text-stone-800" />}</button><button type="button" onClick={() => window.open(activeImage || listingImages[0], '_blank')} disabled={!activeImage} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white text-stone-800 shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Open larger image"><i className="las la-search-plus text-2xl" /></button></div>{listingImages.length > 1 && <><button type="button" onClick={goToPreviousImage} className="absolute left-4 top-1/2 hidden h-12 w-12 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white text-stone-800 shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50 sm:flex" aria-label="Previous image"><i className="las la-angle-left text-2xl" /></button><button type="button" onClick={goToNextImage} className="absolute right-4 top-1/2 flex h-12 w-12 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white text-stone-800 shadow-md ring-1 ring-stone-200 transition hover:bg-stone-50" aria-label="Next image"><i className="las la-angle-right text-2xl" /></button><div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/65 px-3 py-1 text-xs font-semibold text-white">{currentImage + 1} / {listingImages.length}</div></>}</div></div></div></div>
 
           <div className="lg:col-span-1 space-y-5"><div><div className="mb-4 flex flex-wrap gap-2"><span className="inline-flex items-center gap-2 rounded-md border border-[#1665CC] bg-white px-3 py-1.5 text-sm font-bold text-[#1665CC]"><i className="las la-exchange-alt text-lg" />{typeLabels[listing.type]}</span><span className="inline-flex items-center gap-2 rounded-md bg-[#1665CC]/10 px-3 py-1.5 text-sm font-bold text-[#1665CC]"><i className="las la-book-open text-lg" />{listing.condition}</span>{ratings.length > 0 && <span className="inline-flex items-center gap-2 rounded-md bg-stone-100 px-3 py-1.5 text-sm font-bold text-stone-700"><i className="las la-star text-lg text-amber-400" />{avgRating.toFixed(1)} seller rating</span>}</div><h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 leading-tight">{listing.title}</h1><p className="text-stone-500 mt-2">by {listing.author}</p></div>{listing.type === 'sell' && listing.price && <div className="text-2xl font-bold text-primary-700">KSh {listing.price.toLocaleString()}</div>}<div className="inline-flex w-fit max-w-full flex-wrap items-center rounded-xl border border-stone-200 bg-white text-sm text-stone-700"><div className="flex items-center gap-2 px-4 py-3"><i className="las la-map-marker-alt text-lg text-stone-400" /><span>{listing.location}</span></div><div className="h-6 w-px bg-stone-200" /><div className="flex items-center gap-2 px-4 py-3"><i className="las la-layer-group text-lg text-stone-400" /><span>{listing.category}</span></div><div className="h-6 w-px bg-stone-200" /><div className="flex items-center gap-2 px-4 py-3"><i className="las la-clock text-lg text-stone-400" /><span>{isExpired ? 'Expired' : `Expires in ${Math.ceil((listing.expiresAt - Date.now()) / (1000 * 60 * 60 * 24))} days`}</span></div></div>{listing.description && <div><h3 className="font-semibold text-stone-700 mb-1">Description</h3><p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap">{listing.description}</p></div>}<div className="border border-stone-200 rounded-xl p-4"><div className="flex items-center gap-3">{sellerPhoto ? <img src={sellerPhoto} alt={listing.userName} className="w-12 h-12 rounded-full object-cover bg-stone-100" /> : <div className="w-12 h-12 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold">{listing.userName?.[0]?.toUpperCase() || 'U'}</div>}<div><Link to={`/user/${listing.userId}`} className="font-semibold text-stone-800 hover:text-primary-700">{listing.userName}</Link>{ratings.length > 0 && <div className="flex items-center gap-1 text-sm"><span className="text-accent-500">{'★'.repeat(Math.round(avgRating))}</span><span className="text-stone-500">({ratings.length} review{ratings.length !== 1 ? 's' : ''})</span></div>}</div></div></div><div className="space-y-2">{!isOwner && currentUser && !isExpired && <button onClick={handleContact} disabled={actionLoading} className="cursor-pointer w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:cursor-not-allowed disabled:opacity-50">{actionLoading ? 'Please wait...' : `Contact ${listing.userName}`}</button>}{!currentUser && <Link to="/login" className="block w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition text-center">Log in to Contact</Link>}{!isOwner && currentUser && <div className="flex gap-2"><button onClick={() => setShowRating(true)} className="cursor-pointer flex-1 py-2.5 border border-stone-200 text-stone-600 hover:bg-stone-50 rounded-xl transition text-sm font-medium">★ Leave Review</button><button onClick={() => setShowReport(true)} className="cursor-pointer flex-1 py-2.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl transition text-sm font-medium">⚑ Report</button></div>}{canEdit && <Link to={`/listing/${listing.id}/edit`} className="block w-full py-2.5 border border-primary-200 text-primary-700 hover:bg-primary-50 rounded-xl transition text-sm font-medium text-center">Edit Listing</Link>}{canEdit && <button onClick={handleDelete} className="cursor-pointer w-full py-2.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl transition text-sm font-medium">Delete Listing</button>}</div><div className="pt-3"><h2 className="text-xl font-bold text-stone-900 mb-3">Share link</h2><div className="flex flex-wrap gap-3">{shareItems.map((item) => <a key={item.label} href={item.href} target="_blank" rel="noreferrer" aria-label={`Share on ${item.label}`} className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl transition hover:-translate-y-0.5 ${item.className}`}><i className={item.icon} /></a>)}<button type="button" onClick={copyLink} aria-label="Copy link" className="cursor-pointer w-12 h-12 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center text-2xl hover:bg-stone-200 transition"><i className="las la-link" /></button></div></div></div>
         </div>
