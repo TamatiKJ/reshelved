@@ -8,7 +8,7 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-end">
           <div>
             <Link to="/" className="inline-flex items-center" aria-label="Reshelved home">
-              <img src="/reshelved-logo.svg" alt="Reshelved" className="h-7 w-auto" />
+              <img src="/reshelved-logo-white.svg" alt="Reshelved" className="h-7 w-auto" />
             </Link>
             <p className="text-sm text-white/70 mt-4 max-w-xs">
               Promoting literacy in Kenya one book at a time.
