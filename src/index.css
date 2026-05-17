@@ -310,6 +310,17 @@ button:has(.la-pen) {
   color: #FC5647 !important;
 }
 
+/* Listing share buttons: no hover movement, only a darker shade. */
+a[aria-label^="Share on"] {
+  transition: none !important;
+  transform: none !important;
+}
+
+a[aria-label^="Share on"]:hover {
+  transform: none !important;
+  filter: brightness(0.85) !important;
+}
+
 @media (max-width: 639px) {
   button[aria-label="Conversation actions"] {
     display: flex !important;
