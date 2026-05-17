@@ -64,6 +64,29 @@ const addBlogEditorHistoryControls = () => {
   imageButton.parentElement?.appendChild(controls);
 };
 
+const normalizeProfileRatingLabels = () => {
+  const profileNav = document.querySelector('nav.mt-5');
+  if (!profileNav) return;
+
+  const badges = Array.from(document.querySelectorAll<HTMLSpanElement>('aside .rounded-full.border.border-stone-200'));
+  badges.forEach((badge) => {
+    if (badge.dataset.ratingNormalized === 'true') return;
+    if (!badge.querySelector('.la-star')) return;
+
+    const raw = badge.textContent?.trim() || '';
+    const countMatch = raw.match(/(?:·|\s)(\d+)\s*$/);
+    const count = Number(countMatch?.[1] || 0);
+    const label = count === 1 ? 'Rating (1 Review)' : `Rating (${count} Reviews)`;
+    badge.innerHTML = `<i class="las la-star mr-1 text-[#F7AF31]"></i>${label}`;
+    badge.dataset.ratingNormalized = 'true';
+  });
+};
+
+const runDomEnhancements = () => {
+  addBlogEditorHistoryControls();
+  normalizeProfileRatingLabels();
+};
+
 document.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
   const zoomButton = target.closest<HTMLButtonElement>('button[aria-label="Open larger image"]');
@@ -78,7 +101,7 @@ document.addEventListener("click", (event) => {
   if (image?.src) openImageZoom(image.src, image.alt || "Listing image");
 }, true);
 
-new MutationObserver(addBlogEditorHistoryControls).observe(document.body, { childList: true, subtree: true });
+new MutationObserver(runDomEnhancements).observe(document.body, { childList: true, subtree: true });
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
