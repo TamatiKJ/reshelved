@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   addDoc,
@@ -17,7 +17,6 @@ import {
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { uploadChatImage } from '../utils/chatMedia';
-import ConversationListingCard from './ConversationListingCard';
 import type { Conversation, Message, Rating, UserProfile } from '../types';
 
 type ParticipantMeta = {
@@ -26,7 +25,10 @@ type ParticipantMeta = {
   avgRating: number;
   reviewCount: number;
   blockedUsers: string[];
+  online?: boolean;
 };
+
+type ChatFilter = 'all' | 'swapping' | 'unread';
 
 const DELETE_EVERYONE_WINDOW_MS = 10 * 60 * 1000;
 const AUTO_CONFIRM_SWAP_MS = 7 * 24 * 60 * 60 * 1000;
@@ -45,11 +47,7 @@ const formatDayLabel = (timestamp: number) => {
   return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 };
 
-const formatThreadDate = (timestamp?: number) => {
-  if (!timestamp) return '';
-  return new Date(timestamp).toLocaleDateString('en-GB');
-};
-
+const formatThreadDate = (timestamp?: number) => timestamp ? new Date(timestamp).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' }) : '';
 const formatMessageTime = (timestamp?: number) => timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 const formatLongDate = (timestamp?: number) => timestamp ? new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 
@@ -61,6 +59,8 @@ const MessagesPage: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeFilter, setActiveFilter] = useState<ChatFilter>('all');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -83,19 +83,23 @@ const MessagesPage: React.FC = () => {
   const messagesPaneRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  const getOtherParticipantId = (conv: Conversation) => currentUser ? conv.participants.find((id) => id !== currentUser.uid) || '' : '';
+  const getOtherParticipantName = (conv: Conversation) => conv.participantNames?.[getOtherParticipantId(conv)] || 'User';
+  const getOtherParticipantPhoto = (conv: Conversation) => participantMeta[getOtherParticipantId(conv)]?.photoURL || conv.participantPhotos?.[getOtherParticipantId(conv)] || '';
+  const getOtherParticipantInitial = (conv: Conversation) => getOtherParticipantName(conv)[0]?.toUpperCase() || 'U';
+  const getOtherParticipantLocation = (conv: Conversation) => participantMeta[getOtherParticipantId(conv)]?.location || '';
+  const getOtherParticipantRating = (conv: Conversation) => participantMeta[getOtherParticipantId(conv)] || { avgRating: 0, reviewCount: 0, location: '', photoURL: '', blockedUsers: [], online: false };
+  const getUnreadCount = (conv: Conversation) => currentUser ? Number((conv as any).unreadCount?.[currentUser.uid] || 0) : 0;
+
   useEffect(() => {
     if (!currentUser) return;
-
     setLoading(true);
     const q = query(collection(db, 'conversations'), where('participants', 'array-contains', currentUser.uid));
-
     const unsub = onSnapshot(q, async (snap) => {
       const convs: Conversation[] = [];
       snap.forEach((item) => convs.push({ id: item.id, ...item.data() } as Conversation));
-
       const visible = convs.filter((conv) => !((conv as any).hiddenFor || []).includes(currentUser.uid));
       visible.sort((a, b) => ((b as any).lastMessageAt || 0) - ((a as any).lastMessageAt || 0));
-
       setConversations(visible);
       setSelectedConv(conversationId ? visible.find((conv) => conv.id === conversationId) || null : null);
       await loadParticipantMeta(visible);
@@ -105,7 +109,6 @@ const MessagesPage: React.FC = () => {
       setError('Could not load conversations. Check your Firestore rules.');
       setLoading(false);
     });
-
     return unsub;
   }, [currentUser, conversationId]);
 
@@ -150,7 +153,6 @@ const MessagesPage: React.FC = () => {
       console.error('Error loading messages:', err);
       setError('Could not load messages. Check your Firestore rules.');
     });
-
     return unsub;
   }, [conversationId, currentUser]);
 
@@ -174,21 +176,18 @@ const MessagesPage: React.FC = () => {
 
     await Promise.all(userIds.map(async (uid) => {
       const fallback = convs.find((conv) => conv.participants.includes(uid))?.participantPhotos?.[uid] || '';
-      meta[uid] = { photoURL: fallback, location: '', avgRating: 0, reviewCount: 0, blockedUsers: [] };
-
+      meta[uid] = { photoURL: fallback, location: '', avgRating: 0, reviewCount: 0, blockedUsers: [], online: false };
       try {
         const publicSnap = await getDoc(doc(db, 'publicProfiles', uid)).catch(() => null);
         if (publicSnap?.exists()) {
           const data = publicSnap.data();
           meta[uid] = { ...meta[uid], photoURL: data.photoURL || fallback, location: data.location || '', avgRating: Number(data.ratingAverage || 0), reviewCount: Number(data.ratingCount || 0) };
         }
-
         const userSnap = await getDoc(doc(db, 'users', uid)).catch(() => null);
         if (userSnap?.exists()) {
           const user = { uid, ...userSnap.data() } as UserProfile;
-          meta[uid] = { ...meta[uid], photoURL: user.photoURL || meta[uid].photoURL, location: user.location || meta[uid].location, blockedUsers: user.blockedUsers || [] };
+          meta[uid] = { ...meta[uid], photoURL: user.photoURL || meta[uid].photoURL, location: user.location || meta[uid].location, blockedUsers: user.blockedUsers || [], online: Boolean((user as any).online) };
         }
-
         const ratingsSnap = await getDocs(query(collection(db, 'ratings'), where('toUserId', '==', uid))).catch(() => null);
         const ratings: Rating[] = [];
         ratingsSnap?.forEach((item) => ratings.push({ id: item.id, ...item.data() } as Rating));
@@ -199,17 +198,8 @@ const MessagesPage: React.FC = () => {
         // Keep fallback metadata.
       }
     }));
-
     setParticipantMeta(meta);
   };
-
-  const getOtherParticipantId = (conv: Conversation) => currentUser ? conv.participants.find((id) => id !== currentUser.uid) || '' : '';
-  const getOtherParticipantName = (conv: Conversation) => conv.participantNames?.[getOtherParticipantId(conv)] || 'User';
-  const getOtherParticipantPhoto = (conv: Conversation) => participantMeta[getOtherParticipantId(conv)]?.photoURL || conv.participantPhotos?.[getOtherParticipantId(conv)] || '';
-  const getOtherParticipantInitial = (conv: Conversation) => getOtherParticipantName(conv)[0]?.toUpperCase() || 'U';
-  const getOtherParticipantLocation = (conv: Conversation) => participantMeta[getOtherParticipantId(conv)]?.location || '';
-  const getOtherParticipantRating = (conv: Conversation) => participantMeta[getOtherParticipantId(conv)] || { avgRating: 0, reviewCount: 0, location: '', photoURL: '', blockedUsers: [] };
-  const getUnreadCount = (conv: Conversation) => currentUser ? Number((conv as any).unreadCount?.[currentUser.uid] || 0) : 0;
 
   const otherParticipantId = selectedConv ? getOtherParticipantId(selectedConv) : '';
   const otherMeta = otherParticipantId ? participantMeta[otherParticipantId] : undefined;
@@ -224,6 +214,17 @@ const MessagesPage: React.FC = () => {
   const autoConfirmAt = Number(swapState.autoConfirmAt || (firstMarkedAt ? firstMarkedAt + AUTO_CONFIRM_SWAP_MS : 0));
   const isSwapCompleted = Boolean(swapState.completedAt || (firstMarkedAt && Date.now() >= autoConfirmAt));
   const shouldShowSwapBox = Boolean(selectedConv && selectedConv.listingId && currentUser && !messagingBlocked);
+
+  const filteredConversations = useMemo(() => conversations.filter((conv) => {
+    const term = searchTerm.trim().toLowerCase();
+    const unread = getUnreadCount(conv);
+    const isSwapping = Boolean(conv.listingId);
+    if (activeFilter === 'swapping' && !isSwapping) return false;
+    if (activeFilter === 'unread' && unread < 1) return false;
+    if (!term) return true;
+    const haystack = [getOtherParticipantName(conv), (conv as any).lastMessage || '', conv.listingTitle || '', getOtherParticipantLocation(conv)].join(' ').toLowerCase();
+    return haystack.includes(term);
+  }), [conversations, searchTerm, activeFilter, participantMeta, currentUser?.uid]);
 
   useEffect(() => {
     if (!selectedConv || !conversationId || !firstMarkedAt || swapState.completedAt || Date.now() < autoConfirmAt) return;
@@ -276,7 +277,6 @@ const MessagesPage: React.FC = () => {
     const recipientIds = selectedConv.participants.filter((id) => id !== currentUser.uid);
     setSending(true);
     setError('');
-
     try {
       await addDoc(collection(db, 'messages'), {
         conversationId,
@@ -289,7 +289,6 @@ const MessagesPage: React.FC = () => {
         createdAt: now,
         ...payload
       });
-
       await updateDoc(doc(db, 'conversations', conversationId), {
         ...buildConversationDeliveryUpdate(recipientIds, now),
         lastMessage: payload.type === 'map' ? 'Location pin' : payload.text,
@@ -322,7 +321,6 @@ const MessagesPage: React.FC = () => {
       updates['swapCompletion.ratingUnlocked'] = true;
       updates['swapCompletion.status'] = 'completed';
     }
-
     try {
       await updateDoc(doc(db, 'conversations', conversationId), updates);
       if (nextMarkedBy.length === 1) setError('Marked complete. If the other user does not respond within 7 days, the swap will auto-confirm.');
@@ -378,7 +376,6 @@ const MessagesPage: React.FC = () => {
     setSending(true);
     setAttachMenuOpen(false);
     setError('');
-
     try {
       const messageRef = doc(collection(db, 'messages'));
       const uploaded = await uploadChatImage(conversationId, messageRef.id, file);
@@ -415,7 +412,6 @@ const MessagesPage: React.FC = () => {
       setError('Location sharing is not supported on this browser.');
       return;
     }
-
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
         const mapUrl = `https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`;
@@ -431,7 +427,6 @@ const MessagesPage: React.FC = () => {
     setBlocking(true);
     setThreadMenuOpen(false);
     setError('');
-
     try {
       await setDoc(doc(db, 'users', currentUser.uid), { blockedUsers: arrayUnion(otherParticipantId), lastSeen: Date.now() }, { merge: true });
       await refreshProfile();
@@ -450,7 +445,6 @@ const MessagesPage: React.FC = () => {
     setDeleting(true);
     setThreadMenuOpen(false);
     setError('');
-
     try {
       await updateDoc(doc(db, 'conversations', conversationId), {
         hiddenFor: Array.from(new Set([...(selectedConv as any).hiddenFor || [], currentUser.uid])),
@@ -555,74 +549,66 @@ const MessagesPage: React.FC = () => {
   const selectedInitial = selectedConv ? getOtherParticipantInitial(selectedConv) : 'U';
 
   return (
-    <div className="mx-auto max-w-[1180px] px-3 py-5 pb-8 sm:px-6 sm:py-7 sm:pb-[60px]">
-      <div className="mb-5 flex items-end justify-between gap-4">
-        <div>
-          <h1 className="font-['Work_Sans'] text-[28px] font-bold tracking-tight text-stone-950 sm:text-[34px]">Chats</h1>
-        </div>
-        <Link to="/browse" className="hidden rounded-full border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50 sm:inline-flex">Browse books</Link>
-      </div>
+    <div className="mx-auto max-w-[1240px] px-0 py-0 sm:px-5 sm:py-5 sm:pb-[60px]">
+      {error && <div className={`mx-3 mb-3 rounded-2xl p-3 text-sm font-medium sm:mx-0 ${error.startsWith('Could not') || error.includes('failed') || error.includes('rules') ? 'border border-red-200 bg-red-50 text-red-700' : 'border border-primary-200 bg-primary-50 text-primary-700'}`}>{error}</div>}
 
-      {error && <div className={`mb-4 rounded-2xl p-3 text-sm font-medium ${error.startsWith('Could not') || error.includes('failed') || error.includes('rules') ? 'border border-red-200 bg-red-50 text-red-700' : 'border border-primary-200 bg-primary-50 text-primary-700'}`}>{error}</div>}
-
-      <div className="overflow-hidden rounded-[28px] border border-stone-200 bg-white shadow-[0_18px_50px_rgba(28,25,23,0.08)]" style={{ height: 'calc(100vh - 185px)', minHeight: '620px' }}>
+      <div className="overflow-hidden border border-stone-200 bg-white shadow-[0_18px_50px_rgba(28,25,23,0.06)] sm:rounded-[24px]" style={{ height: 'calc(100vh - 120px)', minHeight: '650px' }}>
         <div className="flex h-full min-h-0">
-          <aside className={`w-full border-r border-stone-200 bg-white sm:w-[390px] sm:min-w-[390px] ${conversationId ? 'hidden sm:flex' : 'flex'} flex-col`}>
-            <div className="border-b border-stone-100 px-5 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="font-['Work_Sans'] text-lg font-bold text-stone-950">Conversations</h2>
-                  <p className="mt-0.5 text-xs text-stone-500">{conversations.length} chat{conversations.length === 1 ? '' : 's'}</p>
-                </div>
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF4E2] text-primary-700"><i className="las la-comments text-2xl" /></span>
+          <aside className={`w-full border-r border-stone-200 bg-[#FFFAF2] sm:w-[420px] sm:min-w-[420px] ${conversationId ? 'hidden sm:flex' : 'flex'} flex-col`}>
+            <div className="border-b border-stone-200/70 px-6 pb-5 pt-7">
+              <h1 className="font-['Work_Sans'] text-[28px] font-bold tracking-tight text-stone-950">Chats</h1>
+              <div className="mt-6 flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
+                <i className="las la-search text-xl text-stone-400" />
+                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search conversations..." className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-stone-400" />
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto bg-white px-2 py-2">
+            <div className="border-b border-stone-200/70 px-6 py-4">
+              <div className="flex gap-2 overflow-x-auto">
+                {([
+                  ['all', 'All'],
+                  ['swapping', 'Swapping'],
+                  ['unread', 'Unread']
+                ] as [ChatFilter, string][]).map(([key, label]) => <button key={key} type="button" onClick={() => setActiveFilter(key)} className={`shrink-0 cursor-pointer rounded-xl border px-4 py-2 text-sm font-semibold transition ${activeFilter === key ? 'border-primary-600 bg-white text-stone-950 shadow-sm' : 'border-stone-300 bg-transparent text-stone-700 hover:bg-white'}`}>{label}</button>)}
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4">
               {loading ? (
-                <div className="space-y-2 p-3">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="flex animate-pulse items-center gap-3 rounded-2xl p-3">
-                      <div className="h-12 w-12 rounded-full bg-stone-200" />
-                      <div className="flex-1 space-y-2"><div className="h-3 w-2/3 rounded bg-stone-200" /><div className="h-2 w-full rounded bg-stone-100" /></div>
-                    </div>
-                  ))}
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((i) => <div key={i} className="flex animate-pulse items-center gap-3 rounded-2xl bg-white/60 p-4"><div className="h-12 w-12 rounded-full bg-stone-200" /><div className="flex-1 space-y-2"><div className="h-3 w-2/3 rounded bg-stone-200" /><div className="h-2 w-full rounded bg-stone-100" /></div></div>)}
                 </div>
-              ) : conversations.length === 0 ? (
+              ) : filteredConversations.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-stone-100 text-stone-400"><i className="las la-comment-slash text-3xl" /></div>
-                  <h3 className="mt-4 font-bold text-stone-900">No conversations yet</h3>
-                  <p className="mt-1 text-sm leading-6 text-stone-500">Message a seller from a listing and your chats will appear here.</p>
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-stone-400 ring-1 ring-stone-200"><i className="las la-comment-slash text-3xl" /></div>
+                  <h3 className="mt-4 font-bold text-stone-900">No chats found</h3>
+                  <p className="mt-1 text-sm leading-6 text-stone-500">Try a different filter or search term.</p>
                 </div>
-              ) : conversations.map((conv) => {
+              ) : filteredConversations.map((conv) => {
                 const photo = getOtherParticipantPhoto(conv);
                 const rating = getOtherParticipantRating(conv);
                 const location = getOtherParticipantLocation(conv);
                 const unread = getUnreadCount(conv);
                 const isSelected = conv.id === conversationId;
                 const hasUnread = unread > 0;
-
+                const online = Boolean(rating.online);
                 return (
-                  <Link key={conv.id} to={`/messages/${conv.id}`} className={`group relative block rounded-2xl transition ${isSelected ? 'bg-[#fff4f1]' : 'hover:bg-stone-50'}`}>
-                    {isSelected && <span className="absolute bottom-3 left-2 top-3 w-1 rounded-full bg-primary-600" />}
-                    <div className="flex items-center gap-3 px-4 py-3">
-                      {photo ? (
-                        <img src={photo} alt={getOtherParticipantName(conv)} className="h-[52px] w-[52px] shrink-0 rounded-full bg-stone-100 object-cover ring-1 ring-stone-100" />
-                      ) : (
-                        <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[#FFF4E2] text-sm font-bold text-primary-700 ring-1 ring-stone-100">{getOtherParticipantInitial(conv)}</div>
-                      )}
-
+                  <Link key={conv.id} to={`/messages/${conv.id}`} className={`group relative mb-2 block rounded-2xl transition ${isSelected ? 'bg-[#FFF4E2] shadow-sm' : 'hover:bg-white/70'}`}>
+                    {isSelected && <span className="absolute bottom-3 left-0 top-3 w-1 rounded-full bg-primary-600" />}
+                    <div className="flex items-center gap-3 px-4 py-4">
+                      <div className="relative shrink-0">
+                        {photo ? <img src={photo} alt={getOtherParticipantName(conv)} className="h-[52px] w-[52px] rounded-full bg-stone-100 object-cover ring-1 ring-stone-100" /> : <div className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-white text-sm font-bold text-stone-700 ring-1 ring-stone-200">{getOtherParticipantInitial(conv)}</div>}
+                        {online && <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#FFFAF2] bg-emerald-500" />}
+                      </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
                           <span className="truncate text-[15px] font-extrabold leading-tight text-stone-950">{getOtherParticipantName(conv)}</span>
-                          <span className={`shrink-0 text-[11px] ${hasUnread ? 'font-extrabold text-primary-600' : 'font-semibold text-stone-400'}`}>{formatThreadDate((conv as any).lastMessageAt)}</span>
+                          <span className={`shrink-0 text-xs ${hasUnread ? 'font-extrabold text-primary-600' : 'font-semibold text-stone-400'}`}>{formatThreadDate((conv as any).lastMessageAt)}</span>
                         </div>
-                        <p className="mt-0.5 truncate text-xs text-stone-500">{location || 'Location not set'} · ★ {rating.reviewCount > 0 ? `${rating.avgRating.toFixed(1)} (${rating.reviewCount})` : '0.0 (0)'}</p>
-                        <div className="mt-1 flex items-center gap-2">
-                          <p className={`min-w-0 flex-1 truncate text-sm ${hasUnread ? 'font-bold text-stone-900' : 'text-stone-500'}`}>{(conv as any).lastMessage || 'No messages yet'}</p>
-                          {hasUnread && <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-primary-600 px-2 text-[11px] font-extrabold text-white shadow-sm">{unread > 99 ? '99+' : unread}</span>}
-                        </div>
+                        <p className={`mt-0.5 truncate text-sm ${hasUnread ? 'font-bold text-stone-800' : 'text-stone-600'}`}>{(conv as any).lastMessage || 'No messages yet'}</p>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-stone-500"><span className="truncate"><i className="las la-map-marker mr-0.5" />{location || 'Location not set'}</span><span className="text-[#F7AF31]">★</span><span className="font-semibold text-stone-700">{rating.reviewCount > 0 ? rating.avgRating.toFixed(1) : '0.0'}</span></div>
                       </div>
+                      {hasUnread && <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-primary-600 px-2 text-[11px] font-extrabold text-white shadow-sm">{unread > 99 ? '99+' : unread}</span>}
                     </div>
                   </Link>
                 );
@@ -630,26 +616,23 @@ const MessagesPage: React.FC = () => {
             </div>
           </aside>
 
-          <section className={`min-w-0 flex-1 flex-col bg-[#fbfaf8] ${!conversationId ? 'hidden sm:flex' : 'flex'}`}>
+          <section className={`min-w-0 flex-1 flex-col bg-white ${!conversationId ? 'hidden sm:flex' : 'flex'}`}>
             {conversationId && selectedConv ? (
               <>
-                <header className="relative border-b border-stone-200 bg-white px-3 py-3 sm:px-5">
+                <header className="relative border-b border-stone-200 bg-white px-4 py-4 sm:px-6">
                   <div className="flex min-w-0 items-center gap-3">
                     <Link to="/messages" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-stone-700 hover:bg-stone-100 sm:hidden"><i className="las la-angle-left text-2xl" /></Link>
-                    {selectedPhoto ? <img src={selectedPhoto} alt={selectedName} className="h-11 w-11 shrink-0 rounded-full bg-stone-100 object-cover ring-1 ring-stone-100" /> : <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FFF4E2] text-sm font-bold text-primary-700">{selectedInitial}</div>}
-                    <div className="min-w-0 flex-1"><h3 className="truncate text-base font-extrabold text-stone-950">{selectedName}</h3><p className="truncate text-xs text-stone-500">{otherMeta?.location || 'Location not set'} {otherMeta?.reviewCount ? `· ★ ${otherMeta.avgRating.toFixed(1)} (${otherMeta.reviewCount})` : '· No reviews yet'}</p></div>
-                    <div className="relative shrink-0">
-                      <button type="button" onClick={(event) => { event.stopPropagation(); setThreadMenuOpen((current) => !current); setAttachMenuOpen(false); }} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 transition hover:bg-stone-50" aria-label="Conversation actions"><i className="las la-ellipsis-v text-xl" /></button>
-                      {threadMenuOpen && <div onClick={(event) => event.stopPropagation()} className="absolute right-0 top-12 z-40 w-56 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl"><button onClick={deleteConversation} disabled={deleting} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-trash text-xl" />{deleting ? 'Deleting...' : 'Delete chat'}</button><button onClick={() => { setThreadMenuOpen(false); setShowReport(true); }} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-semibold text-stone-700 hover:bg-stone-50"><i className="las la-flag text-xl" />Report</button><button onClick={blockUser} disabled={blocking || isBlockedByMe} className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-4 py-3 text-left font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-ban text-xl" />{isBlockedByMe ? 'Blocked' : blocking ? 'Blocking...' : 'Block'}</button></div>}
-                    </div>
+                    <div className="relative shrink-0">{selectedPhoto ? <img src={selectedPhoto} alt={selectedName} className="h-14 w-14 rounded-full bg-stone-100 object-cover ring-1 ring-stone-100" /> : <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#FFF4E2] text-sm font-bold text-primary-700">{selectedInitial}</div>}{otherMeta?.online && <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500" />}</div>
+                    <div className="min-w-0 flex-1"><h3 className="truncate text-xl font-extrabold text-stone-950">{selectedName}</h3><p className="truncate text-sm text-stone-500"><i className="las la-map-marker mr-1" />{otherMeta?.location || 'Location not set'} <span className="mx-1">·</span> <span className="text-[#F7AF31]">★</span> {otherMeta?.reviewCount ? `${otherMeta.avgRating.toFixed(1)} (${otherMeta.reviewCount})` : 'No reviews'} {otherMeta?.online && <><span className="mx-1">·</span><span className="font-semibold text-emerald-600">Online</span></>}</p></div>
+                    <div className="relative shrink-0"><button type="button" onClick={(event) => { event.stopPropagation(); setThreadMenuOpen((current) => !current); setAttachMenuOpen(false); }} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-700 transition hover:bg-stone-50" aria-label="Conversation actions"><i className="las la-ellipsis-v text-xl" /></button>{threadMenuOpen && <div onClick={(event) => event.stopPropagation()} className="absolute right-0 top-12 z-40 w-56 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl"><button onClick={deleteConversation} disabled={deleting} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-trash text-xl" />{deleting ? 'Deleting...' : 'Delete chat'}</button><button onClick={() => { setThreadMenuOpen(false); setShowReport(true); }} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-semibold text-stone-700 hover:bg-stone-50"><i className="las la-flag text-xl" />Report</button><button onClick={blockUser} disabled={blocking || isBlockedByMe} className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-4 py-3 text-left font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-ban text-xl" />{isBlockedByMe ? 'Blocked' : blocking ? 'Blocking...' : 'Block'}</button></div>}</div>
                   </div>
                 </header>
 
-                <div className="border-b border-stone-200 bg-white px-3 py-2 sm:px-5"><ConversationListingCard conversation={selectedConv} /></div>
-                {messagingBlocked && <div className="border-b border-primary-100 bg-primary-50 px-5 py-3 text-sm font-bold text-primary-700">{UNAVAILABLE_MESSAGE}</div>}
-                {shouldShowSwapBox && <div className="border-b border-stone-200 bg-white px-3 py-3 sm:px-5"><div className="rounded-2xl border border-stone-200 bg-[#fffdf9] p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-extrabold text-stone-950">Swap completion</p><p className="mt-1 text-xs leading-5 text-stone-500">{isSwapCompleted ? 'Both users can now rate this swap.' : hasMarkedComplete ? `Waiting for the other user. Auto-confirms on ${formatLongDate(autoConfirmAt)}.` : 'When the exchange is done, mark it complete. If the other user does not respond within 7 days, it auto-confirms.'}</p></div><button type="button" onClick={handleMarkSwapComplete} disabled={completionUpdating || hasMarkedComplete || isSwapCompleted} className="inline-flex cursor-pointer items-center justify-center rounded-full bg-primary-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60">{isSwapCompleted ? 'Completed' : hasMarkedComplete ? 'Marked complete' : completionUpdating ? 'Saving...' : 'Mark as Complete'}</button></div>{isSwapCompleted && <div className="mt-4 rounded-2xl bg-white p-3 ring-1 ring-stone-200"><p className="text-sm font-bold text-stone-950">Rate {selectedName}</p>{hasRatedSwap ? <p className="mt-1 text-sm text-stone-500">You have already rated this swap.</p> : <div className="mt-3 space-y-3"><div className="flex gap-1">{[1, 2, 3, 4, 5].map((value) => <button key={value} type="button" onClick={() => setRatingValue(value)} className="cursor-pointer text-2xl" aria-label={`${value} star rating`}><i className={`las la-star ${value <= ratingValue ? 'text-[#F7AF31]' : 'text-stone-300'}`} /></button>)}</div><textarea value={ratingReview} onChange={(e) => setRatingReview(e.target.value)} rows={2} placeholder="Add a short review..." className="w-full resize-none rounded-2xl border border-stone-200 px-4 py-3 text-sm outline-none focus:border-primary-600" /><button type="button" onClick={submitSwapRating} disabled={ratingSubmitting} className="cursor-pointer rounded-full bg-stone-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60">{ratingSubmitting ? 'Submitting...' : 'Submit rating'}</button></div>}</div>}</div></div>}
+                {(selectedConv.listingTitle || shouldShowSwapBox) && <div className="border-b border-stone-200 bg-white px-4 py-3 sm:px-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="inline-flex min-w-0 items-center gap-3 rounded-full border border-stone-200 bg-[#FFFAF2] px-4 py-2"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white"><i className="las la-book text-lg" /></span><div className="min-w-0"><p className="truncate text-sm font-extrabold text-stone-950">{selectedConv.listingTitle || 'Book swap'}</p><p className="truncate text-xs text-stone-500">Swap conversation</p></div><span className="ml-2 rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-bold text-green-700">Active</span></div>{shouldShowSwapBox && <button type="button" onClick={handleMarkSwapComplete} disabled={completionUpdating || hasMarkedComplete || isSwapCompleted} className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-[#F7AF31] bg-[#FFF4E2] px-4 py-2.5 text-sm font-bold text-stone-800 hover:bg-[#ffeac0] disabled:cursor-not-allowed disabled:opacity-60"><i className="las la-exchange-alt text-lg" />{isSwapCompleted ? 'Swap completed' : hasMarkedComplete ? 'Marked complete' : completionUpdating ? 'Saving...' : 'Swap completion'}</button>}</div>{shouldShowSwapBox && (hasMarkedComplete || isSwapCompleted) && <p className="mt-2 text-xs text-stone-500">{isSwapCompleted ? 'Rating is now unlocked for this swap.' : `Waiting for the other user. Auto-confirms on ${formatLongDate(autoConfirmAt)}.`}</p>}{isSwapCompleted && <div className="mt-3 rounded-2xl border border-stone-200 bg-white p-4"><p className="text-sm font-bold text-stone-950">Rate {selectedName}</p>{hasRatedSwap ? <p className="mt-1 text-sm text-stone-500">You have already rated this swap.</p> : <div className="mt-3 space-y-3"><div className="flex gap-1">{[1, 2, 3, 4, 5].map((value) => <button key={value} type="button" onClick={() => setRatingValue(value)} className="cursor-pointer text-2xl" aria-label={`${value} star rating`}><i className={`las la-star ${value <= ratingValue ? 'text-[#F7AF31]' : 'text-stone-300'}`} /></button>)}</div><textarea value={ratingReview} onChange={(e) => setRatingReview(e.target.value)} rows={2} placeholder="Add a short review..." className="w-full resize-none rounded-2xl border border-stone-200 px-4 py-3 text-sm outline-none focus:border-primary-600" /><button type="button" onClick={submitSwapRating} disabled={ratingSubmitting} className="cursor-pointer rounded-full bg-stone-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60">{ratingSubmitting ? 'Submitting...' : 'Submit rating'}</button></div>}</div>}</div>}
 
-                <div ref={messagesPaneRef} className="flex-1 space-y-4 overflow-y-auto px-3 py-5 sm:px-6">
+                {messagingBlocked && <div className="border-b border-primary-100 bg-primary-50 px-5 py-3 text-sm font-bold text-primary-700">{UNAVAILABLE_MESSAGE}</div>}
+
+                <div ref={messagesPaneRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-8 sm:px-8">
                   {visibleMessages.map((msg, index) => {
                     const isMe = msg.senderId === currentUser.uid;
                     const showDay = index === 0 || !isSameDay((msg as any).createdAt || 0, (visibleMessages[index - 1] as any)?.createdAt || 0);
@@ -658,12 +641,11 @@ const MessagesPage: React.FC = () => {
                     const isRead = recipientIds.every((id) => ((msg as any).readBy || []).includes(id));
                     const imageSource = (msg as any).imageUrl || (msg as any).imageData || '';
                     const canDeleteEveryone = isMe && !(msg as any).deleted && Date.now() - ((msg as any).createdAt || 0) <= DELETE_EVERYONE_WINDOW_MS;
-
-                    return <React.Fragment key={msg.id}>{showDay && <div className="flex justify-center py-1"><span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-bold text-stone-500 shadow-sm">{formatDayLabel((msg as any).createdAt)}</span></div>}<div className={`group flex ${isMe ? 'justify-end' : 'justify-start'}`}><div className={`relative max-w-[86%] px-4 py-3 text-sm shadow-sm sm:max-w-[72%] ${isMe ? 'rounded-[22px] rounded-br-md border border-primary-600/10 bg-[#FFF4E2] text-stone-950' : 'rounded-[22px] rounded-bl-md border border-stone-200 bg-white text-stone-800'} ${(msg as any).deleted ? 'opacity-80' : ''}`}>{(msg as any).deleted ? <p className="whitespace-pre-wrap italic text-stone-500">This message was deleted</p> : <>{(msg as any).type === 'image' && imageSource ? <img src={imageSource} alt={(msg as any).imageName || 'Sent image'} className="mb-2 max-h-72 rounded-2xl object-contain" /> : null}{(msg as any).type === 'map' && (msg as any).mapUrl ? <a href={(msg as any).mapUrl} target="_blank" rel="noreferrer" className="mb-2 flex items-center gap-2 rounded-2xl border border-stone-200 bg-white p-3 font-bold text-[#1665CC]"><i className="las la-map-marker text-2xl" /> Open location pin</a> : null}{(msg as any).type !== 'image' || msg.text !== 'Image' ? <p className="whitespace-pre-wrap leading-6">{msg.text}</p> : null}</>}<button type="button" onClick={(event) => { event.stopPropagation(); setMessageMenuId(messageMenuId === msg.id ? null : msg.id); }} className={`absolute top-1 hidden h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white text-stone-600 shadow-sm ring-1 ring-stone-200 transition hover:bg-stone-50 sm:flex ${isMe ? '-left-10' : '-right-10'} opacity-0 group-hover:opacity-100`} aria-label="Message actions"><i className="las la-angle-down text-lg" /></button>{messageMenuId === msg.id && <div onClick={(event) => event.stopPropagation()} className={`absolute top-9 z-40 w-52 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl ${isMe ? 'right-full mr-2' : 'left-full ml-2'}`}><button type="button" onClick={() => copyMessage(msg)} disabled={(msg as any).deleted || !msg.text || msg.text === 'Image'} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><i className="las la-copy text-xl" />Copy</button><button type="button" onClick={() => deleteMessageForMe(msg)} className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-4 py-3 text-left text-red-600 hover:bg-red-50"><i className="las la-trash text-xl" />Delete for me</button>{canDeleteEveryone && <button type="button" onClick={() => deleteMessageForEveryone(msg)} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-red-700 hover:bg-red-50"><i className="las la-trash-alt text-xl" />Delete for everyone</button>}</div>}<div className={`mt-1 flex flex-wrap items-center justify-end gap-1 text-[11px] ${isMe ? 'text-stone-500' : 'text-stone-400'}`}><span>{formatMessageTime((msg as any).createdAt)}</span>{isMe && <span title={isRead ? 'Read' : isDelivered ? 'Delivered' : 'Sent'} className={isRead ? 'text-[#1665CC]' : 'text-stone-400'}>{isRead ? <i className="las la-check-double" /> : isDelivered ? <i className="las la-check-double" /> : <i className="las la-check" />}</span>}</div></div></div></React.Fragment>;
+                    return <React.Fragment key={msg.id}>{showDay && <div className="flex items-center gap-4 py-2"><span className="h-px flex-1 bg-stone-200" /><span className="text-xs font-semibold text-stone-400">{formatDayLabel((msg as any).createdAt)}</span><span className="h-px flex-1 bg-stone-200" /></div>}<div className={`group flex ${isMe ? 'justify-end' : 'justify-start'}`}><div className={`relative max-w-[86%] px-4 py-3 text-[15px] shadow-sm sm:max-w-[68%] ${isMe ? 'rounded-[22px] rounded-br-md bg-primary-600 text-white' : 'rounded-[22px] rounded-bl-md border border-stone-200 bg-[#F5F0E8] text-stone-900'} ${(msg as any).deleted ? 'opacity-80' : ''}`}>{(msg as any).deleted ? <p className="whitespace-pre-wrap italic opacity-80">This message was deleted</p> : <>{(msg as any).type === 'image' && imageSource ? <img src={imageSource} alt={(msg as any).imageName || 'Sent image'} className="mb-2 max-h-72 rounded-2xl object-contain" /> : null}{(msg as any).type === 'map' && (msg as any).mapUrl ? <a href={(msg as any).mapUrl} target="_blank" rel="noreferrer" className="mb-2 flex items-center gap-2 rounded-2xl border border-stone-200 bg-white p-3 font-bold text-[#1665CC]"><i className="las la-map-marker text-2xl" /> Open location pin</a> : null}{(msg as any).type !== 'image' || msg.text !== 'Image' ? <p className="whitespace-pre-wrap leading-7">{msg.text}</p> : null}</>}<button type="button" onClick={(event) => { event.stopPropagation(); setMessageMenuId(messageMenuId === msg.id ? null : msg.id); }} className={`absolute top-1 hidden h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white text-stone-600 shadow-sm ring-1 ring-stone-200 transition hover:bg-stone-50 sm:flex ${isMe ? '-left-10' : '-right-10'} opacity-0 group-hover:opacity-100`} aria-label="Message actions"><i className="las la-angle-down text-lg" /></button>{messageMenuId === msg.id && <div onClick={(event) => event.stopPropagation()} className={`absolute top-9 z-40 w-52 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl ${isMe ? 'right-full mr-2' : 'left-full ml-2'}`}><button type="button" onClick={() => copyMessage(msg)} disabled={(msg as any).deleted || !msg.text || msg.text === 'Image'} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><i className="las la-copy text-xl" />Copy</button><button type="button" onClick={() => deleteMessageForMe(msg)} className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-4 py-3 text-left text-red-600 hover:bg-red-50"><i className="las la-trash text-xl" />Delete for me</button>{canDeleteEveryone && <button type="button" onClick={() => deleteMessageForEveryone(msg)} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-red-700 hover:bg-red-50"><i className="las la-trash-alt text-xl" />Delete for everyone</button>}</div>}<div className={`mt-1 flex flex-wrap items-center justify-end gap-1 text-xs ${isMe ? 'text-white/75' : 'text-stone-500'}`}><span>{formatMessageTime((msg as any).createdAt)}</span>{isMe && <span title={isRead ? 'Read' : isDelivered ? 'Delivered' : 'Sent'} className={isRead ? 'text-[#1665CC]' : 'text-white/80'}>{isRead ? <i className="las la-check-double" /> : isDelivered ? <i className="las la-check-double" /> : <i className="las la-check" />}</span>}</div></div></div></React.Fragment>;
                   })}
                 </div>
 
-                <form onSubmit={handleSend} className="border-t border-stone-200 bg-white px-3 py-3 sm:px-5"><input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSend} className="hidden" /><div className="flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 p-1.5"><div className="relative"><button type="button" onClick={(event) => { event.stopPropagation(); setAttachMenuOpen((current) => !current); setThreadMenuOpen(false); }} disabled={sending || messagingBlocked} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white text-stone-700 shadow-sm ring-1 ring-stone-200 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Attach"><i className="las la-paperclip text-2xl" /></button>{attachMenuOpen && <div onClick={(event) => event.stopPropagation()} className="absolute bottom-12 left-0 z-40 w-48 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl"><button type="button" onClick={() => { setAttachMenuOpen(false); imageInputRef.current?.click(); }} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-semibold text-stone-700 hover:bg-stone-50"><i className="las la-image text-xl" />Add image</button><button type="button" onClick={handleMapPin} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-semibold text-stone-700 hover:bg-stone-50"><i className="las la-map-marker text-xl" />Location</button></div>}</div><input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={messagingBlocked} placeholder={messagingBlocked ? 'Messaging disabled' : 'Type a message...'} className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm outline-none disabled:text-stone-400" /><button type="submit" disabled={!newMessage.trim() || sending || messagingBlocked} className="cursor-pointer rounded-full bg-primary-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{sending ? 'Sending...' : 'Send'}</button></div></form>
+                <form onSubmit={handleSend} className="border-t border-stone-200 bg-white px-4 py-4 sm:px-7"><input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSend} className="hidden" /><div className="flex items-center gap-3 rounded-full border border-stone-200 bg-[#FFFAF2] p-2 shadow-sm"><div className="relative"><button type="button" onClick={(event) => { event.stopPropagation(); setAttachMenuOpen((current) => !current); setThreadMenuOpen(false); }} disabled={sending || messagingBlocked} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Attach"><i className="las la-paperclip text-2xl" /></button>{attachMenuOpen && <div onClick={(event) => event.stopPropagation()} className="absolute bottom-14 left-0 z-40 w-48 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl"><button type="button" onClick={() => { setAttachMenuOpen(false); imageInputRef.current?.click(); }} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-semibold text-stone-700 hover:bg-stone-50"><i className="las la-image text-xl" />Add image</button><button type="button" onClick={handleMapPin} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-semibold text-stone-700 hover:bg-stone-50"><i className="las la-map-marker text-xl" />Location</button></div>}</div><input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={messagingBlocked} placeholder={messagingBlocked ? 'Messaging disabled' : 'Type a message...'} className="min-w-0 flex-1 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none focus:border-primary-600 disabled:text-stone-400" /><button type="submit" disabled={!newMessage.trim() || sending || messagingBlocked} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-primary-600 text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Send message"><i className="las la-paper-plane text-xl" /></button></div></form>
               </>
             ) : <div className="flex flex-1 flex-col items-center justify-center p-8 text-center"><div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white text-stone-400 shadow-sm ring-1 ring-stone-200"><i className="las la-comments text-4xl" /></div><h3 className="font-['Work_Sans'] text-xl font-bold text-stone-900">Select a conversation</h3><p className="mt-2 max-w-xs text-sm leading-6 text-stone-500">Choose a chat from the left to view messages and respond.</p></div>}
           </section>
