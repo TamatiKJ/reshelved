@@ -180,7 +180,8 @@ const BookCard: React.FC<{ listing: Listing }> = ({ listing }) => {
             onClick={handleBookmark}
             disabled={bookmarking}
             aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark book'}
-            className={`absolute left-3 top-3 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-stone-200 transition disabled:cursor-not-allowed disabled:opacity-60 ${isBookmarked ? 'text-primary-600 hover:bg-primary-50' : 'text-primary-600 hover:bg-stone-50'}`}
+            aria-pressed={isBookmarked}
+            className={`absolute left-3 top-3 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white shadow-sm ring-1 transition disabled:cursor-not-allowed disabled:opacity-60 ${isBookmarked ? 'text-primary-600 ring-primary-200 hover:bg-primary-50' : 'text-stone-500 ring-stone-200 hover:bg-stone-50 hover:text-primary-600'}`}
           >
             <i className={`${isBookmarked ? 'las la-bookmark' : 'lar la-bookmark'} text-xl`} />
           </button>
