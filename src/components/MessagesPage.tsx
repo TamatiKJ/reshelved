@@ -29,6 +29,7 @@ type ParticipantMeta = {
 };
 
 const DELETE_EVERYONE_WINDOW_MS = 10 * 60 * 1000;
+const AUTO_CONFIRM_SWAP_MS = 7 * 24 * 60 * 60 * 1000;
 const UNAVAILABLE_MESSAGE = "You can't message this user at this time.";
 
 const getConversationKey = (a: string, b: string) => [a, b].sort().join('_');
@@ -50,6 +51,7 @@ const formatThreadDate = (timestamp?: number) => {
 };
 
 const formatMessageTime = (timestamp?: number) => timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+const formatLongDate = (timestamp?: number) => timestamp ? new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 
 const MessagesPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId?: string }>();
@@ -63,6 +65,11 @@ const MessagesPage: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [completionUpdating, setCompletionUpdating] = useState(false);
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  const [ratingValue, setRatingValue] = useState(5);
+  const [ratingReview, setRatingReview] = useState('');
+  const [hasRatedSwap, setHasRatedSwap] = useState(false);
   const [error, setError] = useState('');
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [participantMeta, setParticipantMeta] = useState<Record<string, ParticipantMeta>>({});
@@ -210,6 +217,43 @@ const MessagesPage: React.FC = () => {
   const hasBlockedMe = Boolean(currentUser && otherMeta?.blockedUsers?.includes(currentUser.uid));
   const messagingBlocked = isBlockedByMe || hasBlockedMe;
   const visibleMessages = currentUser ? messages.filter((msg) => !((msg as any).deletedFor || []).includes(currentUser.uid)) : [];
+  const swapState = selectedConv ? (selectedConv as any).swapCompletion || {} : {};
+  const markedCompleteBy: string[] = Array.isArray(swapState.markedBy) ? swapState.markedBy : [];
+  const hasMarkedComplete = Boolean(currentUser && markedCompleteBy.includes(currentUser.uid));
+  const firstMarkedAt = Number(swapState.firstMarkedAt || 0);
+  const autoConfirmAt = Number(swapState.autoConfirmAt || (firstMarkedAt ? firstMarkedAt + AUTO_CONFIRM_SWAP_MS : 0));
+  const isSwapCompleted = Boolean(swapState.completedAt || (firstMarkedAt && Date.now() >= autoConfirmAt));
+  const shouldShowSwapBox = Boolean(selectedConv && selectedConv.listingId && currentUser && !messagingBlocked);
+
+  useEffect(() => {
+    if (!selectedConv || !conversationId || !firstMarkedAt || swapState.completedAt || Date.now() < autoConfirmAt) return;
+    updateDoc(doc(db, 'conversations', conversationId), {
+      'swapCompletion.completedAt': Date.now(),
+      'swapCompletion.completedBy': 'auto-confirmed',
+      'swapCompletion.ratingUnlocked': true,
+      'swapCompletion.status': 'completed'
+    }).catch(() => undefined);
+  }, [selectedConv?.id, conversationId, firstMarkedAt, autoConfirmAt, swapState.completedAt]);
+
+  useEffect(() => {
+    const loadExistingRating = async () => {
+      if (!currentUser || !selectedConv || !otherParticipantId) {
+        setHasRatedSwap(false);
+        return;
+      }
+      try {
+        const snap = await getDocs(query(collection(db, 'ratings'), where('fromUserId', '==', currentUser.uid)));
+        const found = snap.docs.some((item) => {
+          const data = item.data() as any;
+          return data.conversationId === selectedConv.id || (data.toUserId === otherParticipantId && data.listingId === selectedConv.listingId);
+        });
+        setHasRatedSwap(found);
+      } catch {
+        setHasRatedSwap(false);
+      }
+    };
+    loadExistingRating();
+  }, [currentUser?.uid, selectedConv?.id, otherParticipantId]);
 
   const ensureCanMessage = () => {
     if (messagingBlocked) {
@@ -256,6 +300,64 @@ const MessagesPage: React.FC = () => {
       setError('Message failed to send. Check your Firestore rules.');
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleMarkSwapComplete = async () => {
+    if (!currentUser || !selectedConv || !conversationId || completionUpdating || isSwapCompleted) return;
+    setCompletionUpdating(true);
+    setError('');
+    const now = Date.now();
+    const nextMarkedBy = Array.from(new Set([...markedCompleteBy, currentUser.uid]));
+    const firstAt = firstMarkedAt || now;
+    const updates: Record<string, unknown> = {
+      'swapCompletion.markedBy': nextMarkedBy,
+      'swapCompletion.firstMarkedAt': firstAt,
+      'swapCompletion.autoConfirmAt': firstAt + AUTO_CONFIRM_SWAP_MS,
+      'swapCompletion.status': 'pending'
+    };
+    if (nextMarkedBy.length >= selectedConv.participants.length) {
+      updates['swapCompletion.completedAt'] = now;
+      updates['swapCompletion.completedBy'] = 'both-users';
+      updates['swapCompletion.ratingUnlocked'] = true;
+      updates['swapCompletion.status'] = 'completed';
+    }
+
+    try {
+      await updateDoc(doc(db, 'conversations', conversationId), updates);
+      if (nextMarkedBy.length === 1) setError('Marked complete. If the other user does not respond within 7 days, the swap will auto-confirm.');
+      if (nextMarkedBy.length >= selectedConv.participants.length) setError('Swap completed. Rating is now unlocked.');
+    } catch {
+      setError('Could not mark the swap as complete. Check your Firestore rules.');
+    } finally {
+      setCompletionUpdating(false);
+    }
+  };
+
+  const submitSwapRating = async () => {
+    if (!currentUser || !selectedConv || !otherParticipantId || ratingSubmitting || hasRatedSwap || !isSwapCompleted) return;
+    setRatingSubmitting(true);
+    setError('');
+    try {
+      await addDoc(collection(db, 'ratings'), {
+        fromUserId: currentUser.uid,
+        fromUserName: userProfile?.displayName || currentUser.displayName || 'User',
+        toUserId: otherParticipantId,
+        toUserName: getOtherParticipantName(selectedConv),
+        conversationId: selectedConv.id,
+        listingId: selectedConv.listingId || '',
+        listingTitle: selectedConv.listingTitle || 'Swap',
+        rating: ratingValue,
+        review: ratingReview.trim(),
+        createdAt: Date.now()
+      });
+      setHasRatedSwap(true);
+      setRatingReview('');
+      setError('Rating submitted.');
+    } catch {
+      setError('Could not submit rating. Check your Firestore rules.');
+    } finally {
+      setRatingSubmitting(false);
     }
   };
 
@@ -442,7 +544,7 @@ const MessagesPage: React.FC = () => {
   if (!currentUser) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 text-center pb-10 sm:pb-[60px]">
-        <h2 className="text-xl font-bold text-stone-700">Please log in to view messages</h2>
+        <h2 className="text-xl font-bold text-stone-700">Please log in to view chats</h2>
         <Link to="/login" className="mt-4 inline-block font-semibold text-primary-600">Log In</Link>
       </div>
     );
@@ -456,8 +558,7 @@ const MessagesPage: React.FC = () => {
     <div className="mx-auto max-w-[1180px] px-3 py-5 pb-8 sm:px-6 sm:py-7 sm:pb-[60px]">
       <div className="mb-5 flex items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-stone-400">Inbox</p>
-          <h1 className="mt-1 font-['Work_Sans'] text-[28px] font-bold tracking-tight text-stone-950 sm:text-[34px]">Messages</h1>
+          <h1 className="font-['Work_Sans'] text-[28px] font-bold tracking-tight text-stone-950 sm:text-[34px]">Chats</h1>
         </div>
         <Link to="/browse" className="hidden rounded-full border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50 sm:inline-flex">Browse books</Link>
       </div>
@@ -546,6 +647,7 @@ const MessagesPage: React.FC = () => {
 
                 <div className="border-b border-stone-200 bg-white px-3 py-2 sm:px-5"><ConversationListingCard conversation={selectedConv} /></div>
                 {messagingBlocked && <div className="border-b border-primary-100 bg-primary-50 px-5 py-3 text-sm font-bold text-primary-700">{UNAVAILABLE_MESSAGE}</div>}
+                {shouldShowSwapBox && <div className="border-b border-stone-200 bg-white px-3 py-3 sm:px-5"><div className="rounded-2xl border border-stone-200 bg-[#fffdf9] p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-extrabold text-stone-950">Swap completion</p><p className="mt-1 text-xs leading-5 text-stone-500">{isSwapCompleted ? 'Both users can now rate this swap.' : hasMarkedComplete ? `Waiting for the other user. Auto-confirms on ${formatLongDate(autoConfirmAt)}.` : 'When the exchange is done, mark it complete. If the other user does not respond within 7 days, it auto-confirms.'}</p></div><button type="button" onClick={handleMarkSwapComplete} disabled={completionUpdating || hasMarkedComplete || isSwapCompleted} className="inline-flex cursor-pointer items-center justify-center rounded-full bg-primary-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60">{isSwapCompleted ? 'Completed' : hasMarkedComplete ? 'Marked complete' : completionUpdating ? 'Saving...' : 'Mark as Complete'}</button></div>{isSwapCompleted && <div className="mt-4 rounded-2xl bg-white p-3 ring-1 ring-stone-200"><p className="text-sm font-bold text-stone-950">Rate {selectedName}</p>{hasRatedSwap ? <p className="mt-1 text-sm text-stone-500">You have already rated this swap.</p> : <div className="mt-3 space-y-3"><div className="flex gap-1">{[1, 2, 3, 4, 5].map((value) => <button key={value} type="button" onClick={() => setRatingValue(value)} className="cursor-pointer text-2xl" aria-label={`${value} star rating`}><i className={`las la-star ${value <= ratingValue ? 'text-[#F7AF31]' : 'text-stone-300'}`} /></button>)}</div><textarea value={ratingReview} onChange={(e) => setRatingReview(e.target.value)} rows={2} placeholder="Add a short review..." className="w-full resize-none rounded-2xl border border-stone-200 px-4 py-3 text-sm outline-none focus:border-primary-600" /><button type="button" onClick={submitSwapRating} disabled={ratingSubmitting} className="cursor-pointer rounded-full bg-stone-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60">{ratingSubmitting ? 'Submitting...' : 'Submit rating'}</button></div>}</div>}</div></div>}
 
                 <div ref={messagesPaneRef} className="flex-1 space-y-4 overflow-y-auto px-3 py-5 sm:px-6">
                   {visibleMessages.map((msg, index) => {
@@ -557,7 +659,7 @@ const MessagesPage: React.FC = () => {
                     const imageSource = (msg as any).imageUrl || (msg as any).imageData || '';
                     const canDeleteEveryone = isMe && !(msg as any).deleted && Date.now() - ((msg as any).createdAt || 0) <= DELETE_EVERYONE_WINDOW_MS;
 
-                    return <React.Fragment key={msg.id}>{showDay && <div className="flex justify-center py-1"><span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-bold text-stone-500 shadow-sm">{formatDayLabel((msg as any).createdAt)}</span></div>}<div className={`group flex ${isMe ? 'justify-end' : 'justify-start'}`}><div className={`relative max-w-[86%] px-4 py-3 text-sm shadow-sm sm:max-w-[72%] ${isMe ? 'rounded-[22px] rounded-br-md border border-primary-600/10 bg-[#FFF4E2] text-stone-950' : 'rounded-[22px] rounded-bl-md border border-stone-200 bg-white text-stone-800'} ${(msg as any).deleted ? 'opacity-80' : ''}`}>{(msg as any).deleted ? <p className="whitespace-pre-wrap italic text-stone-500">This message was deleted</p> : <>{(msg as any).type === 'image' && imageSource ? <img src={imageSource} alt={(msg as any).imageName || 'Sent image'} className="mb-2 max-h-72 rounded-2xl object-contain" /> : null}{(msg as any).type === 'map' && (msg as any).mapUrl ? <a href={(msg as any).mapUrl} target="_blank" rel="noreferrer" className="mb-2 flex items-center gap-2 rounded-2xl border border-stone-200 bg-white p-3 font-bold text-[#1665CC]"><i className="las la-map-marker text-2xl" /> Open location pin</a> : null}{(msg as any).type !== 'image' || msg.text !== 'Image' ? <p className="whitespace-pre-wrap leading-6">{msg.text}</p> : null}</>}<button type="button" onClick={(event) => { event.stopPropagation(); setMessageMenuId(messageMenuId === msg.id ? null : msg.id); }} className={`absolute top-1 hidden h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white text-stone-600 shadow-sm ring-1 ring-stone-200 transition hover:bg-stone-50 sm:flex ${isMe ? '-left-10' : '-right-10'} opacity-0 group-hover:opacity-100`} aria-label="Message actions"><i className="las la-angle-down text-lg" /></button>{messageMenuId === msg.id && <div onClick={(event) => event.stopPropagation()} className={`absolute top-9 z-40 w-52 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl ${isMe ? 'right-full mr-2' : 'left-full ml-2'}`}><button type="button" onClick={() => copyMessage(msg)} disabled={(msg as any).deleted || !msg.text || msg.text === 'Image'} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><i className="las la-copy text-xl" />Copy</button><button type="button" onClick={() => deleteMessageForMe(msg)} className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-4 py-3 text-left text-red-600 hover:bg-red-50"><i className="las la-trash text-xl" />Delete for me</button>{canDeleteEveryone && <button type="button" onClick={() => deleteMessageForEveryone(msg)} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-red-700 hover:bg-red-50"><i className="las la-trash-alt text-xl" />Delete for everyone</button>}</div>}<div className={`mt-1 flex flex-wrap items-center justify-end gap-1 text-[11px] ${isMe ? 'text-stone-500' : 'text-stone-400'}`}><span>{formatMessageTime((msg as any).createdAt)}</span>{isMe && <span title={isRead ? 'Read' : isDelivered ? 'Delivered' : 'Sent'} className={isRead ? 'text-[#1665CC]' : 'text-stone-400'}>{isRead ? '✓✓' : isDelivered ? '✓✓' : '✓'}</span>}</div></div></div></React.Fragment>;
+                    return <React.Fragment key={msg.id}>{showDay && <div className="flex justify-center py-1"><span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-bold text-stone-500 shadow-sm">{formatDayLabel((msg as any).createdAt)}</span></div>}<div className={`group flex ${isMe ? 'justify-end' : 'justify-start'}`}><div className={`relative max-w-[86%] px-4 py-3 text-sm shadow-sm sm:max-w-[72%] ${isMe ? 'rounded-[22px] rounded-br-md border border-primary-600/10 bg-[#FFF4E2] text-stone-950' : 'rounded-[22px] rounded-bl-md border border-stone-200 bg-white text-stone-800'} ${(msg as any).deleted ? 'opacity-80' : ''}`}>{(msg as any).deleted ? <p className="whitespace-pre-wrap italic text-stone-500">This message was deleted</p> : <>{(msg as any).type === 'image' && imageSource ? <img src={imageSource} alt={(msg as any).imageName || 'Sent image'} className="mb-2 max-h-72 rounded-2xl object-contain" /> : null}{(msg as any).type === 'map' && (msg as any).mapUrl ? <a href={(msg as any).mapUrl} target="_blank" rel="noreferrer" className="mb-2 flex items-center gap-2 rounded-2xl border border-stone-200 bg-white p-3 font-bold text-[#1665CC]"><i className="las la-map-marker text-2xl" /> Open location pin</a> : null}{(msg as any).type !== 'image' || msg.text !== 'Image' ? <p className="whitespace-pre-wrap leading-6">{msg.text}</p> : null}</>}<button type="button" onClick={(event) => { event.stopPropagation(); setMessageMenuId(messageMenuId === msg.id ? null : msg.id); }} className={`absolute top-1 hidden h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white text-stone-600 shadow-sm ring-1 ring-stone-200 transition hover:bg-stone-50 sm:flex ${isMe ? '-left-10' : '-right-10'} opacity-0 group-hover:opacity-100`} aria-label="Message actions"><i className="las la-angle-down text-lg" /></button>{messageMenuId === msg.id && <div onClick={(event) => event.stopPropagation()} className={`absolute top-9 z-40 w-52 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl ${isMe ? 'right-full mr-2' : 'left-full ml-2'}`}><button type="button" onClick={() => copyMessage(msg)} disabled={(msg as any).deleted || !msg.text || msg.text === 'Image'} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><i className="las la-copy text-xl" />Copy</button><button type="button" onClick={() => deleteMessageForMe(msg)} className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-4 py-3 text-left text-red-600 hover:bg-red-50"><i className="las la-trash text-xl" />Delete for me</button>{canDeleteEveryone && <button type="button" onClick={() => deleteMessageForEveryone(msg)} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-red-700 hover:bg-red-50"><i className="las la-trash-alt text-xl" />Delete for everyone</button>}</div>}<div className={`mt-1 flex flex-wrap items-center justify-end gap-1 text-[11px] ${isMe ? 'text-stone-500' : 'text-stone-400'}`}><span>{formatMessageTime((msg as any).createdAt)}</span>{isMe && <span title={isRead ? 'Read' : isDelivered ? 'Delivered' : 'Sent'} className={isRead ? 'text-[#1665CC]' : 'text-stone-400'}>{isRead ? <i className="las la-check-double" /> : isDelivered ? <i className="las la-check-double" /> : <i className="las la-check" />}</span>}</div></div></div></React.Fragment>;
                   })}
                 </div>
 
