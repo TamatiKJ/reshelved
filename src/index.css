@@ -27,9 +27,24 @@
   --color-accent-900: #78350f;
 }
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
 
-* { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+* {
+  box-sizing: border-box;
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
 
 h1, h2, h3, h4, h5, h6, .font-heading {
   font-family: 'Work Sans', ui-sans-serif, system-ui, sans-serif;
@@ -39,6 +54,13 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 body {
   @apply bg-stone-50 text-stone-800 antialiased;
   min-height: 100vh;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
 }
 
 .admin-input {
