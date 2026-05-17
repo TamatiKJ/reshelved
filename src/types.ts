@@ -78,6 +78,8 @@ export interface Message {
   readBy?: string[];
   deletedFor?: string[];
   deleted?: boolean;
+  deletedAt?: number;
+  deletedBy?: string;
 }
 
 export interface Rating {
