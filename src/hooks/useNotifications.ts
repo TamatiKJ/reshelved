@@ -15,23 +15,36 @@ export const useNotifications = () => {
       return;
     }
 
-    const q = query(
+    const notificationsQuery = query(
       collection(db, 'notifications'),
       where('userId', '==', currentUser.uid),
       where('read', '==', false)
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      setUnreadCount(snap.size);
-      const threads = new Set<string>();
-      snap.docs.forEach((item) => {
-        const data = item.data();
-        if (data.type === 'message') threads.add(data.conversationId || item.id);
-      });
-      setMessageUnreadCount(threads.size);
+    const conversationsQuery = query(
+      collection(db, 'conversations'),
+      where('participants', 'array-contains', currentUser.uid)
+    );
+
+    const unsubNotifications = onSnapshot(notificationsQuery, (snap) => {
+      const systemNotifications = snap.docs.filter((item) => item.data().type !== 'message');
+      setUnreadCount(systemNotifications.length);
     });
 
-    return unsub;
+    const unsubConversations = onSnapshot(conversationsQuery, (snap) => {
+      let unreadThreads = 0;
+      snap.docs.forEach((item) => {
+        const data = item.data();
+        const count = Number(data.unreadCount?.[currentUser.uid] || 0);
+        if (count > 0 && !(data.hiddenFor || []).includes(currentUser.uid)) unreadThreads += 1;
+      });
+      setMessageUnreadCount(unreadThreads);
+    });
+
+    return () => {
+      unsubNotifications();
+      unsubConversations();
+    };
   }, [currentUser]);
 
   return { unreadCount, messageUnreadCount };
