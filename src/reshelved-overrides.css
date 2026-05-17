@@ -22,11 +22,35 @@
   }
 }
 
-/* Keep the header pinned while scrolling. */
-nav {
+/* Keep every header pinned while scrolling. */
+nav,
+header.sticky,
+header[class*="sticky"],
+.bg-white.shadow-sm.border-b.border-stone-200 {
   position: sticky !important;
   top: 0 !important;
   z-index: 1000 !important;
+}
+
+/* Sitewide button look for profile CTA buttons. */
+a[href="/create"].rounded-full,
+a[href="/browse"].rounded-full,
+button.rounded-full.bg-stone-950,
+button.rounded-full.bg-\[\#1665CC\] {
+  background: #D54215 !important;
+  border: 1px solid #D54215 !important;
+  color: #ffffff !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease !important;
+}
+
+a[href="/create"].rounded-full:hover,
+a[href="/browse"].rounded-full:hover,
+button.rounded-full.bg-stone-950:hover,
+button.rounded-full.bg-\[\#1665CC\]:hover {
+  background: #B53811 !important;
+  border-color: #B53811 !important;
 }
 
 /* Profile icons: use Line Awesome closed book for listings and hourglass-end for expired listings. */
@@ -55,6 +79,12 @@ body:has(nav.mt-5) section:has(input[placeholder="Display name"]) .rounded-\[28p
   background: #ffffff !important;
 }
 
+/* Remove grey eyebrow labels on profile sections. */
+body:has(nav.mt-5) main section p.uppercase.tracking-\[0\.18em\],
+body:has(nav.mt-5) main section p[class*="uppercase"][class*="tracking"] {
+  display: none !important;
+}
+
 /* Listing cards: no shadow or border on bookmark heart. */
 article button[aria-label="Save to favorites"],
 article button[aria-label="Remove from favorites"] {
@@ -72,7 +102,42 @@ article button[aria-label="Remove from favorites"] i {
   text-shadow: none !important;
 }
 
-/* Messages page: cleaner Airbnb/Skype-style chat layout using existing brand colors. */
+/* Mobile menu logo sizing. */
+@media (max-width: 767px) {
+  nav .fixed.inset-0.z-50.bg-white a[aria-label="Reshelved home"] {
+    width: 60% !important;
+    max-width: 260px !important;
+  }
+
+  nav .fixed.inset-0.z-50.bg-white a[aria-label="Reshelved home"] img {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 56px !important;
+    object-fit: contain !important;
+  }
+
+  /* Chats list area below filters should be white on mobile. */
+  aside.bg-\[\#FFFAF2\] > .flex-1.overflow-y-auto {
+    background: #ffffff !important;
+  }
+}
+
+/* Admin mobile header/menu logo: keep it inside the viewport. */
+@media (max-width: 1023px) {
+  header a[href="/"] img[src="/reshelved-logo.svg"] {
+    max-width: 128px !important;
+    max-height: 32px !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
+
+  .fixed.inset-0.z-40 aside {
+    max-width: min(320px, 86vw) !important;
+  }
+}
+
+/* Messages page legacy safety overrides. */
 .max-w-6xl:has(h1 + div + div) {
   max-width: 1180px !important;
 }
@@ -95,73 +160,6 @@ article button[aria-label="Remove from favorites"] i {
 .max-w-6xl:has(h1 + div + div) .sm\:w-\[352px\] {
   width: 380px !important;
   background: #ffffff !important;
-}
-
-.max-w-6xl:has(h1 + div + div) .sm\:w-\[352px\] > .p-4.border-b {
-  padding: 18px 20px !important;
-  border-bottom-color: #f1f0ee !important;
-}
-
-.max-w-6xl:has(h1 + div + div) .sm\:w-\[352px\] > .p-4.border-b h2 {
-  color: #111827 !important;
-  font-size: 16px !important;
-  font-weight: 800 !important;
-}
-
-.max-w-6xl:has(h1 + div + div) a[href^="/messages/"] {
-  margin: 8px 10px !important;
-  border-radius: 22px !important;
-  overflow: hidden !important;
-}
-
-.max-w-6xl:has(h1 + div + div) a[href^="/messages/"] > span.absolute.left-0 {
-  width: 3px !important;
-  border-radius: 999px !important;
-  left: 8px !important;
-  top: 12px !important;
-  bottom: 12px !important;
-  height: auto !important;
-}
-
-.max-w-6xl:has(h1 + div + div) a[href^="/messages/"] .p-4 {
-  padding: 14px 14px 14px 20px !important;
-}
-
-.max-w-6xl:has(h1 + div + div) a[href^="/messages/"] img,
-.max-w-6xl:has(h1 + div + div) a[href^="/messages/"] .w-11.h-11.rounded-full {
-  width: 52px !important;
-  height: 52px !important;
-  border: 1px solid #f1f0ee !important;
-}
-
-.max-w-6xl:has(h1 + div + div) .relative.border-b.border-stone-200.bg-white {
-  padding: 14px 18px !important;
-  border-bottom-color: #f1f0ee !important;
-}
-
-.max-w-6xl:has(h1 + div + div) .relative.border-b.border-stone-200.bg-white h3 {
-  font-size: 15px !important;
-  color: #111827 !important;
-}
-
-.max-w-6xl:has(h1 + div + div) div[ref],
-.max-w-6xl:has(h1 + div + div) .flex-1.overflow-y-auto.p-4.space-y-3.bg-stone-50 {
-  background: #fbfaf8 !important;
-  padding: 22px !important;
-}
-
-.max-w-6xl:has(h1 + div + div) .group.flex.justify-end > .relative {
-  background: #fff4e2 !important;
-  border: 1px solid rgba(213, 66, 21, 0.12) !important;
-  border-radius: 22px 22px 6px 22px !important;
-  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.06) !important;
-}
-
-.max-w-6xl:has(h1 + div + div) .group.flex.justify-start > .relative {
-  background: #ffffff !important;
-  border: 1px solid #ece9e4 !important;
-  border-radius: 22px 22px 22px 6px !important;
-  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.06) !important;
 }
 
 /* WhatsApp-like delivery receipts. Sent = one check, delivered = double check, read = blue double check. */
@@ -200,36 +198,6 @@ span[title="Read"]::before {
 
 span[title="Read"]::before {
   color: #1665cc !important;
-}
-
-.max-w-6xl:has(h1 + div + div) form.p-4.border-t {
-  padding: 14px 18px !important;
-  border-top-color: #f1f0ee !important;
-  background: #ffffff !important;
-}
-
-.max-w-6xl:has(h1 + div + div) form input[type="text"] {
-  border-radius: 999px !important;
-  background: #f8f7f5 !important;
-  border-color: #ede9e3 !important;
-  padding: 12px 16px !important;
-}
-
-.max-w-6xl:has(h1 + div + div) form button[type="submit"] {
-  border-radius: 999px !important;
-  background: #d54215 !important;
-  padding-left: 22px !important;
-  padding-right: 22px !important;
-  font-weight: 800 !important;
-}
-
-.max-w-6xl:has(h1 + div + div) form button[type="submit"]:hover {
-  background: #b53811 !important;
-}
-
-.max-w-6xl:has(h1 + div + div) form button[aria-label="Attach"] {
-  border-radius: 999px !important;
-  background: #ffffff !important;
 }
 
 @media (max-width: 639px) {
