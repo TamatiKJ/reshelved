@@ -49,6 +49,8 @@ const formatThreadDate = (timestamp?: number) => {
   return new Date(timestamp).toLocaleDateString('en-GB');
 };
 
+const formatMessageTime = (timestamp?: number) => timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
 const MessagesPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
@@ -439,35 +441,58 @@ const MessagesPage: React.FC = () => {
 
   if (!currentUser) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center pb-10 sm:pb-[60px]">
+      <div className="mx-auto max-w-4xl px-4 py-16 text-center pb-10 sm:pb-[60px]">
         <h2 className="text-xl font-bold text-stone-700">Please log in to view messages</h2>
-        <Link to="/login" className="mt-4 inline-block text-primary-600 font-medium">Log In</Link>
+        <Link to="/login" className="mt-4 inline-block font-semibold text-primary-600">Log In</Link>
       </div>
     );
   }
 
+  const selectedPhoto = selectedConv ? getOtherParticipantPhoto(selectedConv) : '';
+  const selectedName = selectedConv ? getOtherParticipantName(selectedConv) : '';
+  const selectedInitial = selectedConv ? getOtherParticipantInitial(selectedConv) : 'U';
+
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-6 pb-10 sm:pb-[60px]">
-      <h1 className="text-2xl font-bold text-stone-800 mb-6">Messages</h1>
-      {error && <div className={`mb-4 p-3 rounded-xl text-sm ${error.startsWith('Could not') || error.includes('failed') || error.includes('rules') ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-primary-50 border border-primary-200 text-primary-700'}`}>{error}</div>}
+    <div className="mx-auto max-w-[1180px] px-3 py-5 pb-8 sm:px-6 sm:py-7 sm:pb-[60px]">
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-stone-400">Inbox</p>
+          <h1 className="mt-1 font-['Work_Sans'] text-[28px] font-bold tracking-tight text-stone-950 sm:text-[34px]">Messages</h1>
+        </div>
+        <Link to="/browse" className="hidden rounded-full border border-stone-200 px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50 sm:inline-flex">Browse books</Link>
+      </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden" style={{ height: 'calc(100vh - 200px)', minHeight: '560px' }}>
-        <div className="flex h-full">
-          <div className={`w-full sm:w-[352px] border-r border-stone-200 flex flex-col ${conversationId ? 'hidden sm:flex' : 'flex'}`}>
-            <div className="p-4 border-b border-stone-100"><h2 className="font-semibold text-stone-700">Conversations</h2></div>
+      {error && <div className={`mb-4 rounded-2xl p-3 text-sm font-medium ${error.startsWith('Could not') || error.includes('failed') || error.includes('rules') ? 'border border-red-200 bg-red-50 text-red-700' : 'border border-primary-200 bg-primary-50 text-primary-700'}`}>{error}</div>}
 
-            <div className="flex-1 overflow-y-auto bg-white">
+      <div className="overflow-hidden rounded-[28px] border border-stone-200 bg-white shadow-[0_18px_50px_rgba(28,25,23,0.08)]" style={{ height: 'calc(100vh - 185px)', minHeight: '620px' }}>
+        <div className="flex h-full min-h-0">
+          <aside className={`w-full border-r border-stone-200 bg-white sm:w-[390px] sm:min-w-[390px] ${conversationId ? 'hidden sm:flex' : 'flex'} flex-col`}>
+            <div className="border-b border-stone-100 px-5 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-['Work_Sans'] text-lg font-bold text-stone-950">Conversations</h2>
+                  <p className="mt-0.5 text-xs text-stone-500">{conversations.length} chat{conversations.length === 1 ? '' : 's'}</p>
+                </div>
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF4E2] text-primary-700"><i className="las la-comments text-2xl" /></span>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto bg-white px-2 py-2">
               {loading ? (
-                <div className="p-4 space-y-3">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="animate-pulse flex items-center gap-3 p-4">
-                      <div className="w-11 h-11 bg-stone-200 rounded-full" />
-                      <div className="flex-1 space-y-2"><div className="h-3 bg-stone-200 rounded w-2/3" /><div className="h-2 bg-stone-100 rounded w-full" /></div>
+                <div className="space-y-2 p-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex animate-pulse items-center gap-3 rounded-2xl p-3">
+                      <div className="h-12 w-12 rounded-full bg-stone-200" />
+                      <div className="flex-1 space-y-2"><div className="h-3 w-2/3 rounded bg-stone-200" /><div className="h-2 w-full rounded bg-stone-100" /></div>
                     </div>
                   ))}
                 </div>
               ) : conversations.length === 0 ? (
-                <div className="p-6 text-center text-stone-500 text-sm">No conversations yet. Contact a seller to start chatting!</div>
+                <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-stone-100 text-stone-400"><i className="las la-comment-slash text-3xl" /></div>
+                  <h3 className="mt-4 font-bold text-stone-900">No conversations yet</h3>
+                  <p className="mt-1 text-sm leading-6 text-stone-500">Message a seller from a listing and your chats will appear here.</p>
+                </div>
               ) : conversations.map((conv) => {
                 const photo = getOtherParticipantPhoto(conv);
                 const rating = getOtherParticipantRating(conv);
@@ -475,29 +500,26 @@ const MessagesPage: React.FC = () => {
                 const unread = getUnreadCount(conv);
                 const isSelected = conv.id === conversationId;
                 const hasUnread = unread > 0;
-                const accentClass = isSelected ? 'bg-[#ff5b5f]' : 'bg-transparent';
-                const itemClass = isSelected ? 'bg-[#fff6f6]' : 'bg-white hover:bg-[#fff8f8]';
-                const dateClass = hasUnread ? 'text-[#ff5b5f] font-extrabold' : 'text-stone-500 font-medium';
 
                 return (
-                  <Link key={conv.id} to={`/messages/${conv.id}`} className={`relative block ${itemClass} transition`}>
-                    <span className={`absolute left-0 top-0 h-full w-1 ${accentClass}`} />
-                    <div className="flex items-center gap-3 p-4 pl-5">
+                  <Link key={conv.id} to={`/messages/${conv.id}`} className={`group relative block rounded-2xl transition ${isSelected ? 'bg-[#fff4f1]' : 'hover:bg-stone-50'}`}>
+                    {isSelected && <span className="absolute bottom-3 left-2 top-3 w-1 rounded-full bg-primary-600" />}
+                    <div className="flex items-center gap-3 px-4 py-3">
                       {photo ? (
-                        <img src={photo} alt={getOtherParticipantName(conv)} className="w-11 h-11 rounded-full object-cover bg-stone-100 shrink-0" />
+                        <img src={photo} alt={getOtherParticipantName(conv)} className="h-[52px] w-[52px] shrink-0 rounded-full bg-stone-100 object-cover ring-1 ring-stone-100" />
                       ) : (
-                        <div className="w-11 h-11 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-sm shrink-0">{getOtherParticipantInitial(conv)}</div>
+                        <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[#FFF4E2] text-sm font-bold text-primary-700 ring-1 ring-stone-100">{getOtherParticipantInitial(conv)}</div>
                       )}
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-bold text-stone-950 text-sm leading-tight truncate">{getOtherParticipantName(conv)}</span>
-                          <span className={`text-[11px] shrink-0 ${dateClass}`}>{formatThreadDate((conv as any).lastMessageAt)}</span>
+                          <span className="truncate text-[15px] font-extrabold leading-tight text-stone-950">{getOtherParticipantName(conv)}</span>
+                          <span className={`shrink-0 text-[11px] ${hasUnread ? 'font-extrabold text-primary-600' : 'font-semibold text-stone-400'}`}>{formatThreadDate((conv as any).lastMessageAt)}</span>
                         </div>
-                        <p className="text-xs text-stone-600 truncate mt-0.5">{location || 'Location not set'} · ★ {rating.reviewCount > 0 ? `${rating.avgRating.toFixed(1)} (${rating.reviewCount})` : '0.0 (0)'}</p>
-                        <div className="mt-0.5 flex items-center gap-2">
-                          <p className={`min-w-0 flex-1 truncate text-xs ${hasUnread ? 'font-semibold text-stone-800' : 'text-stone-500'}`}>{(conv as any).lastMessage || 'No messages yet'}</p>
-                          {hasUnread && <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#ff5b5f] px-1.5 text-[11px] font-extrabold text-white shadow-sm">{unread > 99 ? '99+' : unread}</span>}
+                        <p className="mt-0.5 truncate text-xs text-stone-500">{location || 'Location not set'} · ★ {rating.reviewCount > 0 ? `${rating.avgRating.toFixed(1)} (${rating.reviewCount})` : '0.0 (0)'}</p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <p className={`min-w-0 flex-1 truncate text-sm ${hasUnread ? 'font-bold text-stone-900' : 'text-stone-500'}`}>{(conv as any).lastMessage || 'No messages yet'}</p>
+                          {hasUnread && <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-primary-600 px-2 text-[11px] font-extrabold text-white shadow-sm">{unread > 99 ? '99+' : unread}</span>}
                         </div>
                       </div>
                     </div>
@@ -505,27 +527,27 @@ const MessagesPage: React.FC = () => {
                 );
               })}
             </div>
-          </div>
+          </aside>
 
-          <div className={`flex-1 flex flex-col ${!conversationId ? 'hidden sm:flex' : 'flex'}`}>
+          <section className={`min-w-0 flex-1 flex-col bg-[#fbfaf8] ${!conversationId ? 'hidden sm:flex' : 'flex'}`}>
             {conversationId && selectedConv ? (
               <>
-                <div className="relative border-b border-stone-200 bg-white px-3 py-3 sm:px-4">
+                <header className="relative border-b border-stone-200 bg-white px-3 py-3 sm:px-5">
                   <div className="flex min-w-0 items-center gap-3">
-                    <Link to="/messages" className="sm:hidden flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:bg-stone-100"><i className="las la-angle-left text-2xl text-stone-700" /></Link>
-                    {getOtherParticipantPhoto(selectedConv) ? <img src={getOtherParticipantPhoto(selectedConv)} alt={getOtherParticipantName(selectedConv)} className="h-10 w-10 shrink-0 rounded-full object-cover bg-stone-100" /> : <div className="h-10 w-10 shrink-0 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-sm">{getOtherParticipantInitial(selectedConv)}</div>}
-                    <div className="min-w-0 flex-1"><h3 className="truncate text-sm font-bold text-stone-900">{getOtherParticipantName(selectedConv)}</h3><p className="truncate text-xs text-stone-500">{otherMeta?.location || 'Location not set'} {otherMeta?.reviewCount ? `· ★ ${otherMeta.avgRating.toFixed(1)} (${otherMeta.reviewCount})` : '· No reviews yet'}</p></div>
+                    <Link to="/messages" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-stone-700 hover:bg-stone-100 sm:hidden"><i className="las la-angle-left text-2xl" /></Link>
+                    {selectedPhoto ? <img src={selectedPhoto} alt={selectedName} className="h-11 w-11 shrink-0 rounded-full bg-stone-100 object-cover ring-1 ring-stone-100" /> : <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FFF4E2] text-sm font-bold text-primary-700">{selectedInitial}</div>}
+                    <div className="min-w-0 flex-1"><h3 className="truncate text-base font-extrabold text-stone-950">{selectedName}</h3><p className="truncate text-xs text-stone-500">{otherMeta?.location || 'Location not set'} {otherMeta?.reviewCount ? `· ★ ${otherMeta.avgRating.toFixed(1)} (${otherMeta.reviewCount})` : '· No reviews yet'}</p></div>
                     <div className="relative shrink-0">
-                      <button type="button" onClick={(event) => { event.stopPropagation(); setThreadMenuOpen((current) => !current); setAttachMenuOpen(false); }} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 hover:bg-stone-50" aria-label="Conversation actions"><i className="las la-ellipsis-v text-xl" /></button>
-                      {threadMenuOpen && <div onClick={(event) => event.stopPropagation()} className="absolute right-0 top-11 z-40 w-56 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl"><button onClick={deleteConversation} disabled={deleting} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-trash text-xl" />{deleting ? 'Deleting...' : 'Delete chat'}</button><button onClick={() => { setThreadMenuOpen(false); setShowReport(true); }} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-medium text-stone-700 hover:bg-stone-50"><i className="las la-flag text-xl" />Report</button><button onClick={blockUser} disabled={blocking || isBlockedByMe} className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-4 py-3 text-left font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-ban text-xl" />{isBlockedByMe ? 'Blocked' : blocking ? 'Blocking...' : 'Block'}</button></div>}
+                      <button type="button" onClick={(event) => { event.stopPropagation(); setThreadMenuOpen((current) => !current); setAttachMenuOpen(false); }} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 transition hover:bg-stone-50" aria-label="Conversation actions"><i className="las la-ellipsis-v text-xl" /></button>
+                      {threadMenuOpen && <div onClick={(event) => event.stopPropagation()} className="absolute right-0 top-12 z-40 w-56 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl"><button onClick={deleteConversation} disabled={deleting} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-trash text-xl" />{deleting ? 'Deleting...' : 'Delete chat'}</button><button onClick={() => { setThreadMenuOpen(false); setShowReport(true); }} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-semibold text-stone-700 hover:bg-stone-50"><i className="las la-flag text-xl" />Report</button><button onClick={blockUser} disabled={blocking || isBlockedByMe} className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-4 py-3 text-left font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-ban text-xl" />{isBlockedByMe ? 'Blocked' : blocking ? 'Blocking...' : 'Block'}</button></div>}
                     </div>
                   </div>
-                </div>
+                </header>
 
-                <ConversationListingCard conversation={selectedConv} />
-                {messagingBlocked && <div className="border-b border-primary-100 bg-primary-50 px-4 py-3 text-sm font-semibold text-primary-700">{UNAVAILABLE_MESSAGE}</div>}
+                <div className="border-b border-stone-200 bg-white px-3 py-2 sm:px-5"><ConversationListingCard conversation={selectedConv} /></div>
+                {messagingBlocked && <div className="border-b border-primary-100 bg-primary-50 px-5 py-3 text-sm font-bold text-primary-700">{UNAVAILABLE_MESSAGE}</div>}
 
-                <div ref={messagesPaneRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-stone-50">
+                <div ref={messagesPaneRef} className="flex-1 space-y-4 overflow-y-auto px-3 py-5 sm:px-6">
                   {visibleMessages.map((msg, index) => {
                     const isMe = msg.senderId === currentUser.uid;
                     const showDay = index === 0 || !isSameDay((msg as any).createdAt || 0, (visibleMessages[index - 1] as any)?.createdAt || 0);
@@ -535,18 +557,18 @@ const MessagesPage: React.FC = () => {
                     const imageSource = (msg as any).imageUrl || (msg as any).imageData || '';
                     const canDeleteEveryone = isMe && !(msg as any).deleted && Date.now() - ((msg as any).createdAt || 0) <= DELETE_EVERYONE_WINDOW_MS;
 
-                    return <React.Fragment key={msg.id}>{showDay && <div className="flex justify-center my-3"><span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-500 shadow-sm">{formatDayLabel((msg as any).createdAt)}</span></div>}<div className={`group flex ${isMe ? 'justify-end' : 'justify-start'}`}><div className={`relative max-w-[78%] px-3 py-2 rounded-2xl text-sm shadow-sm ${isMe ? 'bg-green-100 text-stone-900 rounded-br-sm' : 'bg-white text-stone-800 rounded-bl-sm'} ${(msg as any).deleted ? 'opacity-80' : ''}`}>{(msg as any).deleted ? <p className="whitespace-pre-wrap italic text-stone-500">This message was deleted</p> : <>{(msg as any).type === 'image' && imageSource ? <img src={imageSource} alt={(msg as any).imageName || 'Sent image'} className="mb-2 max-h-72 rounded-xl object-contain" /> : null}{(msg as any).type === 'map' && (msg as any).mapUrl ? <a href={(msg as any).mapUrl} target="_blank" rel="noreferrer" className="mb-2 block rounded-xl border border-stone-200 bg-white p-3 text-[#1665CC]"><i className="las la-map-marker text-2xl" /> Open location pin</a> : null}{(msg as any).type !== 'image' || msg.text !== 'Image' ? <p className="whitespace-pre-wrap">{msg.text}</p> : null}</>}<button type="button" onClick={(event) => { event.stopPropagation(); setMessageMenuId(messageMenuId === msg.id ? null : msg.id); }} className={`absolute top-1 hidden h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/95 text-stone-600 shadow-sm ring-1 ring-stone-200 transition hover:bg-white sm:flex ${isMe ? '-left-9' : '-right-9'} opacity-0 group-hover:opacity-100`} aria-label="Message actions"><i className="las la-angle-down text-lg" /></button>{messageMenuId === msg.id && <div onClick={(event) => event.stopPropagation()} className={`absolute top-8 z-40 w-52 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl ${isMe ? 'right-full mr-2' : 'left-full ml-2'}`}><button type="button" onClick={() => copyMessage(msg)} disabled={(msg as any).deleted || !msg.text || msg.text === 'Image'} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><i className="las la-copy text-xl" />Copy</button><button type="button" onClick={() => deleteMessageForMe(msg)} className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-4 py-3 text-left text-red-600 hover:bg-red-50"><i className="las la-trash text-xl" />Delete for me</button>{canDeleteEveryone && <button type="button" onClick={() => deleteMessageForEveryone(msg)} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-red-700 hover:bg-red-50"><i className="las la-trash-alt text-xl" />Delete for everyone</button>}</div>}<div className={`mt-1 flex flex-wrap items-center justify-end gap-1 text-[11px] ${isMe ? 'text-stone-500' : 'text-stone-400'}`}><span>{(msg as any).createdAt ? new Date((msg as any).createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>{isMe && <span title={isRead ? 'Read' : isDelivered ? 'Delivered' : 'Sent'} className={isRead ? 'text-[#1665CC]' : 'text-stone-400'}>{isRead ? '✓✓' : isDelivered ? '✓✓' : '✓'}</span>}</div></div></div></React.Fragment>;
+                    return <React.Fragment key={msg.id}>{showDay && <div className="flex justify-center py-1"><span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-bold text-stone-500 shadow-sm">{formatDayLabel((msg as any).createdAt)}</span></div>}<div className={`group flex ${isMe ? 'justify-end' : 'justify-start'}`}><div className={`relative max-w-[86%] px-4 py-3 text-sm shadow-sm sm:max-w-[72%] ${isMe ? 'rounded-[22px] rounded-br-md border border-primary-600/10 bg-[#FFF4E2] text-stone-950' : 'rounded-[22px] rounded-bl-md border border-stone-200 bg-white text-stone-800'} ${(msg as any).deleted ? 'opacity-80' : ''}`}>{(msg as any).deleted ? <p className="whitespace-pre-wrap italic text-stone-500">This message was deleted</p> : <>{(msg as any).type === 'image' && imageSource ? <img src={imageSource} alt={(msg as any).imageName || 'Sent image'} className="mb-2 max-h-72 rounded-2xl object-contain" /> : null}{(msg as any).type === 'map' && (msg as any).mapUrl ? <a href={(msg as any).mapUrl} target="_blank" rel="noreferrer" className="mb-2 flex items-center gap-2 rounded-2xl border border-stone-200 bg-white p-3 font-bold text-[#1665CC]"><i className="las la-map-marker text-2xl" /> Open location pin</a> : null}{(msg as any).type !== 'image' || msg.text !== 'Image' ? <p className="whitespace-pre-wrap leading-6">{msg.text}</p> : null}</>}<button type="button" onClick={(event) => { event.stopPropagation(); setMessageMenuId(messageMenuId === msg.id ? null : msg.id); }} className={`absolute top-1 hidden h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white text-stone-600 shadow-sm ring-1 ring-stone-200 transition hover:bg-stone-50 sm:flex ${isMe ? '-left-10' : '-right-10'} opacity-0 group-hover:opacity-100`} aria-label="Message actions"><i className="las la-angle-down text-lg" /></button>{messageMenuId === msg.id && <div onClick={(event) => event.stopPropagation()} className={`absolute top-9 z-40 w-52 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl ${isMe ? 'right-full mr-2' : 'left-full ml-2'}`}><button type="button" onClick={() => copyMessage(msg)} disabled={(msg as any).deleted || !msg.text || msg.text === 'Image'} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"><i className="las la-copy text-xl" />Copy</button><button type="button" onClick={() => deleteMessageForMe(msg)} className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-4 py-3 text-left text-red-600 hover:bg-red-50"><i className="las la-trash text-xl" />Delete for me</button>{canDeleteEveryone && <button type="button" onClick={() => deleteMessageForEveryone(msg)} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-red-700 hover:bg-red-50"><i className="las la-trash-alt text-xl" />Delete for everyone</button>}</div>}<div className={`mt-1 flex flex-wrap items-center justify-end gap-1 text-[11px] ${isMe ? 'text-stone-500' : 'text-stone-400'}`}><span>{formatMessageTime((msg as any).createdAt)}</span>{isMe && <span title={isRead ? 'Read' : isDelivered ? 'Delivered' : 'Sent'} className={isRead ? 'text-[#1665CC]' : 'text-stone-400'}>{isRead ? '✓✓' : isDelivered ? '✓✓' : '✓'}</span>}</div></div></div></React.Fragment>;
                   })}
                 </div>
 
-                <form onSubmit={handleSend} className="p-4 border-t border-stone-200 bg-white"><input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSend} className="hidden" /><div className="flex gap-2"><div className="relative"><button type="button" onClick={(event) => { event.stopPropagation(); setAttachMenuOpen((current) => !current); setThreadMenuOpen(false); }} disabled={sending || messagingBlocked} className="flex h-[42px] w-[42px] cursor-pointer items-center justify-center rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Attach"><i className="las la-paperclip text-2xl" /></button>{attachMenuOpen && <div onClick={(event) => event.stopPropagation()} className="absolute bottom-12 left-0 z-40 w-48 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl"><button type="button" onClick={() => { setAttachMenuOpen(false); imageInputRef.current?.click(); }} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-medium text-stone-700 hover:bg-stone-50"><i className="las la-image text-xl" />Add image</button><button type="button" onClick={handleMapPin} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-medium text-stone-700 hover:bg-stone-50"><i className="las la-map-marker text-xl" />Location</button></div>}</div><input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={messagingBlocked} placeholder={messagingBlocked ? 'Messaging disabled' : 'Type a message...'} className="flex-1 px-4 py-2.5 rounded-xl border border-stone-200 focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10 outline-none transition text-sm disabled:bg-stone-100" /><button type="submit" disabled={!newMessage.trim() || sending || messagingBlocked} className="cursor-pointer px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition disabled:cursor-not-allowed disabled:opacity-50 text-sm font-medium">{sending ? 'Sending...' : 'Send'}</button></div></form>
+                <form onSubmit={handleSend} className="border-t border-stone-200 bg-white px-3 py-3 sm:px-5"><input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSend} className="hidden" /><div className="flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 p-1.5"><div className="relative"><button type="button" onClick={(event) => { event.stopPropagation(); setAttachMenuOpen((current) => !current); setThreadMenuOpen(false); }} disabled={sending || messagingBlocked} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white text-stone-700 shadow-sm ring-1 ring-stone-200 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Attach"><i className="las la-paperclip text-2xl" /></button>{attachMenuOpen && <div onClick={(event) => event.stopPropagation()} className="absolute bottom-12 left-0 z-40 w-48 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl"><button type="button" onClick={() => { setAttachMenuOpen(false); imageInputRef.current?.click(); }} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-semibold text-stone-700 hover:bg-stone-50"><i className="las la-image text-xl" />Add image</button><button type="button" onClick={handleMapPin} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-semibold text-stone-700 hover:bg-stone-50"><i className="las la-map-marker text-xl" />Location</button></div>}</div><input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={messagingBlocked} placeholder={messagingBlocked ? 'Messaging disabled' : 'Type a message...'} className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm outline-none disabled:text-stone-400" /><button type="submit" disabled={!newMessage.trim() || sending || messagingBlocked} className="cursor-pointer rounded-full bg-primary-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{sending ? 'Sending...' : 'Send'}</button></div></form>
               </>
-            ) : <div className="flex-1 flex flex-col items-center justify-center text-center p-8"><div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-4"><i className="las la-comments text-3xl text-stone-400" /></div><h3 className="font-semibold text-stone-700">Select a conversation</h3><p className="text-sm text-stone-500 mt-1">Choose a conversation from the left to start messaging</p></div>}
-          </div>
+            ) : <div className="flex flex-1 flex-col items-center justify-center p-8 text-center"><div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white text-stone-400 shadow-sm ring-1 ring-stone-200"><i className="las la-comments text-4xl" /></div><h3 className="font-['Work_Sans'] text-xl font-bold text-stone-900">Select a conversation</h3><p className="mt-2 max-w-xs text-sm leading-6 text-stone-500">Choose a chat from the left to view messages and respond.</p></div>}
+          </section>
         </div>
       </div>
 
-      {showReport && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="w-full max-w-md rounded-2xl bg-white p-6"><h3 className="text-lg font-bold text-stone-800">Report user</h3><p className="mt-1 text-sm text-stone-500">Tell us what is wrong with this user.</p><div className="mt-4 space-y-3"><select value={reportReason} onChange={(e) => setReportReason(e.target.value)} className="w-full rounded-xl border border-stone-200 px-4 py-3 text-sm"><option value="">Select a reason...</option><option value="spam">Spam</option><option value="fraud">Suspected fraud</option><option value="abuse">Abusive message</option><option value="other">Other</option></select><textarea value={reportDetails} onChange={(e) => setReportDetails(e.target.value)} placeholder="Additional details..." rows={3} className="w-full resize-none rounded-xl border border-stone-200 px-4 py-3 text-sm" /><div className="grid grid-cols-2 gap-2"><button onClick={() => setShowReport(false)} className="cursor-pointer rounded-xl border border-stone-200 py-2.5 text-sm font-semibold">Cancel</button><button onClick={reportUser} disabled={!reportReason} className="cursor-pointer rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50">Submit report</button></div></div></div></div>}
+      {showReport && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"><h3 className="text-lg font-bold text-stone-800">Report user</h3><p className="mt-1 text-sm text-stone-500">Tell us what is wrong with this user.</p><div className="mt-4 space-y-3"><select value={reportReason} onChange={(e) => setReportReason(e.target.value)} className="w-full rounded-2xl border border-stone-200 px-4 py-3 text-sm outline-none"><option value="">Select a reason...</option><option value="spam">Spam</option><option value="fraud">Suspected fraud</option><option value="abuse">Abusive message</option><option value="other">Other</option></select><textarea value={reportDetails} onChange={(e) => setReportDetails(e.target.value)} placeholder="Additional details..." rows={3} className="w-full resize-none rounded-2xl border border-stone-200 px-4 py-3 text-sm outline-none" /><div className="grid grid-cols-2 gap-2"><button onClick={() => setShowReport(false)} className="cursor-pointer rounded-full border border-stone-200 py-2.5 text-sm font-bold">Cancel</button><button onClick={reportUser} disabled={!reportReason} className="cursor-pointer rounded-full bg-red-600 py-2.5 text-sm font-bold text-white disabled:opacity-50">Submit report</button></div></div></div></div>}
     </div>
   );
 };
