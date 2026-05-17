@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { uploadChatImage } from '../utils/chatMedia';
 import ConversationListingCard from './ConversationListingCard';
 import type { Conversation, Message, Rating, UserProfile } from '../types';
 
-type ParticipantMeta = { photoURL: string; location: string; avgRating: number; reviewCount: number };
+type ParticipantMeta = { photoURL: string; location: string; avgRating: number; reviewCount: number; blockedUsers: string[] };
 
 const isSameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString();
 const getConversationKey = (a: string, b: string) => [a, b].sort().join('_');
@@ -24,13 +24,14 @@ const formatDayLabel = (timestamp: number) => {
 const MessagesPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, refreshProfile } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [blocking, setBlocking] = useState(false);
   const [error, setError] = useState('');
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [participantMeta, setParticipantMeta] = useState<Record<string, ParticipantMeta>>({});
@@ -108,17 +109,17 @@ const MessagesPage: React.FC = () => {
     const meta: Record<string, ParticipantMeta> = {};
     await Promise.all(userIds.map(async (uid) => {
       const fallback = convs.find((conv) => conv.participants.includes(uid))?.participantPhotos?.[uid] || '';
-      meta[uid] = { photoURL: fallback, location: '', avgRating: 0, reviewCount: 0 };
+      meta[uid] = { photoURL: fallback, location: '', avgRating: 0, reviewCount: 0, blockedUsers: [] };
       try {
         const publicSnap = await getDoc(doc(db, 'publicProfiles', uid)).catch(() => null);
         if (publicSnap?.exists()) {
           const data = publicSnap.data();
-          meta[uid] = { photoURL: data.photoURL || fallback, location: data.location || '', avgRating: Number(data.ratingAverage || 0), reviewCount: Number(data.ratingCount || 0) };
+          meta[uid] = { ...meta[uid], photoURL: data.photoURL || fallback, location: data.location || '', avgRating: Number(data.ratingAverage || 0), reviewCount: Number(data.ratingCount || 0) };
         }
         const userSnap = await getDoc(doc(db, 'users', uid)).catch(() => null);
         if (userSnap?.exists()) {
           const user = { uid, ...userSnap.data() } as UserProfile;
-          meta[uid] = { ...meta[uid], photoURL: user.photoURL || meta[uid].photoURL, location: user.location || meta[uid].location };
+          meta[uid] = { ...meta[uid], photoURL: user.photoURL || meta[uid].photoURL, location: user.location || meta[uid].location, blockedUsers: user.blockedUsers || [] };
         }
         const ratingsSnap = await getDocs(query(collection(db, 'ratings'), where('toUserId', '==', uid))).catch(() => null);
         const ratings: Rating[] = [];
@@ -133,13 +134,45 @@ const MessagesPage: React.FC = () => {
 
   const otherParticipantId = selectedConv && currentUser ? selectedConv.participants.find((id) => id !== currentUser.uid) || '' : '';
   const otherMeta = otherParticipantId ? participantMeta[otherParticipantId] : undefined;
+  const isBlockedByMe = Boolean(otherParticipantId && userProfile?.blockedUsers?.includes(otherParticipantId));
+  const hasBlockedMe = Boolean(currentUser && otherMeta?.blockedUsers?.includes(currentUser.uid));
+  const messagingBlocked = isBlockedByMe || hasBlockedMe;
   const visibleMessages = useMemo(() => currentUser ? messages.filter((msg) => !(msg.deletedFor || []).includes(currentUser.uid) && !msg.deleted) : [], [messages, currentUser]);
   const getOtherParticipantId = (conv: Conversation) => currentUser ? conv.participants.find((id) => id !== currentUser.uid) || '' : '';
   const getOtherParticipantName = (conv: Conversation) => conv.participantNames?.[getOtherParticipantId(conv)] || 'User';
   const getOtherParticipantPhoto = (conv: Conversation) => participantMeta[getOtherParticipantId(conv)]?.photoURL || conv.participantPhotos?.[getOtherParticipantId(conv)] || '';
   const getOtherParticipantInitial = (conv: Conversation) => getOtherParticipantName(conv)[0]?.toUpperCase() || 'U';
   const getOtherParticipantLocation = (conv: Conversation) => participantMeta[getOtherParticipantId(conv)]?.location || '';
-  const getOtherParticipantRating = (conv: Conversation) => participantMeta[getOtherParticipantId(conv)] || { avgRating: 0, reviewCount: 0, location: '', photoURL: '' };
+  const getOtherParticipantRating = (conv: Conversation) => participantMeta[getOtherParticipantId(conv)] || { avgRating: 0, reviewCount: 0, location: '', photoURL: '', blockedUsers: [] };
+
+  const ensureCanMessage = () => {
+    if (isBlockedByMe) {
+      setError('You blocked this user. Unblock them before sending messages.');
+      return false;
+    }
+    if (hasBlockedMe) {
+      setError('This user is not available for messaging.');
+      return false;
+    }
+    return true;
+  };
+
+  const blockUser = async () => {
+    if (!currentUser || !otherParticipantId || !selectedConv) return;
+    if (!confirm(`Block ${getOtherParticipantName(selectedConv)}? They will not be able to start new chats or message you.`)) return;
+    setBlocking(true);
+    setError('');
+    try {
+      await setDoc(doc(db, 'users', currentUser.uid), { blockedUsers: arrayUnion(otherParticipantId), lastSeen: Date.now() }, { merge: true });
+      await refreshProfile();
+      setError('User blocked. Firestore rules will reject new messages from them.');
+    } catch (err) {
+      console.error('Could not block user:', err);
+      setError('Could not block this user. Check your Firestore rules.');
+    } finally {
+      setBlocking(false);
+    }
+  };
 
   const notifyRecipients = async (recipientIds: string[], text: string, subject: string, now: number) => {
     if (!currentUser || !selectedConv || !conversationId) return;
@@ -147,7 +180,7 @@ const MessagesPage: React.FC = () => {
   };
 
   const sendTextOrMapMessage = async (payload: Partial<Message> & { text: string; type: 'text' | 'map' }) => {
-    if (!currentUser || !conversationId || !selectedConv) return;
+    if (!currentUser || !conversationId || !selectedConv || !ensureCanMessage()) return;
     const now = Date.now();
     const recipientIds = selectedConv.participants.filter((id) => id !== currentUser.uid);
     setSending(true);
@@ -158,7 +191,7 @@ const MessagesPage: React.FC = () => {
       await notifyRecipients(recipientIds, payload.text, `New message from ${userProfile?.displayName || currentUser.displayName || 'User'}`, now);
     } catch (err) {
       console.error('Error sending message:', err);
-      setError('Message failed to send. Check your Firestore rules.');
+      setError('Message failed to send. The other user may have blocked you or Firestore rules rejected the write.');
     } finally {
       setSending(false);
     }
@@ -175,7 +208,7 @@ const MessagesPage: React.FC = () => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file || !file.type.startsWith('image/')) return;
-    if (!currentUser || !conversationId || !selectedConv) return;
+    if (!currentUser || !conversationId || !selectedConv || !ensureCanMessage()) return;
 
     const now = Date.now();
     const recipientIds = selectedConv.participants.filter((id) => id !== currentUser.uid);
@@ -189,7 +222,7 @@ const MessagesPage: React.FC = () => {
       await notifyRecipients(recipientIds, 'Image', `New image from ${userProfile?.displayName || currentUser.displayName || 'User'}`, now);
     } catch (err: any) {
       console.error('Could not send image:', err);
-      setError(err?.message || 'Could not send image.');
+      setError(err?.message || 'Could not send image. The other user may have blocked you.');
     } finally {
       setSending(false);
     }
@@ -247,7 +280,7 @@ const MessagesPage: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-10 sm:pb-[60px]">
       <h1 className="text-2xl font-bold text-stone-800 mb-6">Messages</h1>
-      {error && <div className={`mb-4 p-3 rounded-xl text-sm ${error.startsWith('Could not') || error.includes('failed') ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-blue-50 border border-blue-200 text-blue-700'}`}>{error}</div>}
+      {error && <div className={`mb-4 p-3 rounded-xl text-sm ${error.startsWith('Could not') || error.includes('failed') || error.includes('blocked') || error.includes('rejected') ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-blue-50 border border-blue-200 text-blue-700'}`}>{error}</div>}
       <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden" style={{ height: 'calc(100vh - 200px)', minHeight: '560px' }}>
         <div className="flex h-full">
           <div className={`w-full sm:w-88 border-r border-stone-200 flex flex-col ${conversationId ? 'hidden sm:flex' : 'flex'}`}>
@@ -263,10 +296,11 @@ const MessagesPage: React.FC = () => {
           </div>
           <div className={`flex-1 flex flex-col ${!conversationId ? 'hidden sm:flex' : 'flex'}`}>
             {conversationId && selectedConv ? <>
-              <div className="p-4 border-b border-stone-200 flex items-center gap-3"><Link to="/messages" className="sm:hidden p-1 hover:bg-stone-100 rounded-lg"><i className="las la-angle-left text-2xl text-stone-600" /></Link>{getOtherParticipantPhoto(selectedConv) ? <img src={getOtherParticipantPhoto(selectedConv)} alt={getOtherParticipantName(selectedConv)} className="w-10 h-10 rounded-full object-cover bg-stone-100" /> : <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-sm">{getOtherParticipantInitial(selectedConv)}</div>}<div className="min-w-0 flex-1"><h3 className="font-semibold text-stone-900 text-sm truncate">{getOtherParticipantName(selectedConv)}</h3><p className="text-xs text-stone-500 truncate">{otherMeta?.location || 'Location not set'} {otherMeta?.reviewCount ? `· ★ ${otherMeta.avgRating.toFixed(1)} (${otherMeta.reviewCount})` : '· No reviews yet'}</p></div><button onClick={() => setShowReport(true)} className="cursor-pointer rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50"><i className="las la-flag mr-1" />Report user</button><button onClick={deleteConversation} disabled={deleting} className="cursor-pointer rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">{deleting ? 'Deleting...' : 'Delete chat'}</button></div>
+              <div className="p-4 border-b border-stone-200 flex items-center gap-3"><Link to="/messages" className="sm:hidden p-1 hover:bg-stone-100 rounded-lg"><i className="las la-angle-left text-2xl text-stone-600" /></Link>{getOtherParticipantPhoto(selectedConv) ? <img src={getOtherParticipantPhoto(selectedConv)} alt={getOtherParticipantName(selectedConv)} className="w-10 h-10 rounded-full object-cover bg-stone-100" /> : <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-sm">{getOtherParticipantInitial(selectedConv)}</div>}<div className="min-w-0 flex-1"><h3 className="font-semibold text-stone-900 text-sm truncate">{getOtherParticipantName(selectedConv)}</h3><p className="text-xs text-stone-500 truncate">{otherMeta?.location || 'Location not set'} {otherMeta?.reviewCount ? `· ★ ${otherMeta.avgRating.toFixed(1)} (${otherMeta.reviewCount})` : '· No reviews yet'}</p></div><button onClick={blockUser} disabled={blocking || isBlockedByMe} className="cursor-pointer rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">{isBlockedByMe ? 'Blocked' : blocking ? 'Blocking...' : 'Block user'}</button><button onClick={() => setShowReport(true)} className="cursor-pointer rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50"><i className="las la-flag mr-1" />Report user</button><button onClick={deleteConversation} disabled={deleting} className="cursor-pointer rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">{deleting ? 'Deleting...' : 'Delete chat'}</button></div>
               <ConversationListingCard conversation={selectedConv} />
+              {messagingBlocked && <div className="border-b border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{isBlockedByMe ? 'You blocked this user. New messages are disabled.' : 'Messaging is unavailable for this conversation.'}</div>}
               <div ref={messagesPaneRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-stone-50">{visibleMessages.map((msg, index) => { const isMe = msg.senderId === currentUser.uid; const showDay = index === 0 || !isSameDay(msg.createdAt || 0, visibleMessages[index - 1]?.createdAt || 0); const isRead = selectedConv.participants.filter((id) => id !== currentUser.uid).every((id) => (msg.readBy || []).includes(id)); const imageSource = msg.imageUrl || msg.imageData || ''; return <React.Fragment key={msg.id}>{showDay && <div className="flex justify-center my-3"><span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-500 shadow-sm">{formatDayLabel(msg.createdAt)}</span></div>}<div className={`group flex ${isMe ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[78%] px-3 py-2 rounded-2xl text-sm shadow-sm ${isMe ? 'bg-green-100 text-stone-900 rounded-br-sm' : 'bg-white text-stone-800 rounded-bl-sm'}`}>{msg.type === 'image' && imageSource ? <img src={imageSource} alt={msg.imageName || 'Sent image'} className="mb-2 max-h-72 rounded-xl object-contain" /> : null}{msg.type === 'map' && msg.mapUrl ? <a href={msg.mapUrl} target="_blank" rel="noreferrer" className="mb-2 block rounded-xl border border-stone-200 bg-white p-3 text-[#1665CC]"><i className="las la-map-marker text-2xl" /> Open location pin</a> : null}{msg.type !== 'image' || msg.text !== 'Image' ? <p className="whitespace-pre-wrap">{msg.text}</p> : null}<div className={`mt-1 flex items-center justify-end gap-1 text-[11px] ${isMe ? 'text-stone-500' : 'text-stone-400'}`}><span>{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>{isMe && <span className={isRead ? 'text-[#1665CC]' : 'text-stone-400'}>{isRead ? '✓✓' : '✓'}</span>}<button type="button" onClick={() => deleteMessage(msg)} className="ml-2 hidden cursor-pointer text-red-500 group-hover:inline">Delete</button></div></div></div></React.Fragment>; })}</div>
-              <form onSubmit={handleSend} className="p-4 border-t border-stone-200 bg-white"><input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSend} className="hidden" /><div className="flex gap-2"><button type="button" onClick={() => imageInputRef.current?.click()} disabled={sending} className="cursor-pointer rounded-xl border border-stone-200 px-3 text-stone-600 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-image text-2xl" /></button><button type="button" onClick={handleMapPin} disabled={sending} className="cursor-pointer rounded-xl border border-stone-200 px-3 text-stone-600 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-map-marker text-2xl" /></button><input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 px-4 py-2.5 rounded-xl border border-stone-200 focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10 outline-none transition text-sm" /><button type="submit" disabled={!newMessage.trim() || sending} className="cursor-pointer px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition disabled:cursor-not-allowed disabled:opacity-50 text-sm font-medium">{sending ? 'Sending...' : 'Send'}</button></div></form>
+              <form onSubmit={handleSend} className="p-4 border-t border-stone-200 bg-white"><input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSend} className="hidden" /><div className="flex gap-2"><button type="button" onClick={() => imageInputRef.current?.click()} disabled={sending || messagingBlocked} className="cursor-pointer rounded-xl border border-stone-200 px-3 text-stone-600 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-image text-2xl" /></button><button type="button" onClick={handleMapPin} disabled={sending || messagingBlocked} className="cursor-pointer rounded-xl border border-stone-200 px-3 text-stone-600 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-map-marker text-2xl" /></button><input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={messagingBlocked} placeholder={messagingBlocked ? 'Messaging disabled' : 'Type a message...'} className="flex-1 px-4 py-2.5 rounded-xl border border-stone-200 focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10 outline-none transition text-sm disabled:bg-stone-100" /><button type="submit" disabled={!newMessage.trim() || sending || messagingBlocked} className="cursor-pointer px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition disabled:cursor-not-allowed disabled:opacity-50 text-sm font-medium">{sending ? 'Sending...' : 'Send'}</button></div></form>
             </> : <div className="flex-1 flex flex-col items-center justify-center text-center p-8"><div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-4"><i className="las la-comments text-3xl text-stone-400" /></div><h3 className="font-semibold text-stone-700">Select a conversation</h3><p className="text-sm text-stone-500 mt-1">Choose a conversation from the left to start messaging</p></div>}
           </div>
         </div>
