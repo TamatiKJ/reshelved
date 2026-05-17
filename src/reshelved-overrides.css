@@ -29,49 +29,19 @@ nav {
   z-index: 1000 !important;
 }
 
-/* Profile listing icons: use the closed-book icon style for listings and hourglass for expired listings. */
-nav.mt-5 button:nth-child(1) i.la-book-open,
+/* Profile icons: use Line Awesome closed book for listings and hourglass-end for expired listings. */
 nav.mt-5 button:nth-child(1) i.la-book-open::before,
-main .h-14.w-14 i.la-book-open,
-main .h-14.w-14 i.la-book-open::before {
-  font-size: 0 !important;
+main section:has(h2) .h-14.w-14 i.la-book-open::before {
+  content: "\f02d" !important;
+  font-family: "Line Awesome Free" !important;
+  font-weight: 900 !important;
 }
 
-nav.mt-5 button:nth-child(1) i.la-book-open::before,
-main .h-14.w-14 i.la-book-open::before {
-  content: "" !important;
-  display: inline-block !important;
-  width: 13px !important;
-  height: 16px !important;
-  border: 1.6px solid currentColor !important;
-  border-radius: 2px !important;
-  box-shadow: inset 0 4px 0 transparent, inset 0 5.5px 0 currentColor !important;
-  opacity: 0.9 !important;
-}
-
-nav.mt-5 button:nth-child(2) i.la-book-open,
-nav.mt-5 button:nth-child(2) i.la-book-open::before {
-  font-size: 0 !important;
-}
-
-nav.mt-5 button:nth-child(2) i.la-book-open::before {
-  content: "⌛" !important;
-  display: inline-block !important;
-  width: 20px !important;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-  font-size: 18px !important;
-  line-height: 1 !important;
-}
-
+nav.mt-5 button:nth-child(2) i.la-book-open::before,
 body:has(nav.mt-5 button:nth-child(2).bg-stone-950) main .h-14.w-14 i.la-book-open::before {
-  content: "⌛" !important;
-  width: 20px !important;
-  height: auto !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-  font-size: 30px !important;
-  line-height: 1 !important;
+  content: "\f253" !important;
+  font-family: "Line Awesome Free" !important;
+  font-weight: 900 !important;
 }
 
 /* Profile page: keep the settings/profile workspace clean white. */
