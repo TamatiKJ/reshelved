@@ -55,6 +55,23 @@ body:has(nav.mt-5) section:has(input[placeholder="Display name"]) .rounded-\[28p
   background: #ffffff !important;
 }
 
+/* Listing cards: no shadow or border on bookmark heart. */
+article button[aria-label="Save to favorites"],
+article button[aria-label="Remove from favorites"] {
+  border: 0 !important;
+  box-shadow: none !important;
+  filter: none !important;
+  outline: 0 !important;
+  ring-width: 0 !important;
+}
+
+article button[aria-label="Save to favorites"] i,
+article button[aria-label="Remove from favorites"] i {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
 /* Messages page: cleaner Airbnb/Skype-style chat layout using existing brand colors. */
 .max-w-6xl:has(h1 + div + div) {
   max-width: 1180px !important;
@@ -145,6 +162,44 @@ body:has(nav.mt-5) section:has(input[placeholder="Display name"]) .rounded-\[28p
   border: 1px solid #ece9e4 !important;
   border-radius: 22px 22px 22px 6px !important;
   box-shadow: 0 8px 24px rgba(28, 25, 23, 0.06) !important;
+}
+
+/* WhatsApp-like delivery receipts. Sent = one check, delivered = double check, read = blue double check. */
+span[title="Sent"],
+span[title="Delivered"],
+span[title="Read"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 16px !important;
+  height: 14px !important;
+  overflow: hidden !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+}
+
+span[title="Sent"]::before,
+span[title="Delivered"]::before,
+span[title="Read"]::before {
+  font-family: "Line Awesome Free" !important;
+  font-weight: 900 !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+  color: #a8a29e !important;
+}
+
+span[title="Sent"]::before {
+  content: "\f00c" !important;
+}
+
+span[title="Delivered"]::before,
+span[title="Read"]::before {
+  content: "\f560" !important;
+}
+
+span[title="Read"]::before {
+  color: #1665cc !important;
 }
 
 .max-w-6xl:has(h1 + div + div) form.p-4.border-t {
