@@ -46,6 +46,7 @@ const MessagesPage: React.FC = () => {
   const [reportDetails, setReportDetails] = useState('');
   const [messageMenu, setMessageMenu] = useState<MenuPlacement>(null);
   const [threadMenuOpen, setThreadMenuOpen] = useState(false);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const messagesPaneRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const longPressTimeoutRef = useRef<number | null>(null);
@@ -128,6 +129,7 @@ const MessagesPage: React.FC = () => {
     const closeMenus = () => {
       setMessageMenu(null);
       setThreadMenuOpen(false);
+      setAttachMenuOpen(false);
     };
     window.addEventListener('click', closeMenus);
     window.addEventListener('resize', closeMenus);
@@ -251,6 +253,7 @@ const MessagesPage: React.FC = () => {
     const now = Date.now();
     const recipientIds = selectedConv.participants.filter((id) => id !== currentUser.uid);
     setSending(true);
+    setAttachMenuOpen(false);
     setError('');
     try {
       const messageRef = doc(collection(db, 'messages'));
@@ -265,7 +268,21 @@ const MessagesPage: React.FC = () => {
     }
   };
 
-  const handleMapPin = async () => setError('Location sharing will be connected after launch-safe storage rules are in place.');
+  const handleMapPin = async () => {
+    if (!ensureCanMessage()) return;
+    setAttachMenuOpen(false);
+    if (!navigator.geolocation) {
+      setError('Location sharing is not supported on this browser.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        const mapUrl = `https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`;
+        await sendTextOrMapMessage({ text: 'Shared location', type: 'map', mapUrl, lat: coords.latitude, lng: coords.longitude } as any);
+      },
+      () => setError('Location permission was denied.')
+    );
+  };
 
   const positionMessageMenu = (messageId: string, element: HTMLElement | null) => {
     if (!element) return setMessageMenu(null);
@@ -284,10 +301,12 @@ const MessagesPage: React.FC = () => {
     if (messageMenu?.id === messageId) return setMessageMenu(null);
     positionMessageMenu(messageId, element);
   };
+
   const startMessageLongPress = (messageId: string, element: HTMLElement | null) => {
     if (longPressTimeoutRef.current) window.clearTimeout(longPressTimeoutRef.current);
     longPressTimeoutRef.current = window.setTimeout(() => positionMessageMenu(messageId, element), 450);
   };
+
   const clearMessageLongPress = () => {
     if (longPressTimeoutRef.current) window.clearTimeout(longPressTimeoutRef.current);
   };
@@ -397,23 +416,33 @@ const MessagesPage: React.FC = () => {
                     <h3 className="truncate text-sm font-bold text-stone-900">{getOtherParticipantName(selectedConv)}</h3>
                     <p className="truncate text-xs text-stone-500">{otherMeta?.location || 'Location not set'} {otherMeta?.reviewCount ? `· ★ ${otherMeta.avgRating.toFixed(1)} (${otherMeta.reviewCount})` : '· No reviews yet'}</p>
                   </div>
-                  <button type="button" onClick={(event) => { event.stopPropagation(); setThreadMenuOpen((current) => !current); }} className="sm:hidden flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 hover:bg-stone-50" aria-label="Conversation actions"><i className="las la-ellipsis-v text-xl" /></button>
-                  <div className="hidden shrink-0 items-center gap-2 sm:flex">
-                    <button onClick={blockUser} disabled={blocking || isBlockedByMe} className="cursor-pointer rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-ban mr-1" />{isBlockedByMe ? 'Blocked' : blocking ? 'Blocking...' : 'Block user'}</button>
-                    <button onClick={openReportModal} className="cursor-pointer rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50"><i className="las la-flag mr-1" />Report user</button>
-                    <button onClick={deleteConversation} disabled={deleting} className="cursor-pointer rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-trash mr-1" />{deleting ? 'Deleting...' : 'Delete chat'}</button>
+                  <div className="relative shrink-0">
+                    <button type="button" onClick={(event) => { event.stopPropagation(); setThreadMenuOpen((current) => !current); setAttachMenuOpen(false); }} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 hover:bg-stone-50" aria-label="Conversation actions"><i className="las la-ellipsis-v text-xl" /></button>
+                    {threadMenuOpen && <div onClick={(event) => event.stopPropagation()} className="absolute right-0 top-11 z-40 w-56 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl">
+                      <button onClick={deleteConversation} disabled={deleting} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-trash text-xl" />{deleting ? 'Deleting...' : 'Delete chat'}</button>
+                      <button onClick={openReportModal} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-medium text-stone-700 hover:bg-stone-50"><i className="las la-flag text-xl" />Report</button>
+                      <button onClick={blockUser} disabled={blocking || isBlockedByMe} className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-4 py-3 text-left font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-ban text-xl" />{isBlockedByMe ? 'Blocked' : blocking ? 'Blocking...' : 'Block'}</button>
+                    </div>}
                   </div>
                 </div>
-                {threadMenuOpen && <div onClick={(event) => event.stopPropagation()} className="absolute right-3 top-[58px] z-40 w-56 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl sm:hidden">
-                  <button onClick={blockUser} disabled={blocking || isBlockedByMe} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-ban text-xl" />{isBlockedByMe ? 'Blocked' : blocking ? 'Blocking...' : 'Block user'}</button>
-                  <button onClick={openReportModal} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-medium text-stone-700 hover:bg-stone-50"><i className="las la-flag text-xl" />Report user</button>
-                  <button onClick={deleteConversation} disabled={deleting} className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-4 py-3 text-left font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-trash text-xl" />{deleting ? 'Deleting...' : 'Delete chat'}</button>
-                </div>}
               </div>
               <ConversationListingCard conversation={selectedConv} />
               {messagingBlocked && <div className="border-b border-primary-100 bg-primary-50 px-4 py-3 text-sm font-semibold text-primary-700">{UNAVAILABLE_MESSAGE}</div>}
-              <div ref={messagesPaneRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-stone-50">{visibleMessages.map((msg, index) => { const isMe = msg.senderId === currentUser.uid; const showDay = index === 0 || !isSameDay(msg.createdAt || 0, visibleMessages[index - 1]?.createdAt || 0); const recipientIds = selectedConv.participants.filter((id) => id !== currentUser.uid); const isDelivered = recipientIds.every((id) => (msg.deliveredTo || []).includes(id)); const isRead = recipientIds.every((id) => (msg.readBy || []).includes(id)); const imageSource = msg.imageUrl || msg.imageData || ''; return <React.Fragment key={msg.id}>{showDay && <div className="flex justify-center my-3"><span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-500 shadow-sm">{formatDayLabel(msg.createdAt)}</span></div>}<div className={`group flex ${isMe ? 'justify-end' : 'justify-start'}`}><div data-message-bubble="true" onClick={(event) => event.stopPropagation()} onContextMenu={(event) => { event.preventDefault(); positionMessageMenu(msg.id, event.currentTarget); }} onTouchStart={(event) => startMessageLongPress(msg.id, event.currentTarget)} onTouchEnd={clearMessageLongPress} onTouchCancel={clearMessageLongPress} onTouchMove={clearMessageLongPress} className={`relative max-w-[78%] px-3 py-2 rounded-2xl text-sm shadow-sm ${isMe ? 'bg-green-100 text-stone-900 rounded-br-sm' : 'bg-white text-stone-800 rounded-bl-sm'} ${msg.deleted ? 'opacity-80' : ''}`}>{msg.deleted ? <p className="whitespace-pre-wrap italic text-stone-500">This message was deleted</p> : <>{msg.type === 'image' && imageSource ? <img src={imageSource} alt={msg.imageName || 'Sent image'} className="mb-2 max-h-72 rounded-xl object-contain" /> : null}{msg.type === 'map' && msg.mapUrl ? <a href={msg.mapUrl} target="_blank" rel="noreferrer" className="mb-2 block rounded-xl border border-stone-200 bg-white p-3 text-[#1665CC]"><i className="las la-map-marker text-2xl" /> Open location pin</a> : null}{msg.type !== 'image' || msg.text !== 'Image' ? <p className="whitespace-pre-wrap">{msg.text}</p> : null}</>}<button type="button" aria-label="Message actions" onClick={(event) => { event.stopPropagation(); openMessageMenu(msg.id, event.currentTarget.closest('[data-message-bubble]') as HTMLElement | null); }} className={`absolute top-1 hidden h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/95 text-stone-600 shadow-sm ring-1 ring-stone-200 transition hover:bg-white sm:flex ${isMe ? '-left-9' : '-right-9'} opacity-0 group-hover:opacity-100`}><i className="las la-angle-down text-lg" /></button><div className={`mt-1 flex flex-wrap items-center justify-end gap-1 text-[11px] ${isMe ? 'text-stone-500' : 'text-stone-400'}`}><span>{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>{isMe && <span title={isRead ? 'Read' : isDelivered ? 'Delivered' : 'Sent'} className={isRead ? 'text-[#1665CC]' : 'text-stone-400'}>{isRead ? '✓✓' : isDelivered ? '✓✓' : '✓'}</span>}</div></div></div></React.Fragment>; })}</div>
-              <form onSubmit={handleSend} className="p-4 border-t border-stone-200 bg-white"><input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSend} className="hidden" /><div className="flex gap-2"><button type="button" onClick={() => imageInputRef.current?.click()} disabled={sending || messagingBlocked} className="cursor-pointer rounded-xl border border-stone-200 px-3 text-stone-600 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-image text-2xl" /></button><button type="button" onClick={handleMapPin} disabled={sending || messagingBlocked} className="cursor-pointer rounded-xl border border-stone-200 px-3 text-stone-600 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-map-marker text-2xl" /></button><input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={messagingBlocked} placeholder={messagingBlocked ? 'Messaging disabled' : 'Type a message...'} className="flex-1 px-4 py-2.5 rounded-xl border border-stone-200 focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10 outline-none transition text-sm disabled:bg-stone-100" /><button type="submit" disabled={!newMessage.trim() || sending || messagingBlocked} className="cursor-pointer px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition disabled:cursor-not-allowed disabled:opacity-50 text-sm font-medium">{sending ? 'Sending...' : 'Send'}</button></div></form>
+              <div ref={messagesPaneRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-stone-50">{visibleMessages.map((msg, index) => { const isMe = msg.senderId === currentUser.uid; const showDay = index === 0 || !isSameDay(msg.createdAt || 0, visibleMessages[index - 1]?.createdAt || 0); const recipientIds = selectedConv.participants.filter((id) => id !== currentUser.uid); const isDelivered = recipientIds.every((id) => (msg.deliveredTo || []).includes(id)); const isRead = recipientIds.every((id) => (msg.readBy || []).includes(id)); const imageSource = (msg as any).imageUrl || (msg as any).imageData || ''; return <React.Fragment key={msg.id}>{showDay && <div className="flex justify-center my-3"><span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-500 shadow-sm">{formatDayLabel(msg.createdAt)}</span></div>}<div className={`group flex ${isMe ? 'justify-end' : 'justify-start'}`}><div data-message-bubble="true" onClick={(event) => event.stopPropagation()} onContextMenu={(event) => { event.preventDefault(); positionMessageMenu(msg.id, event.currentTarget); }} onTouchStart={(event) => startMessageLongPress(msg.id, event.currentTarget)} onTouchEnd={clearMessageLongPress} onTouchCancel={clearMessageLongPress} onTouchMove={clearMessageLongPress} className={`relative max-w-[78%] px-3 py-2 rounded-2xl text-sm shadow-sm ${isMe ? 'bg-green-100 text-stone-900 rounded-br-sm' : 'bg-white text-stone-800 rounded-bl-sm'} ${msg.deleted ? 'opacity-80' : ''}`}>{msg.deleted ? <p className="whitespace-pre-wrap italic text-stone-500">This message was deleted</p> : <>{(msg as any).type === 'image' && imageSource ? <img src={imageSource} alt={(msg as any).imageName || 'Sent image'} className="mb-2 max-h-72 rounded-xl object-contain" /> : null}{(msg as any).type === 'map' && (msg as any).mapUrl ? <a href={(msg as any).mapUrl} target="_blank" rel="noreferrer" className="mb-2 block rounded-xl border border-stone-200 bg-white p-3 text-[#1665CC]"><i className="las la-map-marker text-2xl" /> Open location pin</a> : null}{(msg as any).type !== 'image' || msg.text !== 'Image' ? <p className="whitespace-pre-wrap">{msg.text}</p> : null}</>}<button type="button" aria-label="Message actions" onClick={(event) => { event.stopPropagation(); openMessageMenu(msg.id, event.currentTarget.closest('[data-message-bubble]') as HTMLElement | null); }} className={`absolute top-1 hidden h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/95 text-stone-600 shadow-sm ring-1 ring-stone-200 transition hover:bg-white sm:flex ${isMe ? '-left-9' : '-right-9'} opacity-0 group-hover:opacity-100`}><i className="las la-angle-down text-lg" /></button><div className={`mt-1 flex flex-wrap items-center justify-end gap-1 text-[11px] ${isMe ? 'text-stone-500' : 'text-stone-400'}`}><span>{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>{isMe && <span title={isRead ? 'Read' : isDelivered ? 'Delivered' : 'Sent'} className={isRead ? 'text-[#1665CC]' : 'text-stone-400'}>{isRead ? '✓✓' : isDelivered ? '✓✓' : '✓'}</span>}</div></div></div></React.Fragment>; })}</div>
+              <form onSubmit={handleSend} className="p-4 border-t border-stone-200 bg-white">
+                <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSend} className="hidden" />
+                <div className="flex gap-2">
+                  <div className="relative">
+                    <button type="button" onClick={(event) => { event.stopPropagation(); setAttachMenuOpen((current) => !current); setThreadMenuOpen(false); }} disabled={sending || messagingBlocked} className="flex h-[42px] w-[42px] cursor-pointer items-center justify-center rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Attach"><i className="las la-paperclip text-2xl" /></button>
+                    {attachMenuOpen && <div onClick={(event) => event.stopPropagation()} className="absolute bottom-12 left-0 z-40 w-48 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl">
+                      <button type="button" onClick={() => { setAttachMenuOpen(false); imageInputRef.current?.click(); }} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-medium text-stone-700 hover:bg-stone-50"><i className="las la-image text-xl" />Add image</button>
+                      <button type="button" onClick={handleMapPin} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-medium text-stone-700 hover:bg-stone-50"><i className="las la-map-marker text-xl" />Location</button>
+                    </div>}
+                  </div>
+                  <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={messagingBlocked} placeholder={messagingBlocked ? 'Messaging disabled' : 'Type a message...'} className="flex-1 px-4 py-2.5 rounded-xl border border-stone-200 focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10 outline-none transition text-sm disabled:bg-stone-100" />
+                  <button type="submit" disabled={!newMessage.trim() || sending || messagingBlocked} className="cursor-pointer px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition disabled:cursor-not-allowed disabled:opacity-50 text-sm font-medium">{sending ? 'Sending...' : 'Send'}</button>
+                </div>
+              </form>
             </> : <div className="flex-1 flex flex-col items-center justify-center text-center p-8"><div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-4"><i className="las la-comments text-3xl text-stone-400" /></div><h3 className="font-semibold text-stone-700">Select a conversation</h3><p className="text-sm text-stone-500 mt-1">Choose a conversation from the left to start messaging</p></div>}
           </div>
         </div>
