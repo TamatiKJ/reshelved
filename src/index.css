@@ -8,13 +8,13 @@
   --color-primary-50: #fff1f0;
   --color-primary-100: #ffe1df;
   --color-primary-200: #ffc8c4;
-  --color-primary-300: #ffa39e;
-  --color-primary-400: #ff7c73;
-  --color-primary-500: #FF5F57;
-  --color-primary-600: #FF5F57;
-  --color-primary-700: #e94d46;
-  --color-primary-800: #c83e38;
-  --color-primary-900: #a93430;
+  --color-primary-300: #ff9d95;
+  --color-primary-400: #ff776c;
+  --color-primary-500: #FC5647;
+  --color-primary-600: #FC5647;
+  --color-primary-700: #e4493c;
+  --color-primary-800: #c63d32;
+  --color-primary-900: #a7352c;
   --color-accent-50: #fffbeb;
   --color-accent-100: #fef3c7;
   --color-accent-200: #fde68a;
@@ -273,4 +273,17 @@ form button:has(.la-sync):hover,
 form button:has(.la-gift):hover,
 form button:has(.la-tag):hover {
   border-color: #1665CC !important;
+}
+
+/* Brand-aligned listing actions and seller ratings. Homepage testimonial stars stay on the accent token. */
+.la-pen,
+.la-star,
+.text-amber-400,
+.text-\[\#F59E0B\],
+.text-\[\#F7AF31\] {
+  color: #FC5647 !important;
+}
+
+button:has(.la-pen) {
+  color: #FC5647 !important;
 }
