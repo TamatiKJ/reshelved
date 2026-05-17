@@ -223,3 +223,38 @@ span[title="Read"]::before {
     min-height: calc(100vh - 150px) !important;
   }
 }
+
+/* Mobile chats page spacing and unread date stack. */
+@media (max-width: 639px) {
+  div.mx-auto.max-w-\[1240px\] {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] > div:first-child,
+  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] > div:nth-child(2),
+  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] > div.flex-1.overflow-y-auto {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group > div.flex.items-center {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group > div.flex.items-center > span.flex.h-6.min-w-6 {
+    position: absolute !important;
+    right: 20px !important;
+    top: 46px !important;
+  }
+
+  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group > div.flex.items-center span.text-xs.shrink-0 {
+    min-width: 52px !important;
+    text-align: right !important;
+  }
+
+  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group:has(> div.flex.items-center > span.flex.h-6.min-w-6) .min-w-0.flex-1 {
+    padding-right: 58px !important;
+  }
+}
