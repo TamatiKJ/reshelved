@@ -101,7 +101,7 @@ const Navbar: React.FC = () => {
         <div className="md:hidden fixed inset-0 z-50 bg-white overflow-y-auto">
           <div className="p-5 min-h-full flex flex-col">
             <div className="flex items-center justify-between mb-6">
-              <Link to="/" onClick={closeMobile} className="flex items-center w-[60%]" aria-label="Reshelved home">
+              <Link to="/" onClick={closeMobile} className="flex items-center w-[40%]" aria-label="Reshelved home">
                 <img src="/reshelved-logo.svg" alt="Reshelved" className="w-full h-auto" />
               </Link>
               <button onClick={closeMobile} className="cursor-pointer p-1 -mr-1 text-stone-950" aria-label="Close menu"><i className="las la-times text-[20px] leading-none" /></button>
