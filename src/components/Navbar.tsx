@@ -39,7 +39,6 @@ const Navbar: React.FC = () => {
             <Link to="/" className="flex items-center shrink-0" aria-label="Reshelved home">
               <img src="/reshelved-logo.svg" alt="Reshelved" className="h-6 w-auto" />
             </Link>
-
             {isAdmin && (
               <div className="hidden md:flex items-center gap-1">
                 <Link to="/" className={navLinkClass}>Home</Link>
@@ -48,7 +47,6 @@ const Navbar: React.FC = () => {
               </div>
             )}
           </div>
-
           {!isAdmin && (
             <div className="hidden md:flex items-center gap-1">
               <Link to="/" className={navLinkClass}>Home</Link>
@@ -56,7 +54,6 @@ const Navbar: React.FC = () => {
               <a href="/#how-it-works" className={navLinkClass}>How it Works</a>
             </div>
           )}
-
           <div className="hidden md:flex items-center gap-3">
             {currentUser ? (
               <>
@@ -94,43 +91,36 @@ const Navbar: React.FC = () => {
               </div>
             )}
           </div>
-
           <div className="md:hidden flex items-center gap-2">
             {currentUser && <Link to="/notifications" className="relative p-2 rounded-lg hover:bg-stone-100 transition"><i className="las la-bell text-2xl text-stone-600" />{unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold leading-none">{unreadCount > 9 ? '9+' : unreadCount}</span>}</Link>}
             <button className="cursor-pointer p-2 rounded-lg hover:bg-stone-100" onClick={() => setMobileOpen(!mobileOpen)} aria-label={mobileOpen ? 'Close menu' : 'Open menu'}><i className={`las ${mobileOpen ? 'la-times' : 'la-bars'} text-3xl text-stone-900`} /></button>
           </div>
         </div>
       </div>
-
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 bg-white overflow-y-auto">
           <div className="p-5 min-h-full flex flex-col">
             <div className="flex items-center justify-between mb-6">
-              <Link to="/" onClick={closeMobile} className="flex items-center" aria-label="Reshelved home">
-                <img src="/reshelved-logo.svg" alt="Reshelved" className="max-h-12 w-auto" />
+              <Link to="/" onClick={closeMobile} className="flex items-center w-[60%]" aria-label="Reshelved home">
+                <img src="/reshelved-logo.svg" alt="Reshelved" className="w-full h-auto" />
               </Link>
-              <button onClick={closeMobile} className="cursor-pointer p-1 -mr-1 text-stone-950" aria-label="Close menu">
-                <i className="las la-times text-[20px] leading-none" />
-              </button>
+              <button onClick={closeMobile} className="cursor-pointer p-1 -mr-1 text-stone-950" aria-label="Close menu"><i className="las la-times text-[20px] leading-none" /></button>
             </div>
-
             <div className="space-y-0">
               <Link to="/browse" onClick={closeMobile} className={mobileMainLinkClass}>Browse <i className="las la-angle-right text-xl" /></Link>
               <a href="/#how-it-works" onClick={closeMobile} className={mobileMainLinkClass}>How it Works <i className="las la-angle-right text-xl" /></a>
               <Link to="/create" onClick={closeMobile} className={mobileMainLinkClass}>List a Book <i className="las la-angle-right text-xl" /></Link>
+              {currentUser && <Link to="/messages" onClick={closeMobile} className={mobileMainLinkClass}>Messages <span className="flex items-center gap-2"><CountBadge count={messageUnreadCount} /><i className="las la-angle-right text-xl" /></span></Link>}
               {currentUser && <Link to="/notifications" onClick={closeMobile} className={mobileMainLinkClass}>Notifications <span className="flex items-center gap-2">{unreadCount > 0 && <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>}<i className="las la-angle-right text-xl" /></span></Link>}
               {isAdmin && <Link to="/admin" onClick={closeMobile} className={mobileMainLinkClass}>Admin <i className="las la-angle-right text-xl" /></Link>}
             </div>
-
             {currentUser && (
               <div className="mt-4 space-y-1">
                 <Link to="/profile" onClick={closeMobile} className={mobileSubLinkClass}><i className="las la-user text-xl text-stone-600" /> My Profile</Link>
                 <Link to="/my-listings" onClick={closeMobile} className={mobileSubLinkClass}><i className="las la-book text-xl text-stone-600" /> My Listings</Link>
-                <Link to="/messages" onClick={closeMobile} className="flex items-center justify-between py-2.5 text-[16px] leading-tight text-stone-800 font-[Inter]"><span className="flex items-center gap-3"><i className="las la-comments text-xl text-stone-600" /> Messages</span><CountBadge count={messageUnreadCount} /></Link>
                 <button onClick={handleLogout} className="cursor-pointer flex w-full items-center gap-3 py-2.5 text-left text-[16px] leading-tight text-red-600 font-[Inter]"><i className="las la-sign-out-alt text-xl" /> Log Out</button>
               </div>
             )}
-
             <div className="mt-[30px] space-y-3">
               {currentUser ? (
                 <>
@@ -144,7 +134,6 @@ const Navbar: React.FC = () => {
                   <Link to="/login" onClick={closeMobile} className="block py-2 text-center text-[16px] font-semibold text-[#00BFCC]">Log in</Link>
                 </>
               )}
-              {!currentUser && <Link to="/create" onClick={closeMobile} className="block py-2 text-center text-[16px] font-semibold text-stone-950">List a Book</Link>}
             </div>
           </div>
         </div>
