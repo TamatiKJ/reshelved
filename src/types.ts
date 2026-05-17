@@ -56,6 +56,8 @@ export interface Conversation {
   sellerId?: string;
   conversationKey?: string;
   hiddenFor?: string[];
+  unreadCount?: Record<string, number>;
+  deliveredAt?: Record<string, number>;
 }
 
 export interface Message {
@@ -76,6 +78,8 @@ export interface Message {
   lng?: number;
   mapUrl?: string;
   readBy?: string[];
+  deliveredTo?: string[];
+  deliveredAt?: Record<string, number>;
   deletedFor?: string[];
   deleted?: boolean;
   deletedAt?: number;
