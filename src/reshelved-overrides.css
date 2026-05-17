@@ -22,14 +22,26 @@
   }
 }
 
-/* Keep every header pinned while scrolling. */
-nav,
+/* Keep the main public header locked to the top. */
+nav.bg-white.shadow-sm.border-b.border-stone-200 {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  z-index: 5000 !important;
+}
+
+body:has(nav.bg-white.shadow-sm.border-b.border-stone-200) main.flex-1 {
+  padding-top: 64px !important;
+}
+
+/* Keep admin header pinned while scrolling inside dashboard. */
 header.sticky,
-header[class*="sticky"],
-.bg-white.shadow-sm.border-b.border-stone-200 {
+header[class*="sticky"] {
   position: sticky !important;
   top: 0 !important;
-  z-index: 1000 !important;
+  z-index: 5000 !important;
 }
 
 /* Sitewide button look for profile CTA buttons. */
@@ -105,14 +117,14 @@ article button[aria-label="Remove from favorites"] i {
 /* Mobile menu logo sizing. */
 @media (max-width: 767px) {
   nav .fixed.inset-0.z-50.bg-white a[aria-label="Reshelved home"] {
-    width: 60% !important;
-    max-width: 260px !important;
+    width: 40% !important;
+    max-width: 180px !important;
   }
 
   nav .fixed.inset-0.z-50.bg-white a[aria-label="Reshelved home"] img {
     width: 100% !important;
     height: auto !important;
-    max-height: 56px !important;
+    max-height: 48px !important;
     object-fit: contain !important;
   }
 
