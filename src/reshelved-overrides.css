@@ -1,0 +1,26 @@
+/* Desktop homepage category cards: narrower section, taller cards. */
+@media (min-width: 1024px) {
+  section:has(a[href="/browse?category=Fiction"]) > .relative.max-w-7xl {
+    max-width: 80% !important;
+  }
+
+  section:has(a[href="/browse?category=Fiction"]) a[href^="/browse?category="] {
+    min-height: 245px !important;
+  }
+
+  section:has(a[href="/browse?category=Fiction"]) a[href^="/browse?category="] h3 {
+    font-size: 22px !important;
+    line-height: 1.1 !important;
+  }
+
+  section:has(a[href="/browse?category=Fiction"]) a[href^="/browse?category="] img {
+    height: 76px !important;
+  }
+}
+
+/* Keep the header pinned while scrolling. */
+nav {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+}
