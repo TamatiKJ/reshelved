@@ -13,6 +13,8 @@ type MenuPlacement = { id: string; top: number; left: number; direction: 'up' | 
 const DELETE_EVERYONE_WINDOW_MS = 10 * 60 * 1000;
 const MENU_WIDTH = 224;
 const MENU_GAP = 8;
+const UNAVAILABLE_MESSAGE = "You can't message this user at this time.";
+
 const isSameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString();
 const getConversationKey = (a: string, b: string) => [a, b].sort().join('_');
 const formatDayLabel = (timestamp: number) => {
@@ -43,6 +45,7 @@ const MessagesPage: React.FC = () => {
   const [reportReason, setReportReason] = useState('');
   const [reportDetails, setReportDetails] = useState('');
   const [messageMenu, setMessageMenu] = useState<MenuPlacement>(null);
+  const [threadMenuOpen, setThreadMenuOpen] = useState(false);
   const messagesPaneRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const longPressTimeoutRef = useRef<number | null>(null);
@@ -122,12 +125,15 @@ const MessagesPage: React.FC = () => {
   }, [conversationId, conversations]);
 
   useEffect(() => {
-    const closeMenu = () => setMessageMenu(null);
-    window.addEventListener('click', closeMenu);
-    window.addEventListener('resize', closeMenu);
+    const closeMenus = () => {
+      setMessageMenu(null);
+      setThreadMenuOpen(false);
+    };
+    window.addEventListener('click', closeMenus);
+    window.addEventListener('resize', closeMenus);
     return () => {
-      window.removeEventListener('click', closeMenu);
-      window.removeEventListener('resize', closeMenu);
+      window.removeEventListener('click', closeMenus);
+      window.removeEventListener('resize', closeMenus);
       if (longPressTimeoutRef.current) window.clearTimeout(longPressTimeoutRef.current);
     };
   }, []);
@@ -175,12 +181,8 @@ const MessagesPage: React.FC = () => {
   const getUnreadCount = (conv: Conversation) => currentUser ? Number(conv.unreadCount?.[currentUser.uid] || 0) : 0;
 
   const ensureCanMessage = () => {
-    if (isBlockedByMe) {
-      setError('You blocked this user. Unblock them before sending messages.');
-      return false;
-    }
-    if (hasBlockedMe) {
-      setError('This user is not available for messaging.');
+    if (messagingBlocked) {
+      setError(UNAVAILABLE_MESSAGE);
       return false;
     }
     return true;
@@ -190,17 +192,23 @@ const MessagesPage: React.FC = () => {
     if (!currentUser || !otherParticipantId || !selectedConv) return;
     if (!confirm(`Block ${getOtherParticipantName(selectedConv)}? They will not be able to start new chats or message you.`)) return;
     setBlocking(true);
+    setThreadMenuOpen(false);
     setError('');
     try {
       await setDoc(doc(db, 'users', currentUser.uid), { blockedUsers: arrayUnion(otherParticipantId), lastSeen: Date.now() }, { merge: true });
       await refreshProfile();
-      setError('User blocked. Firestore rules will reject new messages from them.');
+      setError(UNAVAILABLE_MESSAGE);
     } catch (err) {
       console.error('Could not block user:', err);
       setError('Could not block this user. Check your Firestore rules.');
     } finally {
       setBlocking(false);
     }
+  };
+
+  const openReportModal = () => {
+    setThreadMenuOpen(false);
+    setShowReport(true);
   };
 
   const buildConversationDeliveryUpdate = (recipientIds: string[], now: number) => {
@@ -221,7 +229,7 @@ const MessagesPage: React.FC = () => {
       await updateDoc(doc(db, 'conversations', conversationId), { ...buildConversationDeliveryUpdate(recipientIds, now), lastMessage: payload.type === 'map' ? 'Location pin' : payload.text, conversationKey: selectedConv.conversationKey || (recipientIds[0] ? getConversationKey(currentUser.uid, recipientIds[0]) : '') });
     } catch (err) {
       console.error('Error sending message:', err);
-      setError('Message failed to send. The other user may have blocked you or Firestore rules rejected the write.');
+      setError('Message failed to send. Check your Firestore rules.');
     } finally {
       setSending(false);
     }
@@ -251,7 +259,7 @@ const MessagesPage: React.FC = () => {
       await updateDoc(doc(db, 'conversations', conversationId), { ...buildConversationDeliveryUpdate(recipientIds, now), lastMessage: 'Image', conversationKey: selectedConv.conversationKey || (recipientIds[0] ? getConversationKey(currentUser.uid, recipientIds[0]) : '') });
     } catch (err: any) {
       console.error('Could not send image:', err);
-      setError(err?.message || 'Could not send image. The other user may have blocked you.');
+      setError(err?.message || 'Could not send image. Check your Firestore rules.');
     } finally {
       setSending(false);
     }
@@ -323,6 +331,7 @@ const MessagesPage: React.FC = () => {
     if (!conversationId || !selectedConv || !currentUser) return;
     if (!confirm('Delete this chat from your inbox only?')) return;
     setDeleting(true);
+    setThreadMenuOpen(false);
     setError('');
     try {
       await updateDoc(doc(db, 'conversations', conversationId), { hiddenFor: Array.from(new Set([...(selectedConv.hiddenFor || []), currentUser.uid])), [`unreadCount.${currentUser.uid}`]: 0 });
@@ -361,9 +370,9 @@ const MessagesPage: React.FC = () => {
   if (!currentUser) return <div className="max-w-4xl mx-auto px-4 py-16 text-center pb-10 sm:pb-[60px]"><h2 className="text-xl font-bold text-stone-700">Please log in to view messages</h2><Link to="/login" className="mt-4 inline-block text-primary-600 font-medium">Log In</Link></div>;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-10 sm:pb-[60px]">
+    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-6 pb-10 sm:pb-[60px]">
       <h1 className="text-2xl font-bold text-stone-800 mb-6">Messages</h1>
-      {error && <div className={`mb-4 p-3 rounded-xl text-sm ${error.startsWith('Could not') || error.includes('failed') || error.includes('blocked') || error.includes('rejected') ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-blue-50 border border-blue-200 text-blue-700'}`}>{error}</div>}
+      {error && <div className={`mb-4 p-3 rounded-xl text-sm ${error.startsWith('Could not') || error.includes('failed') || error.includes('rules') ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-primary-50 border border-primary-200 text-primary-700'}`}>{error}</div>}
       <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden" style={{ height: 'calc(100vh - 200px)', minHeight: '560px' }}>
         <div className="flex h-full">
           <div className={`w-full sm:w-[352px] border-r border-stone-200 flex flex-col ${conversationId ? 'hidden sm:flex' : 'flex'}`}>
@@ -380,9 +389,29 @@ const MessagesPage: React.FC = () => {
           </div>
           <div className={`flex-1 flex flex-col ${!conversationId ? 'hidden sm:flex' : 'flex'}`}>
             {conversationId && selectedConv ? <>
-              <div className="p-4 border-b border-stone-200 flex items-center gap-3"><Link to="/messages" className="sm:hidden p-1 hover:bg-stone-100 rounded-lg"><i className="las la-angle-left text-2xl text-stone-600" /></Link>{getOtherParticipantPhoto(selectedConv) ? <img src={getOtherParticipantPhoto(selectedConv)} alt={getOtherParticipantName(selectedConv)} className="w-10 h-10 rounded-full object-cover bg-stone-100" /> : <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-sm">{getOtherParticipantInitial(selectedConv)}</div>}<div className="min-w-0 flex-1"><h3 className="font-semibold text-stone-900 text-sm truncate">{getOtherParticipantName(selectedConv)}</h3><p className="text-xs text-stone-500 truncate">{otherMeta?.location || 'Location not set'} {otherMeta?.reviewCount ? `· ★ ${otherMeta.avgRating.toFixed(1)} (${otherMeta.reviewCount})` : '· No reviews yet'}</p></div><button onClick={blockUser} disabled={blocking || isBlockedByMe} className="cursor-pointer rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">{isBlockedByMe ? 'Blocked' : blocking ? 'Blocking...' : 'Block user'}</button><button onClick={() => setShowReport(true)} className="cursor-pointer rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50"><i className="las la-flag mr-1" />Report user</button><button onClick={deleteConversation} disabled={deleting} className="cursor-pointer rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">{deleting ? 'Deleting...' : 'Delete chat'}</button></div>
+              <div className="relative border-b border-stone-200 bg-white px-3 py-3 sm:px-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Link to="/messages" className="sm:hidden flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:bg-stone-100"><i className="las la-angle-left text-2xl text-stone-700" /></Link>
+                  {getOtherParticipantPhoto(selectedConv) ? <img src={getOtherParticipantPhoto(selectedConv)} alt={getOtherParticipantName(selectedConv)} className="h-10 w-10 shrink-0 rounded-full object-cover bg-stone-100" /> : <div className="h-10 w-10 shrink-0 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-sm">{getOtherParticipantInitial(selectedConv)}</div>}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-bold text-stone-900">{getOtherParticipantName(selectedConv)}</h3>
+                    <p className="truncate text-xs text-stone-500">{otherMeta?.location || 'Location not set'} {otherMeta?.reviewCount ? `· ★ ${otherMeta.avgRating.toFixed(1)} (${otherMeta.reviewCount})` : '· No reviews yet'}</p>
+                  </div>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); setThreadMenuOpen((current) => !current); }} className="sm:hidden flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 hover:bg-stone-50" aria-label="Conversation actions"><i className="las la-ellipsis-v text-xl" /></button>
+                  <div className="hidden shrink-0 items-center gap-2 sm:flex">
+                    <button onClick={blockUser} disabled={blocking || isBlockedByMe} className="cursor-pointer rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-ban mr-1" />{isBlockedByMe ? 'Blocked' : blocking ? 'Blocking...' : 'Block user'}</button>
+                    <button onClick={openReportModal} className="cursor-pointer rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50"><i className="las la-flag mr-1" />Report user</button>
+                    <button onClick={deleteConversation} disabled={deleting} className="cursor-pointer rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-trash mr-1" />{deleting ? 'Deleting...' : 'Delete chat'}</button>
+                  </div>
+                </div>
+                {threadMenuOpen && <div onClick={(event) => event.stopPropagation()} className="absolute right-3 top-[58px] z-40 w-56 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 text-sm shadow-2xl sm:hidden">
+                  <button onClick={blockUser} disabled={blocking || isBlockedByMe} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-ban text-xl" />{isBlockedByMe ? 'Blocked' : blocking ? 'Blocking...' : 'Block user'}</button>
+                  <button onClick={openReportModal} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left font-medium text-stone-700 hover:bg-stone-50"><i className="las la-flag text-xl" />Report user</button>
+                  <button onClick={deleteConversation} disabled={deleting} className="flex w-full cursor-pointer items-center gap-3 border-t border-stone-100 px-4 py-3 text-left font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-trash text-xl" />{deleting ? 'Deleting...' : 'Delete chat'}</button>
+                </div>}
+              </div>
               <ConversationListingCard conversation={selectedConv} />
-              {messagingBlocked && <div className="border-b border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{isBlockedByMe ? 'You blocked this user. New messages are disabled.' : 'Messaging is unavailable for this conversation.'}</div>}
+              {messagingBlocked && <div className="border-b border-primary-100 bg-primary-50 px-4 py-3 text-sm font-semibold text-primary-700">{UNAVAILABLE_MESSAGE}</div>}
               <div ref={messagesPaneRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-stone-50">{visibleMessages.map((msg, index) => { const isMe = msg.senderId === currentUser.uid; const showDay = index === 0 || !isSameDay(msg.createdAt || 0, visibleMessages[index - 1]?.createdAt || 0); const recipientIds = selectedConv.participants.filter((id) => id !== currentUser.uid); const isDelivered = recipientIds.every((id) => (msg.deliveredTo || []).includes(id)); const isRead = recipientIds.every((id) => (msg.readBy || []).includes(id)); const imageSource = msg.imageUrl || msg.imageData || ''; return <React.Fragment key={msg.id}>{showDay && <div className="flex justify-center my-3"><span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-500 shadow-sm">{formatDayLabel(msg.createdAt)}</span></div>}<div className={`group flex ${isMe ? 'justify-end' : 'justify-start'}`}><div data-message-bubble="true" onClick={(event) => event.stopPropagation()} onContextMenu={(event) => { event.preventDefault(); positionMessageMenu(msg.id, event.currentTarget); }} onTouchStart={(event) => startMessageLongPress(msg.id, event.currentTarget)} onTouchEnd={clearMessageLongPress} onTouchCancel={clearMessageLongPress} onTouchMove={clearMessageLongPress} className={`relative max-w-[78%] px-3 py-2 rounded-2xl text-sm shadow-sm ${isMe ? 'bg-green-100 text-stone-900 rounded-br-sm' : 'bg-white text-stone-800 rounded-bl-sm'} ${msg.deleted ? 'opacity-80' : ''}`}>{msg.deleted ? <p className="whitespace-pre-wrap italic text-stone-500">This message was deleted</p> : <>{msg.type === 'image' && imageSource ? <img src={imageSource} alt={msg.imageName || 'Sent image'} className="mb-2 max-h-72 rounded-xl object-contain" /> : null}{msg.type === 'map' && msg.mapUrl ? <a href={msg.mapUrl} target="_blank" rel="noreferrer" className="mb-2 block rounded-xl border border-stone-200 bg-white p-3 text-[#1665CC]"><i className="las la-map-marker text-2xl" /> Open location pin</a> : null}{msg.type !== 'image' || msg.text !== 'Image' ? <p className="whitespace-pre-wrap">{msg.text}</p> : null}</>}<button type="button" aria-label="Message actions" onClick={(event) => { event.stopPropagation(); openMessageMenu(msg.id, event.currentTarget.closest('[data-message-bubble]') as HTMLElement | null); }} className={`absolute top-1 hidden h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/95 text-stone-600 shadow-sm ring-1 ring-stone-200 transition hover:bg-white sm:flex ${isMe ? '-left-9' : '-right-9'} opacity-0 group-hover:opacity-100`}><i className="las la-angle-down text-lg" /></button><div className={`mt-1 flex flex-wrap items-center justify-end gap-1 text-[11px] ${isMe ? 'text-stone-500' : 'text-stone-400'}`}><span>{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>{isMe && <span title={isRead ? 'Read' : isDelivered ? 'Delivered' : 'Sent'} className={isRead ? 'text-[#1665CC]' : 'text-stone-400'}>{isRead ? '✓✓' : isDelivered ? '✓✓' : '✓'}</span>}</div></div></div></React.Fragment>; })}</div>
               <form onSubmit={handleSend} className="p-4 border-t border-stone-200 bg-white"><input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSend} className="hidden" /><div className="flex gap-2"><button type="button" onClick={() => imageInputRef.current?.click()} disabled={sending || messagingBlocked} className="cursor-pointer rounded-xl border border-stone-200 px-3 text-stone-600 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-image text-2xl" /></button><button type="button" onClick={handleMapPin} disabled={sending || messagingBlocked} className="cursor-pointer rounded-xl border border-stone-200 px-3 text-stone-600 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"><i className="las la-map-marker text-2xl" /></button><input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={messagingBlocked} placeholder={messagingBlocked ? 'Messaging disabled' : 'Type a message...'} className="flex-1 px-4 py-2.5 rounded-xl border border-stone-200 focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10 outline-none transition text-sm disabled:bg-stone-100" /><button type="submit" disabled={!newMessage.trim() || sending || messagingBlocked} className="cursor-pointer px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition disabled:cursor-not-allowed disabled:opacity-50 text-sm font-medium">{sending ? 'Sending...' : 'Send'}</button></div></form>
             </> : <div className="flex-1 flex flex-col items-center justify-center text-center p-8"><div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-4"><i className="las la-comments text-3xl text-stone-400" /></div><h3 className="font-semibold text-stone-700">Select a conversation</h3><p className="text-sm text-stone-500 mt-1">Choose a conversation from the left to start messaging</p></div>}
