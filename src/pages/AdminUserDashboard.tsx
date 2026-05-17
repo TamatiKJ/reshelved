@@ -17,14 +17,12 @@ type TaxonomyItem = { id: string; name: string; createdAt?: number };
 type ConfirmAction = { title: string; message: string; onConfirm: () => Promise<void> | void } | null;
 
 const formatDate = (timestamp?: number | null) => timestamp ? new Date(timestamp).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not recorded';
-const formatBytes = (bytes?: number) => !bytes ? 'Unknown size' : `${bytes >= 1024 * 1024 ? (bytes / 1024 / 1024).toFixed(1) : Math.round(bytes / 1024)} ${bytes >= 1024 * 1024 ? 'MB' : 'KB'}`;
-const getFormat = (type?: string) => type?.split('/')[1]?.toUpperCase() || 'IMAGE';
 const slugify = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 75);
-const firstImage = (images?: unknown) => Array.isArray(images) ? images.find((image) => typeof image === 'string' && image.trim()) : '';
+const splitTags = (tags: string) => tags.split(',').map((tag) => tag.trim()).filter(Boolean);
 const safeDays = (value: string | number) => Math.max(1, Math.min(45, Number(value) || 10));
+const firstImage = (images?: unknown) => Array.isArray(images) ? images.find((image) => typeof image === 'string' && image.trim()) : '';
 const isOnline = (user: UserProfile) => Boolean(user.online) && Date.now() - (user.lastSeen || 0) < 2 * 60 * 1000;
 const emptyPost = { title: '', seoTitle: '', slug: '', seoDescription: '', featuredImage: '', category: '', tags: '' };
-const splitTags = (tags: string) => tags.split(',').map((tag) => tag.trim()).filter(Boolean);
 
 const AdminUserDashboard: React.FC = () => {
   const { currentUser, userProfile } = useAuth();
@@ -53,12 +51,14 @@ const AdminUserDashboard: React.FC = () => {
   const [uploadingFeaturedImage, setUploadingFeaturedImage] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
 
+  const selectedTags = useMemo(() => splitTags(post.tags), [post.tags]);
   const showToast = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 3000); };
-  const applyFavicon = (url: string) => {
-    if (!url) return;
-    let icon = document.querySelector("link[rel='icon']") as HTMLLinkElement | null;
-    if (!icon) { icon = document.createElement('link'); icon.rel = 'icon'; document.head.appendChild(icon); }
-    icon.href = url;
+
+  const fetchTaxonomy = async (collectionName: string) => {
+    const snap = await getDocs(collection(db, collectionName)).catch(() => null);
+    const items: TaxonomyItem[] = [];
+    snap?.forEach((item) => items.push({ id: item.id, ...item.data() } as TaxonomyItem));
+    return items.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   };
 
   const fetchMediaMetadata = async (items: MediaItem[]) => {
@@ -72,11 +72,11 @@ const AdminUserDashboard: React.FC = () => {
     setMedia(enriched);
   };
 
-  const fetchTaxonomy = async (collectionName: string) => {
-    const snap = await getDocs(collection(db, collectionName)).catch(() => null);
-    const items: TaxonomyItem[] = [];
-    snap?.forEach((item) => items.push({ id: item.id, ...item.data() } as TaxonomyItem));
-    return items.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const applyFavicon = (url: string) => {
+    if (!url) return;
+    let icon = document.querySelector("link[rel='icon']") as HTMLLinkElement | null;
+    if (!icon) { icon = document.createElement('link'); icon.rel = 'icon'; document.head.appendChild(icon); }
+    icon.href = url;
   };
 
   const fetchAdminData = async () => {
@@ -115,10 +115,9 @@ const AdminUserDashboard: React.FC = () => {
       setCategories(categoryItems);
       setTags(tagItems);
 
-      let nextSettings = settings;
       if (settingsSnap?.exists()) {
         const data = settingsSnap.data();
-        nextSettings = { listingDays: String(data.listingDays || 10), siteTitle: data.siteTitle || 'Reshelved', siteDescription: data.siteDescription || '', siteFavicon: data.siteFavicon || '' };
+        const nextSettings = { listingDays: String(data.listingDays || 10), siteTitle: data.siteTitle || 'Reshelved', siteDescription: data.siteDescription || '', siteFavicon: data.siteFavicon || '' };
         setSettings(nextSettings);
         applyFavicon(nextSettings.siteFavicon);
       }
@@ -129,7 +128,7 @@ const AdminUserDashboard: React.FC = () => {
         if (listing.userPhoto) mediaSeed.push({ id: `seller-${listing.id}`, title: `${listing.userName || 'User'} profile photo`, alt: listing.userName || 'Profile photo', url: listing.userPhoto, source: 'Profile', size: 0 });
       });
       postItems.forEach((item) => item.featuredImage && mediaSeed.push({ id: `post-${item.id}`, title: item.title, alt: item.title, url: item.featuredImage, source: 'Blog featured image', size: 0 }));
-      if (nextSettings.siteFavicon) mediaSeed.push({ id: 'site-favicon', title: 'Site favicon', alt: 'Site favicon', url: nextSettings.siteFavicon, source: 'Platform', size: 0 });
+      if (settingsSnap?.exists() && settingsSnap.data().siteFavicon) mediaSeed.push({ id: 'site-favicon', title: 'Site favicon', alt: 'Site favicon', url: settingsSnap.data().siteFavicon, source: 'Platform', size: 0 });
       fetchMediaMetadata(mediaSeed);
     } catch (error) {
       console.error('Admin dashboard failed to load:', error);
@@ -141,7 +140,7 @@ const AdminUserDashboard: React.FC = () => {
   useEffect(() => { setSearch(''); setMobileMenuOpen(false); }, [view]);
   useEffect(() => {
     if (view === 'newPost' && editorRef.current && editorRef.current.innerHTML !== postContent) editorRef.current.innerHTML = postContent;
-  }, [view]);
+  }, [view, postContent]);
 
   const activeListings = useMemo(() => listings.filter((listing) => listing.active && listing.expiresAt > Date.now()), [listings]);
   const inactiveListings = useMemo(() => listings.filter((listing) => !listing.active || listing.expiresAt <= Date.now()), [listings]);
@@ -150,7 +149,6 @@ const AdminUserDashboard: React.FC = () => {
   const admins = useMemo(() => users.filter((user) => user.isAdmin), [users]);
   const publishedPosts = useMemo(() => posts.filter((item) => item.status === 'published'), [posts]);
   const draftPosts = useMemo(() => posts.filter((item) => item.status === 'draft'), [posts]);
-  const selectedTags = splitTags(post.tags);
 
   const listedByStatus = listingStatus === 'active' ? activeListings : listingStatus === 'inactive' ? inactiveListings : listings;
   const filteredListings = listedByStatus.filter((listing) => [listing.title, listing.author, listing.userName, listing.location, listing.category, listing.active ? 'active' : 'inactive'].join(' ').toLowerCase().includes(search.toLowerCase()));
@@ -160,7 +158,11 @@ const AdminUserDashboard: React.FC = () => {
   const filteredPosts = filteredPostBase.filter((item) => [item.title, item.authorName, item.category, item.tags, item.status, item.content].join(' ').toLowerCase().includes(search.toLowerCase()));
   const filteredMedia = media.filter((item) => [item.title, item.source, item.contentType].join(' ').toLowerCase().includes(search.toLowerCase()));
 
-  const runCommand = (command: string, value?: string) => { editorRef.current?.focus(); document.execCommand(command, false, value); setPostContent(editorRef.current?.innerHTML || ''); };
+  const runCommand = (command: string, value?: string) => {
+    editorRef.current?.focus();
+    document.execCommand(command, false, value);
+    setPostContent(editorRef.current?.innerHTML || '');
+  };
   const insertHtml = (html: string) => runCommand('insertHTML', html);
   const addLink = () => { const url = window.prompt('Paste the link URL'); if (url) runCommand('createLink', url); };
   const addImageToPost = () => { const imageUrl = window.prompt('Paste the image URL'); if (imageUrl) runCommand('insertImage', imageUrl); };
@@ -173,7 +175,6 @@ const AdminUserDashboard: React.FC = () => {
     await uploadBytes(fileRef, file, { contentType: file.type || 'image/svg+xml' });
     return getDownloadURL(fileRef);
   };
-
   const uploadFeaturedImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
     if (!file.type.startsWith('image/')) return showToast('Please upload an image file.');
@@ -182,21 +183,12 @@ const AdminUserDashboard: React.FC = () => {
     catch (error) { console.error(error); showToast('Featured image failed to upload. Check Storage rules.'); }
     finally { setUploadingFeaturedImage(false); }
   };
-
   const uploadFavicon = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
     const isSvg = file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg');
     if (!(isSvg || file.type === 'image/png')) return showToast('Upload a square SVG or PNG favicon.');
     setUploadingFavicon(true);
     try {
-      if (!isSvg) {
-        await new Promise<void>((resolve, reject) => {
-          const image = new Image();
-          image.onload = () => image.width >= 512 && image.height >= 512 && image.width === image.height ? resolve() : reject(new Error('Favicon must be square and at least 512 by 512 pixels.'));
-          image.onerror = () => reject(new Error('Could not read favicon image.'));
-          image.src = URL.createObjectURL(file);
-        });
-      }
       const url = await uploadFile(file, 'platform/favicon');
       setSettings((current) => ({ ...current, siteFavicon: url }));
       applyFavicon(url);
@@ -214,7 +206,6 @@ const AdminUserDashboard: React.FC = () => {
     setPostContent(item.content || '');
     setView('newPost');
   };
-
   const savePost = async (status: BlogStatus) => {
     setSavingPost(true);
     try {
@@ -230,7 +221,6 @@ const AdminUserDashboard: React.FC = () => {
     } catch (error: any) { showToast(error?.message || 'Post could not be saved.'); }
     finally { setSavingPost(false); }
   };
-
   const updatePostStatus = async (item: BlogPost, status: BlogStatus) => {
     try {
       const now = Date.now();
@@ -240,11 +230,7 @@ const AdminUserDashboard: React.FC = () => {
       showToast('Post status updated.');
     } catch (error) { console.error(error); showToast('Post status could not be updated. Check Firestore rules.'); }
   };
-
-  const addSelectedTag = (tagName: string) => {
-    if (!tagName || selectedTags.includes(tagName)) return;
-    setPost((current) => ({ ...current, tags: [...selectedTags, tagName].join(', ') }));
-  };
+  const addSelectedTag = (tagName: string) => { if (!tagName || selectedTags.includes(tagName)) return; setPost((current) => ({ ...current, tags: [...selectedTags, tagName].join(', ') })); };
   const removeSelectedTag = (tagName: string) => setPost((current) => ({ ...current, tags: splitTags(current.tags).filter((tag) => tag !== tagName).join(', ') }));
 
   const saveSettings = async () => {
@@ -254,15 +240,14 @@ const AdminUserDashboard: React.FC = () => {
     applyFavicon(settings.siteFavicon);
     showToast('Platform settings saved.');
   };
-
   const askDelete = (message: string, onConfirm: () => Promise<void> | void) => setConfirmAction({ title: 'Delete confirmation', message, onConfirm });
   const toggleListing = async (listing: Listing) => { const nextActive = !listing.active; await updateDoc(doc(db, 'listings', listing.id), { active: nextActive }); setListings((current) => current.map((item) => item.id === listing.id ? { ...item, active: nextActive } : item)); showToast(nextActive ? 'Listing activated.' : 'Listing deactivated.'); };
   const deleteListing = async (listing: Listing) => askDelete('Are you sure you want to delete this?', async () => { await deleteDoc(doc(db, 'listings', listing.id)); setListings((current) => current.filter((item) => item.id !== listing.id)); showToast('Listing deleted.'); });
   const deleteMedia = async (item: MediaItem) => askDelete('Are you sure you want to delete this?', async () => { await deleteObject(ref(storage, item.url)); setMedia((current) => current.filter((mediaItem) => mediaItem.id !== item.id)); showToast('Image deleted.'); });
   const resolveReport = async (report: Report) => { await updateDoc(doc(db, 'reports', report.id), { resolved: true }); setReports((current) => current.map((item) => item.id === report.id ? { ...item, resolved: true } : item)); showToast('Report resolved.'); };
   const updateUser = async (user: UserProfile, updates: Partial<UserProfile>, message: string) => { await setDoc(doc(db, 'users', user.uid), updates, { merge: true }); setUsers((current) => current.map((item) => item.uid === user.uid ? { ...item, ...updates } : item)); showToast(message); };
+  const deleteTaxonomyItem = (collectionName: string, item: TaxonomyItem) => askDelete(`Delete ${item.name}?`, async () => { await deleteDoc(doc(db, collectionName, item.id)); if (collectionName === 'blogCategories') setCategories((current) => current.filter((entry) => entry.id !== item.id)); else setTags((current) => current.filter((entry) => entry.id !== item.id)); showToast('Deleted.'); });
   const toggleSection = (section: keyof typeof openSections) => setOpenSections((current) => ({ ...current, [section]: !current[section] }));
-  const deleteTaxonomyItem = (collectionName: string, item: TaxonomyItem) => askDelete(`Delete “${item.name}”?`, async () => { await deleteDoc(doc(db, collectionName, item.id)); if (collectionName === 'blogCategories') setCategories((current) => current.filter((entry) => entry.id !== item.id)); else setTags((current) => current.filter((entry) => entry.id !== item.id)); showToast('Deleted.'); });
 
   const AdminNav = () => (
     <>
@@ -296,7 +281,7 @@ const AdminUserDashboard: React.FC = () => {
   );
 
   function renderContent() {
-    if (view === 'overview') return <><div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"><Stat label="Active listings" value={activeListings.length} icon="la-book" tone="bg-blue-50 text-[#1665CC] border-blue-100" /><Stat label="Users" value={users.length} icon="la-users" tone="bg-emerald-50 text-emerald-700 border-emerald-100" /><Stat label="Open reports" value={openReports.length} icon="la-flag" tone="bg-red-50 text-red-700 border-red-100" /><Stat label="Online users" value={onlineUsers.length} icon="la-wifi" tone="bg-amber-50 text-amber-700 border-amber-100" /></div><div className="mt-6 space-y-6"><Panel title="Recent listings"><ListingTable items={activeListings.slice(0, 8)} compact /></Panel><Panel title="Recent reports"><ReportList items={openReports.slice(0, 8)} /></Panel></>;
+    if (view === 'overview') return <><div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"><Stat label="Active listings" value={activeListings.length} icon="la-book" tone="bg-blue-50 text-[#1665CC] border-blue-100" /><Stat label="Users" value={users.length} icon="la-users" tone="bg-emerald-50 text-emerald-700 border-emerald-100" /><Stat label="Open reports" value={openReports.length} icon="la-flag" tone="bg-red-50 text-red-700 border-red-100" /><Stat label="Online users" value={onlineUsers.length} icon="la-wifi" tone="bg-amber-50 text-amber-700 border-amber-100" /></div><div className="mt-6 space-y-6"><Panel title="Recent listings"><ListingTable items={activeListings.slice(0, 8)} compact /></Panel><Panel title="Recent reports"><ReportList items={openReports.slice(0, 8)} /></Panel></div></>;
     if (view === 'listings') return <Panel title="Listings"><div className="mb-4 flex flex-wrap items-center gap-2"><StatusFilter label="Active" count={activeListings.length} active={listingStatus === 'active'} onClick={() => setListingStatus('active')} /><StatusFilter label="Inactive" count={inactiveListings.length} active={listingStatus === 'inactive'} onClick={() => setListingStatus('inactive')} /><StatusFilter label="All" count={listings.length} active={listingStatus === 'all'} onClick={() => setListingStatus('all')} /></div><SearchBar value={search} setValue={setSearch} placeholder="Search listings..." /><ListingTable items={filteredListings} onToggle={toggleListing} onDelete={deleteListing} /></Panel>;
     if (view === 'users') return <Panel title="Users"><div className="mb-3 flex flex-wrap gap-2 text-sm"><span className="font-semibold text-stone-700">All <span className="text-stone-400">({users.length})</span></span><span className="text-stone-300">|</span><span className="font-semibold text-[#1665CC]">Admins <span className="text-stone-400">({admins.length})</span></span></div><SearchBar value={search} setValue={setSearch} placeholder="Search users..." /><UserTable items={filteredUsers} currentUserId={currentUser?.uid} onUpdate={updateUser} /></Panel>;
     if (view === 'reports') return <Panel title="Reports"><SearchBar value={search} setValue={setSearch} placeholder="Search reports..." /><ReportList items={filteredReports} onResolve={resolveReport} /></Panel>;
@@ -328,9 +313,9 @@ const StatusFilter: React.FC<{ label: string; count: number; active: boolean; on
 const ListingTable: React.FC<{ items: Listing[]; compact?: boolean; onToggle?: (listing: Listing) => void; onDelete?: (listing: Listing) => void }> = ({ items, compact, onToggle, onDelete }) => <div className="overflow-x-auto"><table className="w-full min-w-[1120px] text-left text-sm"><thead className="border-b border-stone-200 text-[13px] font-bold uppercase tracking-[2px] text-stone-500"><tr><th className="py-3">Title</th><th>Author</th><th>Category</th><th>Cover</th><th>Seller</th><th>Location</th><th>Date</th><th>Status</th>{!compact && <th>Actions</th>}</tr></thead><tbody className="divide-y divide-stone-100">{items.map((item) => <tr key={item.id}><td className="py-3 font-semibold"><Link to={`/listing/${item.id}`} className="hover:text-[#1665CC]">{item.title}</Link></td><td>{item.author}</td><td>{item.category}</td><td>{firstImage(item.images) ? <img src={firstImage(item.images)} alt="" className="h-10 w-10 rounded-lg object-cover" /> : <span className="text-stone-300">No image</span>}</td><td>{item.userName}</td><td>{item.location}</td><td>{formatDate(item.createdAt)}</td><td><span className={`rounded-full px-2 py-1 text-xs font-bold ${item.active ? 'bg-green-50 text-green-700' : 'bg-stone-100 text-stone-600'}`}>{item.active ? 'Active' : 'Inactive'}</span></td>{!compact && <td><div className="flex items-center gap-3"><button onClick={() => onToggle?.(item)} className={`relative h-6 w-11 cursor-pointer rounded-full transition ${item.active ? 'bg-[#1665CC]' : 'bg-stone-300'}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${item.active ? 'left-6' : 'left-1'}`} /></button><button onClick={() => onDelete?.(item)} className="cursor-pointer text-red-600">Delete</button></div></td>}</tr>)}</tbody></table>{items.length === 0 && <Empty text="No items found." />}</div>;
 const UserTable: React.FC<{ items: UserProfile[]; currentUserId?: string; onUpdate: (user: UserProfile, updates: Partial<UserProfile>, message: string) => void }> = ({ items, currentUserId, onUpdate }) => <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="border-b border-stone-200 text-[13px] font-bold uppercase tracking-[2px] text-stone-500"><tr><th className="py-3">Name</th><th>Email</th><th>Joined</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody className="divide-y divide-stone-100">{items.map((user) => <tr key={user.uid}><td className="py-3 font-semibold">{user.displayName || 'Unnamed user'} {user.uid === currentUserId ? <span className="text-stone-400">(You)</span> : null}</td><td>{user.email}</td><td>{formatDate(user.createdAt)}</td><td><span className={`rounded-full px-2 py-1 text-xs font-bold ${user.isAdmin ? 'bg-[#1665CC]/10 text-[#1665CC]' : 'bg-stone-100 text-stone-600'}`}>{user.isAdmin ? 'Admin' : 'User'}</span></td><td><span className={`rounded-full px-2 py-1 text-xs font-bold ${user.deactivated ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{user.deactivated ? 'Banned' : 'Active'}</span></td><td><div className="flex items-center gap-2"><button disabled={user.uid === currentUserId} onClick={() => onUpdate(user, { isAdmin: !user.isAdmin }, user.isAdmin ? 'Admin role removed.' : 'Admin role added.')} className="cursor-pointer rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-bold text-stone-700 disabled:cursor-not-allowed disabled:opacity-40">{user.isAdmin ? 'Remove Admin' : 'Make Admin'}</button><button disabled={user.uid === currentUserId} onClick={() => onUpdate(user, { deactivated: !user.deactivated }, user.deactivated ? 'User restored.' : 'User banned.')} className="cursor-pointer rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-700 disabled:cursor-not-allowed disabled:opacity-40">{user.deactivated ? 'Restore' : 'Ban'}</button></div></td></tr>)}</tbody></table>{items.length === 0 && <Empty text="No users found." />}</div>;
 const ReportList: React.FC<{ items: Report[]; onResolve?: (report: Report) => void }> = ({ items, onResolve }) => <div className="space-y-3">{items.map((report) => <div key={report.id} className="rounded-xl border border-stone-200 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-bold text-stone-950">{report.targetName}</p><p className="text-sm text-stone-500">{report.reason} · {report.reporterName}</p>{report.details && <p className="mt-2 text-sm text-stone-600">{report.details}</p>}</div>{!report.resolved && onResolve && <button onClick={() => onResolve(report)} className="cursor-pointer rounded-lg border border-green-200 px-3 py-2 text-sm font-semibold text-green-700">Resolve</button>}</div></div>)}{items.length === 0 && <Empty text="No reports found." />}</div>;
-const MediaGrid: React.FC<{ items: MediaItem[]; onDelete: (item: MediaItem) => void }> = ({ items, onDelete }) => <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{items.map((item) => <article key={item.id} className="overflow-hidden rounded-2xl border border-stone-200 bg-white"><div className="aspect-square bg-stone-100"><img src={item.url} alt={item.alt} className="h-full w-full object-cover" /></div><div className="space-y-1 p-4 text-sm"><p className="truncate font-bold text-stone-950">{item.title}</p><p className="text-stone-500">{item.source} · {formatBytes(item.size)} · {getFormat(item.contentType)}</p><button onClick={() => onDelete(item)} className="mt-2 cursor-pointer text-sm font-semibold text-red-600 hover:text-red-700">Delete</button></div></article>)}{items.length === 0 && <div className="col-span-full"><Empty text="No images found." /></div>}</div>;
+const MediaGrid: React.FC<{ items: MediaItem[]; onDelete: (item: MediaItem) => void }> = ({ items, onDelete }) => <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{items.map((item) => <article key={item.id} className="overflow-hidden rounded-2xl border border-stone-200 bg-white"><div className="aspect-square bg-stone-100"><img src={item.url} alt={item.alt} className="h-full w-full object-cover" /></div><div className="space-y-1 p-4 text-sm"><p className="truncate font-bold text-stone-950">{item.title}</p><p className="text-stone-500">{item.source}</p><button onClick={() => onDelete(item)} className="mt-2 cursor-pointer text-sm font-semibold text-red-600 hover:text-red-700">Delete</button></div></article>)}{items.length === 0 && <div className="col-span-full"><Empty text="No images found." /></div>}</div>;
 const PostTable: React.FC<{ items: BlogPost[]; onEdit: (post: BlogPost) => void; onStatusChange: (post: BlogPost, status: BlogStatus) => void }> = ({ items, onEdit, onStatusChange }) => <div className="overflow-x-auto"><table className="w-full min-w-[1080px] text-left text-sm"><thead className="border-b border-stone-200 text-[13px] font-bold uppercase tracking-[2px] text-stone-500"><tr><th className="py-3">Title</th><th>Category</th><th>Tags</th><th>Author</th><th>Date</th><th>Status</th></tr></thead><tbody className="divide-y divide-stone-100">{items.map((item) => <tr key={item.id} onClick={() => onEdit(item)} className="cursor-pointer hover:bg-stone-50"><td className="max-w-[320px] py-3 font-semibold text-stone-950"><span className="line-clamp-1 hover:text-[#1665CC]">{item.title || 'Untitled post'}</span></td><td>{item.category || 'Uncategorized'}</td><td className="max-w-[240px]"><span className="line-clamp-1 text-stone-600">{item.tags || 'No tags'}</span></td><td>{item.authorName || 'Admin'}</td><td>{formatDate(item.publishedAt || item.createdAt)}</td><td><select value={item.status || 'draft'} onClick={(event) => event.stopPropagation()} onChange={(event) => onStatusChange(item, event.target.value as BlogStatus)} className={`rounded-full border px-3 py-1 text-xs font-bold outline-none ${item.status === 'published' ? 'border-green-200 bg-green-50 text-green-700' : item.status === 'pending' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}><option value="draft">Draft</option><option value="pending">Pending</option><option value="published">Published</option></select></td></tr>)}</tbody></table>{items.length === 0 && <Empty text="No posts yet." />}</div>;
-const TaxonomyPanel: React.FC<{ title: string; collectionName: string; items: TaxonomyItem[]; onDelete: (collectionName: string, item: TaxonomyItem) => void; onCreated: (item: TaxonomyItem) => void }> = ({ title, collectionName, items, onDelete, onCreated }) => { const [name, setName] = useState(''); const save = async () => { const cleanName = name.trim(); if (!cleanName) return; const ref = await addDoc(collection(db, collectionName), { name: cleanName, createdAt: Date.now() }); onCreated({ id: ref.id, name: cleanName, createdAt: Date.now() }); setName(''); }; return <Panel title={title}><div className="flex gap-3"><input value={name} onChange={(event) => setName(event.target.value)} placeholder={`Add ${title.toLowerCase()}`} className="admin-input font-normal" /><button onClick={save} className="cursor-pointer rounded-xl bg-[#1665CC] px-5 py-3 text-sm font-bold text-white">Add</button></div><div className="mt-5 divide-y divide-stone-100 rounded-xl border border-stone-200">{items.length > 0 ? items.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3"><span className="text-sm font-semibold text-stone-800">{item.name}</span><button onClick={() => onDelete(collectionName, item)} className="cursor-pointer rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-50">Delete</button></div>) : <Empty text={`No ${title.toLowerCase()} yet.`} />}</div></Panel>; };
+const TaxonomyPanel: React.FC<{ title: string; collectionName: string; items: TaxonomyItem[]; onDelete: (collectionName: string, item: TaxonomyItem) => void; onCreated: (item: TaxonomyItem) => void }> = ({ title, collectionName, items, onDelete, onCreated }) => { const [name, setName] = useState(''); const save = async () => { const cleanName = name.trim(); if (!cleanName) return; const createdAt = Date.now(); const newRef = await addDoc(collection(db, collectionName), { name: cleanName, createdAt }); onCreated({ id: newRef.id, name: cleanName, createdAt }); setName(''); }; return <Panel title={title}><div className="flex gap-3"><input value={name} onChange={(event) => setName(event.target.value)} placeholder={`Add ${title.toLowerCase()}`} className="admin-input font-normal" /><button onClick={save} className="cursor-pointer rounded-xl bg-[#1665CC] px-5 py-3 text-sm font-bold text-white">Add</button></div><div className="mt-5 divide-y divide-stone-100 rounded-xl border border-stone-200">{items.length > 0 ? items.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3"><span className="text-sm font-semibold text-stone-800">{item.name}</span><button onClick={() => onDelete(collectionName, item)} className="cursor-pointer rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-50">Delete</button></div>) : <Empty text={`No ${title.toLowerCase()} yet.`} />}</div></Panel>; };
 const EditorButton: React.FC<{ label?: string; icon?: string; onClick: () => void; title?: string }> = ({ label, icon, onClick, title }) => <button type="button" title={title || label} onClick={onClick} className="cursor-pointer rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-semibold hover:bg-stone-50">{icon ? <i className={`${icon} text-lg`} /> : label}</button>;
 const SeoInput: React.FC<{ label: string; value: string; limit: number; onChange: (value: string) => void }> = ({ label, value, limit, onChange }) => <label className="admin-label mb-4 block font-bold">{label}<span className={value.length > limit ? 'ml-2 font-normal text-red-600' : 'ml-2 font-normal text-stone-400'}>{value.length} / {limit}</span><input value={value} maxLength={limit + 20} onKeyDown={(event) => event.stopPropagation()} onChange={(event) => onChange(event.target.value)} className="admin-input mt-1 font-normal" /></label>;
 const SeoTextArea: React.FC<{ label: string; value: string; limit: number; onChange: (value: string) => void }> = ({ label, value, limit, onChange }) => <label className="admin-label block font-bold">{label}<span className={value.length > limit ? 'ml-2 font-normal text-red-600' : 'ml-2 font-normal text-stone-400'}>{value.length} / {limit}</span><textarea value={value} maxLength={limit + 40} onKeyDown={(event) => event.stopPropagation()} onChange={(event) => onChange(event.target.value)} className="admin-input mt-1 min-h-[120px] font-normal" /></label>;
