@@ -7,6 +7,7 @@ export interface UserProfile {
   location?: string;
   phone?: string;
   bookmarks?: string[];
+  blockedUsers?: string[];
   isAdmin: boolean;
   flagged: boolean;
   flagCount: number;
