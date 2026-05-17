@@ -5,16 +5,16 @@
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-heading: 'Work Sans', ui-sans-serif, system-ui, sans-serif;
-  --color-primary-50: #fff3ef;
-  --color-primary-100: #ffe0d4;
-  --color-primary-200: #ffc0aa;
-  --color-primary-300: #ff9875;
-  --color-primary-400: #f96c3f;
-  --color-primary-500: #e95123;
-  --color-primary-600: #D54215;
-  --color-primary-700: #B53811;
-  --color-primary-800: #912e10;
-  --color-primary-900: #76280f;
+  --color-primary-50: #fff1f0;
+  --color-primary-100: #ffe1df;
+  --color-primary-200: #ffc8c4;
+  --color-primary-300: #ffa39e;
+  --color-primary-400: #ff7c73;
+  --color-primary-500: #FF5F57;
+  --color-primary-600: #FF5F57;
+  --color-primary-700: #e94d46;
+  --color-primary-800: #c83e38;
+  --color-primary-900: #a93430;
   --color-accent-50: #fffbeb;
   --color-accent-100: #fef3c7;
   --color-accent-200: #fde68a;
