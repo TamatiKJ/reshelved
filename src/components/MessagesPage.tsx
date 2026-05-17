@@ -475,7 +475,7 @@ const MessagesPage: React.FC = () => {
                 const unread = getUnreadCount(conv);
                 const isSelected = conv.id === conversationId;
                 const hasUnread = unread > 0;
-                const accentClass = hasUnread || isSelected ? 'bg-[#ff5b5f]' : 'bg-stone-200';
+                const accentClass = isSelected ? 'bg-[#ff5b5f]' : 'bg-transparent';
                 const itemClass = isSelected ? 'bg-[#fff6f6]' : 'bg-white hover:bg-[#fff8f8]';
                 const dateClass = hasUnread ? 'text-[#ff5b5f] font-extrabold' : 'text-stone-500 font-medium';
 
