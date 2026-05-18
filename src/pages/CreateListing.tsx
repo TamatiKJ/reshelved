@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -86,7 +86,7 @@ const compressListingImage = async (file: File): Promise<Blob> => {
 };
 
 const CreateListing: React.FC = () => {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
@@ -210,6 +210,14 @@ const CreateListing: React.FC = () => {
     await updateDoc(doc(db, 'listings', listingId), { images: imageUrls });
   };
 
+  const syncDefaultLocationIfNeeded = async () => {
+    if (!currentUser || !userProfile) return;
+    if (userProfile.location?.trim()) return;
+    await setDoc(doc(db, 'users', currentUser.uid), { location }, { merge: true });
+    await setDoc(doc(db, 'publicProfiles', currentUser.uid), { location, updatedAt: Date.now() }, { merge: true }).catch(() => undefined);
+    await refreshProfile().catch(() => undefined);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !userProfile) {
@@ -240,6 +248,7 @@ const CreateListing: React.FC = () => {
         flagged: false,
         flagCount: 0
       });
+      await syncDefaultLocationIfNeeded();
       if (images.length > 0) await uploadListingImages(docRef.id, [...images]);
       setUploadProgress({ active: true, done: true, phase: 'Uploaded Successfully!', fileName: '', currentFile: images.length || 1, totalFiles: images.length || 1, bytesTransferred: 0, totalBytes: 0, percent: 100 });
       window.setTimeout(() => navigate(`/listing/${docRef.id}`), 900);
@@ -280,6 +289,7 @@ const CreateListing: React.FC = () => {
           <div><label className="block text-sm font-medium text-stone-700 mb-2">Listing Type *</label><div className="grid grid-cols-3 gap-3">{listingTypes.map((item) => <button key={item.value} type="button" disabled={loading} onClick={() => setType(item.value)} className={`cursor-pointer p-3 rounded-xl border-2 text-center transition disabled:cursor-not-allowed disabled:opacity-60 ${type === item.value ? 'border-[#1665CC] bg-[#1665CC]/10' : 'border-stone-200 hover:border-[#1665CC] hover:bg-[#1665CC]/5'}`}><i className={`${item.icon} text-3xl text-primary-600`} /><div className="text-sm font-semibold text-stone-800 mt-1">{item.label}</div><div className="text-xs text-stone-500 mt-0.5">{item.desc}</div></button>)}</div></div>
           {type === 'sell' && <div><label className="block text-sm font-medium text-stone-700 mb-1">Price (KSh) *</label><input type="number" required min="0" value={price} onChange={(e) => setPrice(e.target.value)} disabled={loading} className={`w-full px-4 py-3 rounded-xl border border-stone-200 ${focusFieldClass} outline-none transition text-sm disabled:bg-stone-50`} placeholder="e.g. 500" /></div>}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4"><div><label className="block text-sm font-medium text-stone-700 mb-1">Condition *</label><select value={condition} onChange={(e) => setCondition(e.target.value as Listing['condition'])} disabled={loading} className={`w-full pl-4 pr-10 py-3 rounded-xl border border-stone-200 ${focusFieldClass} outline-none transition text-sm bg-white disabled:bg-stone-50`}>{CONDITIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><div><label className="block text-sm font-medium text-stone-700 mb-1">Category *</label><select value={category} onChange={(e) => setCategory(e.target.value)} disabled={loading} className={`w-full pl-4 pr-10 py-3 rounded-xl border border-stone-200 ${focusFieldClass} outline-none transition text-sm bg-white disabled:bg-stone-50`}>{CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><div><label className="block text-sm font-medium text-stone-700 mb-1">Location *</label><select value={location} onChange={(e) => setLocation(e.target.value)} disabled={loading} className={`w-full pl-4 pr-10 py-3 rounded-xl border border-stone-200 ${focusFieldClass} outline-none transition text-sm bg-white disabled:bg-stone-50`}>{KENYAN_CITIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div></div>
+          {!userProfile?.location && <div className="bg-[#FFF4E2] border border-primary-200 rounded-xl p-4 flex items-start gap-3"><i className="las la-map-marker-alt text-2xl text-primary-700" /><div className="text-sm text-stone-800"><p className="font-semibold">This location will become your default.</p><p className="text-stone-600 mt-0.5">You can still change it later from your profile settings.</p></div></div>}
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3"><i className="las la-info-circle text-2xl text-green-700" /><div className="text-sm text-green-800"><p className="font-medium">Your listing will publish after images finish uploading</p><p className="text-green-700 mt-0.5">Images are converted to WebP before upload so they look clean and load faster.</p></div></div>
           <button type="submit" disabled={loading} className="w-full cursor-pointer py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2">{loading ? 'Publishing...' : 'Publish Listing'}</button>
           <button type="button" onClick={() => navigate(-1)} disabled={loading} className="mx-auto block cursor-pointer border-0 bg-transparent px-4 py-1 text-sm font-semibold text-stone-500 transition hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>
