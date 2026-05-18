@@ -17,6 +17,7 @@ const Browse: React.FC = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [searchScope, setSearchScope] = useState<'all' | 'book'>('all');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterLocation, setFilterLocation] = useState<string>('all');
@@ -28,9 +29,17 @@ const Browse: React.FC = () => {
 
   useEffect(() => {
     const categoryFromUrl = searchParams.get('category');
+    const searchFromUrl = searchParams.get('search');
+    const scopeFromUrl = searchParams.get('scope');
+
     if (categoryFromUrl && CATEGORIES.includes(categoryFromUrl)) {
       setFilterCategory(categoryFromUrl);
       setShowFilters(true);
+    }
+
+    if (searchFromUrl) {
+      setSearch(searchFromUrl);
+      setSearchScope(scopeFromUrl === 'book' ? 'book' : 'all');
     }
   }, [searchParams]);
 
@@ -60,9 +69,16 @@ const Browse: React.FC = () => {
     if (filterCondition !== 'all' && l.condition !== filterCondition) return false;
     if (search.trim()) {
       const s = search.toLowerCase();
+      const title = l.title.toLowerCase();
+      const author = l.author.toLowerCase();
+
+      if (searchScope === 'book') {
+        return title.includes(s) || author.includes(s);
+      }
+
       return (
-        l.title.toLowerCase().includes(s) ||
-        l.author.toLowerCase().includes(s) ||
+        title.includes(s) ||
+        author.includes(s) ||
         l.description.toLowerCase().includes(s) ||
         l.category.toLowerCase().includes(s) ||
         l.condition.toLowerCase().includes(s) ||
@@ -107,7 +123,7 @@ const Browse: React.FC = () => {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
               <i className="las la-search absolute left-3 top-1/2 -translate-y-1/2 text-xl text-stone-400" />
-              <input type="text" placeholder="Search title, author, genre, field, condition, or location..." value={search} onChange={(e) => setSearch(e.target.value)} className={`w-full pl-10 pr-4 py-3 rounded-xl border border-stone-200 transition text-sm ${focusFieldClass}`} />
+              <input type="text" placeholder="Search title, author, genre, field, condition, or location..." value={search} onChange={(e) => { setSearch(e.target.value); setSearchScope('all'); }} className={`w-full pl-10 pr-4 py-3 rounded-xl border border-stone-200 transition text-sm ${focusFieldClass}`} />
             </div>
             <button onClick={() => setShowFilters(!showFilters)} className={`cursor-pointer flex items-center justify-center gap-2 px-5 py-3 rounded-xl border transition text-sm font-semibold ${showFilters ? 'bg-[#1665CC]/10 border-[#1665CC] text-[#1665CC]' : 'border-stone-200 text-stone-600 hover:border-[#1665CC] hover:bg-[#1665CC]/5 hover:text-[#1665CC]'}`}>
               <i className="las la-sliders-h text-lg" /> Filters
