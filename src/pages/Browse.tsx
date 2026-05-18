@@ -87,6 +87,11 @@ const Browse: React.FC = () => {
     <div className="min-h-screen pb-10 sm:pb-20">
       <section className="bg-white border-b border-stone-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+          <nav className="mb-5 flex items-center gap-2 text-sm text-stone-500" aria-label="Breadcrumb">
+            <Link to="/" className="font-semibold hover:text-primary-700">Home</Link>
+            <span className="text-stone-300">/</span>
+            <span className="font-semibold text-stone-900">Browse</span>
+          </nav>
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             <div className="max-w-2xl">
               <h1 className="text-3xl sm:text-5xl font-bold text-stone-950">Find affordable books near you</h1>
