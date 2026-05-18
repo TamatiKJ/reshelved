@@ -265,23 +265,30 @@ span[title="Read"]::before {
   }
 
   div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group > div.flex.items-center {
+    position: relative !important;
+    align-items: flex-start !important;
     padding-left: 20px !important;
     padding-right: 20px !important;
+  }
+
+  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group > div.flex.items-center > .min-w-0.flex-1 {
+    padding-right: 76px !important;
+  }
+
+  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group > div.flex.items-center span.text-xs.shrink-0 {
+    position: absolute !important;
+    right: 20px !important;
+    top: 17px !important;
+    width: 70px !important;
+    min-width: 70px !important;
+    text-align: right !important;
   }
 
   div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group > div.flex.items-center > span.flex.h-6.min-w-6 {
     position: absolute !important;
     right: 20px !important;
-    top: 46px !important;
-  }
-
-  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group > div.flex.items-center span.text-xs.shrink-0 {
-    min-width: 52px !important;
-    text-align: right !important;
-  }
-
-  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group:has(> div.flex.items-center > span.flex.h-6.min-w-6) .min-w-0.flex-1 {
-    padding-right: 58px !important;
+    top: 50px !important;
+    margin: 0 !important;
   }
 }
 
