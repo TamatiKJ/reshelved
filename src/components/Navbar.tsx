@@ -13,6 +13,7 @@ const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [headerSearch, setHeaderSearch] = useState('');
   const { unreadCount, messageUnreadCount } = useNotifications();
   const profilePhoto = userProfile?.photoURL || currentUser?.photoURL || '';
   const profileName = userProfile?.displayName || currentUser?.displayName || 'User';
@@ -32,6 +33,14 @@ const Navbar: React.FC = () => {
     setMobileOpen(false);
   };
 
+  const handleHeaderSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const value = headerSearch.trim();
+    if (!value) return;
+    navigate(`/browse?search=${encodeURIComponent(value)}&scope=book`);
+    setHeaderSearch('');
+  };
+
   const CountBadge = ({ count }: { count: number }) => count > 0 ? (
     <span className={redBadgeClass}>{count > 9 ? '9+' : count}</span>
   ) : null;
@@ -39,27 +48,29 @@ const Navbar: React.FC = () => {
   return (
     <nav className="bg-white shadow-sm border-b border-stone-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16">
-          <div className={`flex items-center ${isAdmin ? 'gap-8' : ''}`}>
+        <div className="flex items-center justify-between h-16 gap-4">
+          <div className="flex items-center gap-8 min-w-0">
             <Link to="/" className="flex items-center shrink-0 max-md:w-[40%]" aria-label="Reshelved home">
               <img src="/reshelved-logo.svg" alt="Reshelved" className="h-6 w-auto max-md:h-auto max-md:w-full" />
             </Link>
-            {isAdmin && (
-              <div className="hidden md:flex items-center gap-1">
-                <Link to="/" className={navLinkClass}>Home</Link>
-                <Link to="/browse" className={navLinkClass}>Browse</Link>
-                <a href="/#how-it-works" className={navLinkClass}>How it Works</a>
-              </div>
-            )}
-          </div>
-          {!isAdmin && (
             <div className="hidden md:flex items-center gap-1">
               <Link to="/" className={navLinkClass}>Home</Link>
               <Link to="/browse" className={navLinkClass}>Browse</Link>
               <a href="/#how-it-works" className={navLinkClass}>How it Works</a>
             </div>
-          )}
-          <div className="hidden md:flex items-center gap-3">
+          </div>
+          <div className="hidden md:flex items-center gap-3 shrink-0">
+            <form onSubmit={handleHeaderSearch} className="relative hidden lg:block">
+              <i className="las la-search absolute left-4 top-1/2 -translate-y-1/2 text-xl text-stone-950 pointer-events-none" />
+              <input
+                type="search"
+                value={headerSearch}
+                onChange={(e) => setHeaderSearch(e.target.value)}
+                placeholder="Search books"
+                aria-label="Search book titles and authors"
+                className="w-[220px] rounded-[100px] border border-[#E8E9E9] bg-white py-2.5 pl-11 pr-4 text-sm font-semibold text-stone-950 placeholder:text-stone-500 outline-none transition focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10"
+              />
+            </form>
             {currentUser ? (
               <>
                 <Link to="/create" className="cursor-pointer px-4 py-2 text-sm font-semibold text-stone-700 border border-[#E8E9E9] rounded-lg hover:bg-stone-50 transition">List a Book</Link>
