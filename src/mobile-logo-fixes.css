@@ -67,3 +67,31 @@
     font-size: 15px !important;
   }
 }
+
+/* Admin listings table: replace Delete text with a trash icon. */
+main table.min-w-\[1120px\] tbody td:last-child button.text-red-600 {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 9999px !important;
+  border: 1px solid #fecaca !important;
+  background: #fff !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+}
+
+main table.min-w-\[1120px\] tbody td:last-child button.text-red-600::before {
+  content: "\f2ed" !important;
+  font-family: "Line Awesome Free" !important;
+  font-weight: 900 !important;
+  font-size: 19px !important;
+  color: #dc2626 !important;
+}
+
+main table.min-w-\[1120px\] tbody td:last-child button.text-red-600:hover {
+  background: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+}
