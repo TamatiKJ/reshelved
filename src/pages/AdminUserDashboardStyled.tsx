@@ -115,14 +115,38 @@ const AdminUserDashboardStyled: React.FC = () => {
 
   useEffect(() => {
     const getEditor = () => document.querySelector<HTMLElement>('.admin-tiktok-shell [contenteditable="true"]');
+    let savedRange: Range | null = null;
 
-    const getToolbarButtons = () => {
+    const getToolbar = () => getEditor()?.previousElementSibling?.querySelector<HTMLElement>('.mt-4.flex.flex-wrap.gap-2') || null;
+    const getToolbarButtons = () => Array.from(getToolbar()?.querySelectorAll<HTMLButtonElement>('button') || []);
+    const getButtonFormat = (button: HTMLButtonElement) => button.dataset.adminFormat || button.textContent?.trim().toLowerCase() || '';
+
+    const selectionIsInsideEditor = () => {
       const editor = getEditor();
-      const toolbar = editor?.previousElementSibling?.querySelectorAll<HTMLButtonElement>('button');
-      return Array.from(toolbar || []);
+      const selection = window.getSelection();
+      const activeNode = selection?.anchorNode;
+      return Boolean(editor && activeNode && editor.contains(activeNode.nodeType === Node.TEXT_NODE ? activeNode.parentElement : activeNode as Node));
     };
 
-    const buttonText = (button: HTMLButtonElement) => button.textContent?.trim().toLowerCase() || '';
+    const rememberSelection = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || !selectionIsInsideEditor()) return;
+      savedRange = selection.getRangeAt(0).cloneRange();
+    };
+
+    const restoreSelection = () => {
+      const editor = getEditor();
+      const selection = window.getSelection();
+      if (!editor || !selection || !savedRange) return;
+      editor.focus();
+      selection.removeAllRanges();
+      selection.addRange(savedRange);
+    };
+
+    const syncContent = () => {
+      const editor = getEditor();
+      editor?.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'formatSetBlockText' }));
+    };
 
     const getBlockFormat = () => {
       try {
@@ -132,14 +156,51 @@ const AdminUserDashboardStyled: React.FC = () => {
       }
     };
 
-    const setActiveToolbarButton = () => {
+    const addParagraphButton = () => {
+      const toolbar = getToolbar();
+      if (!toolbar || toolbar.querySelector('[data-admin-format="paragraph"]')) return;
+
+      const paragraphButton = document.createElement('button');
+      paragraphButton.type = 'button';
+      paragraphButton.title = 'Paragraph';
+      paragraphButton.dataset.adminFormat = 'paragraph';
+      paragraphButton.className = 'admin-paragraph-button cursor-pointer rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-semibold hover:bg-stone-50';
+      paragraphButton.innerHTML = '<i class="las la-paragraph text-lg"></i>';
+
+      paragraphButton.addEventListener('mousedown', (event) => event.preventDefault());
+      paragraphButton.addEventListener('click', () => {
+        restoreSelection();
+        document.execCommand('formatBlock', false, 'p');
+        rememberSelection();
+        syncContent();
+        window.setTimeout(setActiveToolbarButton, 0);
+      });
+
+      toolbar.insertBefore(paragraphButton, toolbar.firstElementChild);
+    };
+
+    const protectToolbarSelection = () => {
+      getToolbarButtons().forEach((button) => {
+        if (button.dataset.adminSelectionProtected === 'true') return;
+        button.dataset.adminSelectionProtected = 'true';
+        button.addEventListener('mousedown', (event) => event.preventDefault());
+        button.addEventListener('click', () => {
+          restoreSelection();
+          window.setTimeout(() => {
+            rememberSelection();
+            syncContent();
+            setActiveToolbarButton();
+          }, 0);
+        }, true);
+      });
+    };
+
+    function setActiveToolbarButton() {
       const editor = getEditor();
       const buttons = getToolbarButtons();
       if (!editor || buttons.length === 0) return;
 
-      const selection = window.getSelection();
-      const activeNode = selection?.anchorNode;
-      const isInsideEditor = Boolean(activeNode && editor.contains(activeNode.nodeType === Node.TEXT_NODE ? activeNode.parentElement : activeNode as Node));
+      const isInsideEditor = selectionIsInsideEditor();
       const blockFormat = getBlockFormat();
 
       let isBold = false;
@@ -156,42 +217,50 @@ const AdminUserDashboardStyled: React.FC = () => {
       }
 
       buttons.forEach((button) => {
-        const text = buttonText(button);
+        const format = getButtonFormat(button);
         let active = false;
 
         if (isInsideEditor) {
-          if (text === 'h2') active = blockFormat === 'h2';
-          else if (text === 'h3') active = blockFormat === 'h3';
-          else if (text === 'h4') active = blockFormat === 'h4';
-          else if (text === 'b') active = isBold;
-          else if (text === 'i') active = isItalic;
-          else if (text === 'u') active = isUnderline;
-          else if (text === '•') active = isList;
-          else if (text === 'paragraph') active = !['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote'].includes(blockFormat);
-          else if (text === 'quote') active = blockFormat === 'blockquote';
+          if (format === 'h2') active = blockFormat === 'h2';
+          else if (format === 'h3') active = blockFormat === 'h3';
+          else if (format === 'h4') active = blockFormat === 'h4';
+          else if (format === 'b') active = isBold;
+          else if (format === 'i') active = isItalic;
+          else if (format === 'u') active = isUnderline;
+          else if (format === '•') active = isList;
+          else if (format === 'paragraph') active = !['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote'].includes(blockFormat);
+          else if (format === 'quote') active = blockFormat === 'blockquote';
         }
 
         button.classList.toggle('admin-editor-button-active', active);
       });
+    }
+
+    const hydrateEditorToolbar = () => {
+      addParagraphButton();
+      protectToolbarSelection();
+      setActiveToolbarButton();
     };
 
-    const handleToolbarClick = () => window.setTimeout(setActiveToolbarButton, 0);
-    const mutationObserver = new MutationObserver(() => setActiveToolbarButton());
+    const handleSelectionChange = () => {
+      rememberSelection();
+      setActiveToolbarButton();
+    };
 
-    document.addEventListener('selectionchange', setActiveToolbarButton);
-    document.addEventListener('keyup', setActiveToolbarButton, true);
-    document.addEventListener('mouseup', setActiveToolbarButton, true);
-    document.addEventListener('input', setActiveToolbarButton, true);
-    document.addEventListener('click', handleToolbarClick, true);
+    const mutationObserver = new MutationObserver(hydrateEditorToolbar);
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    document.addEventListener('keyup', handleSelectionChange, true);
+    document.addEventListener('mouseup', handleSelectionChange, true);
+    document.addEventListener('input', handleSelectionChange, true);
     mutationObserver.observe(document.body, { childList: true, subtree: true });
-    setActiveToolbarButton();
+    hydrateEditorToolbar();
 
     return () => {
-      document.removeEventListener('selectionchange', setActiveToolbarButton);
-      document.removeEventListener('keyup', setActiveToolbarButton, true);
-      document.removeEventListener('mouseup', setActiveToolbarButton, true);
-      document.removeEventListener('input', setActiveToolbarButton, true);
-      document.removeEventListener('click', handleToolbarClick, true);
+      document.removeEventListener('selectionchange', handleSelectionChange);
+      document.removeEventListener('keyup', handleSelectionChange, true);
+      document.removeEventListener('mouseup', handleSelectionChange, true);
+      document.removeEventListener('input', handleSelectionChange, true);
       mutationObserver.disconnect();
     };
   }, []);
