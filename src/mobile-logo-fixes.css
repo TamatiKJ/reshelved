@@ -68,7 +68,46 @@
   }
 }
 
-/* Admin listings table typography. */
+/* Admin listings table: fit inside the panel without sideways scrolling. */
+main table.min-w-\[1120px\] {
+  min-width: 0 !important;
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+main table.min-w-\[1120px\] th,
+main table.min-w-\[1120px\] td {
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  vertical-align: middle !important;
+}
+
+main table.min-w-\[1120px\] th:nth-child(1),
+main table.min-w-\[1120px\] td:nth-child(1) { width: 19% !important; }
+main table.min-w-\[1120px\] th:nth-child(2),
+main table.min-w-\[1120px\] td:nth-child(2) { width: 13% !important; }
+main table.min-w-\[1120px\] th:nth-child(3),
+main table.min-w-\[1120px\] td:nth-child(3) { width: 10% !important; }
+main table.min-w-\[1120px\] th:nth-child(4),
+main table.min-w-\[1120px\] td:nth-child(4) { width: 7% !important; }
+main table.min-w-\[1120px\] th:nth-child(5),
+main table.min-w-\[1120px\] td:nth-child(5) { width: 12% !important; }
+main table.min-w-\[1120px\] th:nth-child(6),
+main table.min-w-\[1120px\] td:nth-child(6) { width: 10% !important; }
+main table.min-w-\[1120px\] th:nth-child(7),
+main table.min-w-\[1120px\] td:nth-child(7) { width: 10% !important; }
+main table.min-w-\[1120px\] th:nth-child(8),
+main table.min-w-\[1120px\] td:nth-child(8) { width: 8% !important; }
+main table.min-w-\[1120px\] th:nth-child(9),
+main table.min-w-\[1120px\] td:nth-child(9) { width: 11% !important; }
+
+main table.min-w-\[1120px\] td,
+main table.min-w-\[1120px\] td a {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
 main table.min-w-\[1120px\] tbody td {
   font-size: 13px !important;
   line-height: 1.35 !important;
@@ -81,13 +120,23 @@ main table.min-w-\[1120px\] tbody td:nth-child(2) {
   line-height: 1.35 !important;
 }
 
+main table.min-w-\[1120px\] img {
+  height: 34px !important;
+  width: 34px !important;
+}
+
+main table.min-w-\[1120px\] tbody td:last-child > div {
+  gap: 8px !important;
+}
+
 /* Admin listings table: replace Delete text with a trash icon. */
 main table.min-w-\[1120px\] tbody td:last-child button.text-red-600 {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 36px !important;
-  height: 36px !important;
+  width: 32px !important;
+  height: 32px !important;
+  flex: 0 0 auto !important;
   border-radius: 9999px !important;
   border: 1px solid #fecaca !important;
   background: #fff !important;
@@ -100,7 +149,7 @@ main table.min-w-\[1120px\] tbody td:last-child button.text-red-600::before {
   content: "\f2ed" !important;
   font-family: "Line Awesome Free" !important;
   font-weight: 900 !important;
-  font-size: 19px !important;
+  font-size: 18px !important;
   color: #dc2626 !important;
 }
 
