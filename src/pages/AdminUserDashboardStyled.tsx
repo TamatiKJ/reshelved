@@ -86,15 +86,23 @@ const AdminUserDashboardStyled: React.FC = () => {
       const handleSend = () => sendUpdate();
       const handleLogout = () => logout?.();
 
+      const placeExtraActions = () => {
+        if (sidebar.firstElementChild !== topWrap) sidebar.insertBefore(topWrap, sidebar.firstChild);
+        if (sidebar.lastElementChild !== bottomWrap) sidebar.appendChild(bottomWrap);
+      };
+
       sendButton.addEventListener('click', handleSend);
       logoutButton.addEventListener('click', handleLogout);
 
       topWrap.append(sendButton, topDivider);
       bottomWrap.append(bottomDivider, viewLink, logoutButton);
-      sidebar.insertBefore(topWrap, sidebar.firstChild);
-      sidebar.appendChild(bottomWrap);
+      placeExtraActions();
+
+      const sidebarObserver = new MutationObserver(() => placeExtraActions());
+      sidebarObserver.observe(sidebar, { childList: true });
 
       cleanups.push(() => {
+        sidebarObserver.disconnect();
         sendButton.removeEventListener('click', handleSend);
         logoutButton.removeEventListener('click', handleLogout);
         topWrap.remove();
