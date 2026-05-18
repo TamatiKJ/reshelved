@@ -35,12 +35,15 @@
   }
 }
 
-/* Single listing metadata icon row: reduce mobile item padding from 16px to 10px. */
+/* Single listing metadata icon row: content-fit items aligned left on mobile. */
 @media (max-width: 639px) {
   main .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 {
     flex-wrap: nowrap !important;
-    width: 100% !important;
+    width: fit-content !important;
+    max-width: 100% !important;
     overflow: hidden !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
     font-size: 12px !important;
   }
 
@@ -48,13 +51,15 @@
     padding: 10px !important;
     gap: 4px !important;
     min-width: 0 !important;
-    flex: 1 1 0 !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
   }
 
   main .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 > div.flex.items-center.gap-2 span {
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
+    max-width: 90px !important;
   }
 
   main .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 > div.flex.items-center.gap-2 i {
