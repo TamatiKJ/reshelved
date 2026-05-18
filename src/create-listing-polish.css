@@ -1,0 +1,59 @@
+/* Create Listing polish: image placeholders, image fit, and live preview metadata. */
+
+body:has(a[href="/create"]),
+body:has(form input[type="file"][accept="image/*"]) {
+  --reshelved-create-placeholder: #FAFAF9;
+}
+
+/* Empty image placeholders in the four-image grid. */
+form input[type="file"][accept="image/*"]
+  ~ * {}
+
+body:has(form input[type="file"][accept="image/*"]) form .grid.grid-cols-2.gap-3.sm\:grid-cols-4 > div.aspect-square {
+  background: var(--reshelved-create-placeholder) !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+body:has(form input[type="file"][accept="image/*"]) form .grid.grid-cols-2.gap-3.sm\:grid-cols-4 > div.aspect-square img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+/* Live preview cover area. */
+body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspect-\[4\/3\] {
+  background: var(--reshelved-create-placeholder) !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspect-\[4\/3\] img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspect-\[4\/3\] > div {
+  background: var(--reshelved-create-placeholder) !important;
+}
+
+/* Live preview condition, location, and category row. */
+body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .grid.grid-cols-3.gap-2 span {
+  color: #1c1917 !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .grid.grid-cols-3.gap-2 span i {
+  color: #1c1917 !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  vertical-align: -2px !important;
+}
