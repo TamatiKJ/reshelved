@@ -80,9 +80,11 @@ const normalizeProfileRatingLabels = () => {
 
     const raw = badge.textContent?.trim() || '';
     const countMatch = raw.match(/(?:·|\s)(\d+)\s*$/);
+    const averageMatch = raw.match(/(\d+(?:\.\d+)?)/);
     const count = Number(countMatch?.[1] || 0);
-    const label = count === 1 ? 'Rating (1 Review)' : `Rating (${count} Reviews)`;
-    badge.innerHTML = `<i class="las la-star mr-1 text-[#F7AF31]"></i>${label}`;
+    const average = averageMatch?.[1] || '0.0';
+    const reviewLabel = count === 1 ? 'Review' : 'Reviews';
+    badge.innerHTML = `<i class="las la-star mr-1 text-[#F7AF31]"></i>Rating ${average} (${count} ${reviewLabel})`;
     badge.dataset.ratingNormalized = 'true';
   });
 };
