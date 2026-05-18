@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { collection, doc, getDocs, onSnapshot, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { db } from './firebase';
 import Navbar from './components/Navbar';
@@ -20,6 +20,7 @@ import type { Listing } from './types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const safeListingDays = (value: unknown) => Math.max(1, Math.min(45, Number(value) || 10));
+const normalizeReviewAuthorName = (name?: string, deleted?: boolean) => deleted || name === 'Deleted account' ? 'Deleted User' : (name?.trim() || 'Deleted User');
 
 const ScrollToTop: React.FC = () => {
   const { pathname, search, key } = useLocation();
@@ -51,6 +52,51 @@ const ScrollToTop: React.FC = () => {
       html.style.scrollBehavior = previousScrollBehavior;
     };
   }, [pathname, search, key]);
+
+  return null;
+};
+
+const ReviewAuthorNameSync: React.FC = () => {
+  const { currentUser, userProfile } = useAuth();
+  const syncingRef = useRef(false);
+
+  const syncCurrentUserReviews = async (forcedName?: string) => {
+    if (!currentUser?.uid || syncingRef.current) return;
+    const nextName = normalizeReviewAuthorName(forcedName || userProfile?.displayName, userProfile?.deactivated);
+    syncingRef.current = true;
+    try {
+      const ratingsSnap = await getDocs(query(collection(db, 'ratings'), where('fromUserId', '==', currentUser.uid)));
+      await Promise.all(ratingsSnap.docs.map((item) => {
+        const data = item.data();
+        if (data.fromUserName === nextName) return Promise.resolve();
+        return updateDoc(doc(db, 'ratings', item.id), { fromUserName: nextName, fromUserNameSyncedAt: Date.now() }).catch(() => undefined);
+      }));
+    } catch (error) {
+      console.error('Review author name sync failed:', error);
+    } finally {
+      syncingRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    if (!currentUser?.uid || !userProfile) return;
+    syncCurrentUserReviews();
+  }, [currentUser?.uid, userProfile?.displayName, userProfile?.deactivated]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return undefined;
+
+    const handleDeleteClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const button = target.closest('button');
+      if (!button) return;
+      if ((button.textContent || '').trim() !== 'Delete my account') return;
+      syncCurrentUserReviews('Deleted User');
+    };
+
+    document.addEventListener('click', handleDeleteClick, true);
+    return () => document.removeEventListener('click', handleDeleteClick, true);
+  }, [currentUser?.uid, userProfile?.displayName]);
 
   return null;
 };
@@ -336,6 +382,7 @@ const AppContent: React.FC = () => {
   return (
     <>
       <ScrollToTop />
+      <ReviewAuthorNameSync />
       <AdminFormFocusKeeper enabled={isAdminEnabled} />
       <PlatformListingDurationSync enabled={isAdminEnabled} />
       <RangeInputStyleSync enabled={isAdminEnabled} />
