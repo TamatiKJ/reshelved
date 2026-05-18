@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
@@ -19,6 +19,11 @@ const Navbar: React.FC = () => {
   const isAdmin = Boolean(userProfile?.isAdmin);
 
   const closeMobile = () => setMobileOpen(false);
+
+  useEffect(() => {
+    document.body.classList.toggle('reshelved-mobile-menu-open', mobileOpen);
+    return () => document.body.classList.remove('reshelved-mobile-menu-open');
+  }, [mobileOpen]);
 
   const handleLogout = async () => {
     await logout();
@@ -98,10 +103,10 @@ const Navbar: React.FC = () => {
         </div>
       </div>
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 bg-white overflow-y-auto">
+        <div className="md:hidden fixed inset-0 z-[10000] bg-white overflow-y-auto">
           <div className="p-5 min-h-full flex flex-col">
             <div className="flex items-center justify-between mb-6">
-              <Link to="/" onClick={closeMobile} className="flex items-center w-[40%]" aria-label="Reshelved home">
+              <Link to="/" onClick={closeMobile} className="flex items-center w-[25%]" aria-label="Reshelved home">
                 <img src="/reshelved-logo.svg" alt="Reshelved" className="w-full h-auto" />
               </Link>
               <button onClick={closeMobile} className="cursor-pointer p-1 -mr-1 text-stone-950" aria-label="Close menu"><i className="las la-times text-[20px] leading-none" /></button>
