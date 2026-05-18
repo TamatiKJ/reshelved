@@ -196,10 +196,230 @@
   border-color: #e65049;
 }
 
+.admin-image-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.48);
+}
+
+.admin-image-modal {
+  width: min(760px, 100%);
+  max-height: min(760px, 92vh);
+  overflow: hidden;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.22);
+}
+
+.admin-image-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 24px 18px;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.admin-image-modal-header h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: #111827;
+}
+
+.admin-image-modal-header p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.admin-image-modal-header button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+}
+
+.admin-image-modal-header button i {
+  font-size: 22px;
+}
+
+.admin-image-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 16px 24px 0;
+}
+
+.admin-image-tabs button {
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-image-tabs button.active {
+  border-color: #1665CC;
+  background: rgba(22, 101, 204, 0.1);
+  color: #1665CC;
+}
+
+.admin-image-upload-panel,
+.admin-image-library-panel {
+  padding: 20px 24px 24px;
+}
+
+.admin-image-alt-label {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #374151;
+}
+
+.admin-image-alt-label input {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  outline: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.admin-image-alt-label input:focus {
+  border-color: #1665CC;
+  box-shadow: 0 0 0 3px rgba(22, 101, 204, 0.1);
+}
+
+.admin-image-dropzone {
+  display: flex;
+  min-height: 240px;
+  cursor: pointer;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 18px;
+  background: #f8fafc;
+  padding: 28px;
+  text-align: center;
+  color: #475569;
+}
+
+.admin-image-dropzone:hover {
+  border-color: #1665CC;
+  background: rgba(22, 101, 204, 0.04);
+}
+
+.admin-image-dropzone input {
+  display: none;
+}
+
+.admin-image-dropzone i {
+  font-size: 44px;
+  color: #1665CC;
+}
+
+.admin-image-dropzone strong {
+  font-size: 16px;
+  color: #111827;
+}
+
+.admin-image-dropzone span {
+  max-width: 420px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.admin-image-library-panel {
+  display: grid;
+  max-height: 520px;
+  overflow-y: auto;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+}
+
+.admin-image-library-panel button {
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-image-library-panel button:hover {
+  border-color: #1665CC;
+  box-shadow: 0 0 0 3px rgba(22, 101, 204, 0.08);
+}
+
+.admin-image-library-panel img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: #f3f4f6;
+}
+
+.admin-image-library-panel span {
+  display: block;
+  overflow: hidden;
+  padding: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.admin-image-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 30px;
+  text-align: center;
+  color: #6b7280;
+  border: 1px dashed #d1d5db;
+  border-radius: 16px;
+  background: #f9fafb;
+}
+
 @media (max-width: 767px) {
   .admin-add-post-button {
     position: static;
     width: 100%;
     margin-bottom: 14px;
+  }
+
+  .admin-image-modal {
+    max-height: 94vh;
+    border-radius: 18px;
+  }
+
+  .admin-image-modal-header,
+  .admin-image-upload-panel,
+  .admin-image-library-panel {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
