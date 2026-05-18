@@ -1,14 +1,22 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  collection, query, where, getDocs, deleteDoc, doc, updateDoc,
-  orderBy, addDoc, getDoc, setDoc, onSnapshot
+  collection,
+  query,
+  where,
+  getDocs,
+  deleteDoc,
+  doc,
+  updateDoc,
+  orderBy,
+  addDoc,
+  getDoc,
+  setDoc,
 } from 'firebase/firestore';
+import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import type { Report, Listing, UserProfile } from '../types';
-import { Link } from 'react-router-dom';
+import type { Listing, Report, UserProfile } from '../types';
 
-// ── Types ──────────────────────────────────────────────────────────────────
 interface PlatformSettings {
   listingExpiryDays: number;
   maxImagesPerListing: number;
@@ -28,7 +36,19 @@ interface Notification {
   read: boolean;
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+type Tab =
+  | 'overview'
+  | 'reports'
+  | 'listings'
+  | 'users'
+  | 'reviews'
+  | 'analytics'
+  | 'activity'
+  | 'notifications'
+  | 'blog'
+  | 'legal'
+  | 'settings';
+
 const DEFAULT_SETTINGS: PlatformSettings = {
   listingExpiryDays: 7,
   maxImagesPerListing: 4,
@@ -37,124 +57,128 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   allowNewRegistrations: true,
 };
 
-type Tab = 'overview' | 'reports' | 'listings' | 'users' | 'settings' | 'notifications';
+const iconClass = 'h-5 w-5 shrink-0';
 
-// ── Stat Card ──────────────────────────────────────────────────────────────
-const StatCard: React.FC<{
-  label: string; value: number | string; color: string; icon: React.ReactNode;
-}> = ({ label, value, color, icon }) => (
-  <div className="bg-white rounded-xl border border-stone-200 p-5 flex items-center gap-4">
-    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
-      {icon}
-    </div>
-    <div>
-      <div className="text-2xl font-bold text-stone-800">{value}</div>
-      <div className="text-sm text-stone-500">{label}</div>
-    </div>
+const Icon = ({ name }: { name: string }) => {
+  const common = { className: iconClass, fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', strokeWidth: 2 };
+
+  switch (name) {
+    case 'dashboard':
+      return <svg {...common}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7m-9 2v8m4-8v8m5-10l2 2m-2-2v10a1 1 0 01-1 1h-3m-8 0H6a1 1 0 01-1-1V10" /></svg>;
+    case 'reports':
+      return <svg {...common}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z" /></svg>;
+    case 'listings':
+      return <svg {...common}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.25v13m0-13C10.83 5.48 9.25 5 7.5 5S4.17 5.48 3 6.25v13C4.17 18.48 5.75 18 7.5 18s3.33.48 4.5 1.25m0-13C13.17 5.48 14.75 5 16.5 5s3.33.48 4.5 1.25v13C19.83 18.48 18.25 18 16.5 18s-3.33.48-4.5 1.25" /></svg>;
+    case 'users':
+      return <svg {...common}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.36-1.86M17 20H7m10 0v-2c0-.66-.13-1.28-.36-1.86M7 20H2v-2a3 3 0 015.36-1.86M7 20v-2c0-.66.13-1.28.36-1.86m0 0a5 5 0 019.28 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
+    case 'reviews':
+      return <svg {...common}><path strokeLinecap="round" strokeLinejoin="round" d="M11.05 2.93c.3-.92 1.6-.92 1.9 0l1.52 4.67a1 1 0 00.95.69h4.9c.97 0 1.37 1.24.59 1.8l-3.97 2.88a1 1 0 00-.36 1.12l1.51 4.67c.3.92-.75 1.69-1.54 1.12l-3.96-2.88a1 1 0 00-1.18 0l-3.96 2.88c-.79.57-1.84-.2-1.54-1.12l1.51-4.67a1 1 0 00-.36-1.12L3.1 10.1c-.78-.56-.38-1.8.59-1.8h4.9a1 1 0 00.95-.69l1.52-4.67z" /></svg>;
+    case 'analytics':
+      return <svg {...common}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6m6 13V9m6 10V3M3 19v-4" /></svg>;
+    case 'activity':
+      return <svg {...common}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>;
+    case 'notifications':
+      return <svg {...common}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.17V11a6 6 0 10-12 0v3.17a2 2 0 01-.6 1.43L4 17h5m6 0a3 3 0 11-6 0m6 0H9" /></svg>;
+    case 'blog':
+      return <svg {...common}><path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l6 6v8a2 2 0 01-2 2z" /><path strokeLinecap="round" strokeLinejoin="round" d="M14 4v6h6M8 13h8M8 17h5" /></svg>;
+    case 'legal':
+      return <svg {...common}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.59a1 1 0 01.7.29l5.42 5.42a1 1 0 01.29.7V19a2 2 0 01-2 2z" /></svg>;
+    case 'settings':
+      return <svg {...common}><path strokeLinecap="round" strokeLinejoin="round" d="M10.33 4.32c.43-1.76 2.91-1.76 3.34 0a1.72 1.72 0 002.57 1.07c1.55-.94 3.3.82 2.36 2.36a1.72 1.72 0 001.07 2.57c1.76.43 1.76 2.91 0 3.34a1.72 1.72 0 00-1.07 2.57c.94 1.55-.82 3.3-2.36 2.36a1.72 1.72 0 00-2.57 1.07c-.43 1.76-2.91 1.76-3.34 0a1.72 1.72 0 00-2.57-1.07c-1.55.94-3.3-.82-2.36-2.36a1.72 1.72 0 00-1.07-2.57c-1.76-.43-1.76-2.91 0-3.34a1.72 1.72 0 001.07-2.57c-.94-1.55.82-3.3 2.36-2.36.99.6 2.27.06 2.57-1.07z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
+    case 'site':
+      return <svg {...common}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1018 0 9 9 0 00-18 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 010 18M12 3a14 14 0 000 18" /></svg>;
+    case 'signout':
+      return <svg {...common}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>;
+    default:
+      return null;
+  }
+};
+
+const StatCard: React.FC<{ label: string; value: number | string; helper?: string }> = ({ label, value, helper }) => (
+  <div className="rounded-2xl border border-stone-200 bg-white p-5">
+    <div className="text-sm font-semibold text-stone-800">{label}</div>
+    <div className="mt-2 text-3xl font-semibold tracking-tight text-black">{value}</div>
+    {helper && <div className="mt-1 text-sm text-stone-400">{helper}</div>}
   </div>
 );
 
-// ── Main Component ─────────────────────────────────────────────────────────
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+  <div className="mt-8 mb-3 px-1 text-[11px] font-bold uppercase tracking-[0.02em] text-stone-400">
+    {children}
+  </div>
+);
+
 const Admin: React.FC = () => {
-  const { userProfile } = useAuth();
-
-  // Tab
+  const { userProfile, logout } = useAuth() as any;
   const [tab, setTab] = useState<Tab>('overview');
-
-  // Data
   const [reports, setReports] = useState<Report[]>([]);
   const [allListings, setAllListings] = useState<Listing[]>([]);
   const [flaggedListings, setFlaggedListings] = useState<Listing[]>([]);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [flaggedUsers, setFlaggedUsers] = useState<UserProfile[]>([]);
   const [settings, setSettings] = useState<PlatformSettings>(DEFAULT_SETTINGS);
+  const [settingsDraft, setSettingsDraft] = useState<PlatformSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
 
-  // Listing edit modal
   const [editListing, setEditListing] = useState<Listing | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editPrice, setEditPrice] = useState('');
   const [editDescription, setEditDescription] = useState('');
-
-  // User deactivate confirm
   const [confirmUser, setConfirmUser] = useState<UserProfile | null>(null);
 
-  // Notification composer
   const [notifTarget, setNotifTarget] = useState<'all' | 'user'>('all');
   const [notifUserId, setNotifUserId] = useState('');
   const [notifSubject, setNotifSubject] = useState('');
   const [notifMessage, setNotifMessage] = useState('');
   const [notifSending, setNotifSending] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-
-  // Settings draft
-  const [settingsDraft, setSettingsDraft] = useState<PlatformSettings>(DEFAULT_SETTINGS);
   const [settingsSaving, setSettingsSaving] = useState(false);
 
-  // Listings filter
   const [listingSearch, setListingSearch] = useState('');
   const [listingFilter, setListingFilter] = useState<'all' | 'active' | 'expired' | 'flagged'>('all');
-
-  // Users filter
   const [userSearch, setUserSearch] = useState('');
   const [userFilter, setUserFilter] = useState<'all' | 'active' | 'deactivated' | 'flagged' | 'admin'>('all');
 
-  // ── Show toast helper ──────────────────────────────────────────────────
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(''), 3000);
+    window.setTimeout(() => setToast(''), 3000);
   };
 
-  // ── Fetch all data ─────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     if (!userProfile?.isAdmin) return;
     setLoading(true);
+
     try {
-      // Reports
-      const rSnap = await getDocs(
-        query(collection(db, 'reports'), where('resolved', '==', false), orderBy('createdAt', 'desc'))
-      );
+      const rSnap = await getDocs(query(collection(db, 'reports'), where('resolved', '==', false), orderBy('createdAt', 'desc')));
       const reps: Report[] = [];
       rSnap.forEach(d => reps.push({ id: d.id, ...d.data() } as Report));
       setReports(reps);
 
-      // All listings
-      const lSnap = await getDocs(
-        query(collection(db, 'listings'), orderBy('createdAt', 'desc'))
-      );
-      const ls: Listing[] = [];
-      lSnap.forEach(d => ls.push({ id: d.id, ...d.data() } as Listing));
-      setAllListings(ls);
-      setFlaggedListings(ls.filter(l => l.flagged));
+      const lSnap = await getDocs(query(collection(db, 'listings'), orderBy('createdAt', 'desc')));
+      const listings: Listing[] = [];
+      lSnap.forEach(d => listings.push({ id: d.id, ...d.data() } as Listing));
+      setAllListings(listings);
+      setFlaggedListings(listings.filter(l => l.flagged));
 
-      // All users
       const uSnap = await getDocs(collection(db, 'users'));
-      const us: UserProfile[] = [];
-      uSnap.forEach(d => us.push(d.data() as UserProfile));
-      setAllUsers(us);
-      setFlaggedUsers(us.filter(u => u.flagged));
+      const users: UserProfile[] = [];
+      uSnap.forEach(d => users.push(d.data() as UserProfile));
+      setAllUsers(users);
+      setFlaggedUsers(users.filter(u => u.flagged));
 
-      // Platform settings
       const settingsDoc = await getDoc(doc(db, 'platform', 'settings'));
-      if (settingsDoc.exists()) {
-        const s = settingsDoc.data() as PlatformSettings;
-        setSettings(s);
-        setSettingsDraft(s);
-      } else {
-        setSettings(DEFAULT_SETTINGS);
-        setSettingsDraft(DEFAULT_SETTINGS);
-      }
+      const platformSettings = settingsDoc.exists() ? settingsDoc.data() as PlatformSettings : DEFAULT_SETTINGS;
+      setSettings(platformSettings);
+      setSettingsDraft(platformSettings);
 
-      // Notifications
-      const nSnap = await getDocs(
-        query(collection(db, 'notifications'), where('fromAdmin', '==', true), orderBy('createdAt', 'desc'))
-      );
+      const nSnap = await getDocs(query(collection(db, 'notifications'), where('fromAdmin', '==', true), orderBy('createdAt', 'desc')));
       const ns: Notification[] = [];
       nSnap.forEach(d => ns.push({ id: d.id, ...d.data() } as Notification));
       setNotifications(ns);
     } catch (err) {
       console.error(err);
+      showToast('Failed to load admin data');
     } finally {
       setLoading(false);
     }
@@ -162,14 +186,12 @@ const Admin: React.FC = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ── Report actions ─────────────────────────────────────────────────────
   const resolveReport = async (reportId: string) => {
     await updateDoc(doc(db, 'reports', reportId), { resolved: true });
     setReports(prev => prev.filter(r => r.id !== reportId));
     showToast('Report resolved');
   };
 
-  // ── Listing actions ────────────────────────────────────────────────────
   const deleteListing = async (listingId: string) => {
     if (!confirm('Delete this listing permanently?')) return;
     await deleteDoc(doc(db, 'listings', listingId));
@@ -179,18 +201,18 @@ const Admin: React.FC = () => {
   };
 
   const toggleListingActive = async (listing: Listing) => {
-    const newActive = !listing.active;
-    await updateDoc(doc(db, 'listings', listing.id), { active: newActive });
-    const updated = (l: Listing) => l.id === listing.id ? { ...l, active: newActive } : l;
-    setAllListings(prev => prev.map(updated));
-    setFlaggedListings(prev => prev.map(updated));
-    showToast(newActive ? 'Listing enabled' : 'Listing disabled');
+    const active = !listing.active;
+    await updateDoc(doc(db, 'listings', listing.id), { active });
+    const update = (l: Listing) => l.id === listing.id ? { ...l, active } : l;
+    setAllListings(prev => prev.map(update));
+    setFlaggedListings(prev => prev.map(update));
+    showToast(active ? 'Listing enabled' : 'Listing disabled');
   };
 
   const unflagListing = async (listingId: string) => {
     await updateDoc(doc(db, 'listings', listingId), { flagged: false, flagCount: 0 });
-    const updated = (l: Listing) => l.id === listingId ? { ...l, flagged: false, flagCount: 0 } : l;
-    setAllListings(prev => prev.map(updated));
+    const update = (l: Listing) => l.id === listingId ? { ...l, flagged: false, flagCount: 0 } : l;
+    setAllListings(prev => prev.map(update));
     setFlaggedListings(prev => prev.filter(l => l.id !== listingId));
     showToast('Listing unflagged');
   };
@@ -199,15 +221,12 @@ const Admin: React.FC = () => {
     setEditListing(listing);
     setEditTitle(listing.title);
     setEditPrice(listing.price?.toString() || '');
-    setEditDescription(listing.description);
+    setEditDescription(listing.description || '');
   };
 
   const saveEditListing = async () => {
     if (!editListing) return;
-    const updates: Partial<Listing> = {
-      title: editTitle,
-      description: editDescription,
-    };
+    const updates: Partial<Listing> = { title: editTitle, description: editDescription };
     if (editListing.type === 'sell') updates.price = parseFloat(editPrice) || 0;
     await updateDoc(doc(db, 'listings', editListing.id), updates);
     const applyUpdates = (l: Listing) => l.id === editListing.id ? { ...l, ...updates } : l;
@@ -217,35 +236,29 @@ const Admin: React.FC = () => {
     showToast('Listing updated');
   };
 
-  // ── User actions ───────────────────────────────────────────────────────
   const toggleUserDeactivated = async (user: UserProfile) => {
-    const nowDeactivated = !(user as any).deactivated;
-    await updateDoc(doc(db, 'users', user.uid), { deactivated: nowDeactivated });
-    setAllUsers(prev =>
-      prev.map(u => u.uid === user.uid ? { ...u, deactivated: nowDeactivated } as any : u)
-    );
+    const deactivated = !(user as any).deactivated;
+    await updateDoc(doc(db, 'users', user.uid), { deactivated });
+    setAllUsers(prev => prev.map(u => u.uid === user.uid ? { ...u, deactivated } as any : u));
     setConfirmUser(null);
-    showToast(nowDeactivated ? 'Account deactivated' : 'Account reactivated');
+    showToast(deactivated ? 'Account deactivated' : 'Account reactivated');
   };
 
   const toggleAdmin = async (user: UserProfile) => {
-    const newAdmin = !user.isAdmin;
-    await updateDoc(doc(db, 'users', user.uid), { isAdmin: newAdmin });
-    setAllUsers(prev =>
-      prev.map(u => u.uid === user.uid ? { ...u, isAdmin: newAdmin } : u)
-    );
-    showToast(newAdmin ? `${user.displayName} is now admin` : `${user.displayName} removed from admin`);
+    const isAdmin = !user.isAdmin;
+    await updateDoc(doc(db, 'users', user.uid), { isAdmin });
+    setAllUsers(prev => prev.map(u => u.uid === user.uid ? { ...u, isAdmin } : u));
+    showToast(isAdmin ? `${user.displayName} is now admin` : `${user.displayName} removed from admin`);
   };
 
   const unflagUser = async (userId: string) => {
     await updateDoc(doc(db, 'users', userId), { flagged: false, flagCount: 0 });
-    const updated = (u: UserProfile) => u.uid === userId ? { ...u, flagged: false, flagCount: 0 } : u;
-    setAllUsers(prev => prev.map(updated));
+    const update = (u: UserProfile) => u.uid === userId ? { ...u, flagged: false, flagCount: 0 } : u;
+    setAllUsers(prev => prev.map(update));
     setFlaggedUsers(prev => prev.filter(u => u.uid !== userId));
     showToast('User unflagged');
   };
 
-  // ── Settings ───────────────────────────────────────────────────────────
   const saveSettings = async () => {
     setSettingsSaving(true);
     try {
@@ -254,35 +267,35 @@ const Admin: React.FC = () => {
       showToast('Platform settings saved');
     } catch (err) {
       console.error(err);
+      showToast('Failed to save settings');
     } finally {
       setSettingsSaving(false);
     }
   };
 
-  // ── Notifications ──────────────────────────────────────────────────────
   const sendNotification = async () => {
     if (!notifSubject.trim() || !notifMessage.trim()) return;
     setNotifSending(true);
+
     try {
       if (notifTarget === 'all') {
-        // Broadcast to all users
-        const batch = allUsers.map(u =>
-          addDoc(collection(db, 'notifications'), {
-            userId: u.uid,
-            userName: u.displayName,
-            fromAdmin: true,
-            subject: notifSubject.trim(),
-            message: notifMessage.trim(),
-            createdAt: Date.now(),
-            read: false,
-          })
-        );
-        await Promise.all(batch);
+        await Promise.all(allUsers.map(u => addDoc(collection(db, 'notifications'), {
+          userId: u.uid,
+          userName: u.displayName,
+          fromAdmin: true,
+          subject: notifSubject.trim(),
+          message: notifMessage.trim(),
+          createdAt: Date.now(),
+          read: false,
+        })));
         showToast(`Notification sent to ${allUsers.length} users`);
       } else {
-        // Send to specific user
         const targetUser = allUsers.find(u => u.uid === notifUserId || u.email === notifUserId);
-        if (!targetUser) { showToast('User not found'); setNotifSending(false); return; }
+        if (!targetUser) {
+          showToast('User not found');
+          setNotifSending(false);
+          return;
+        }
         await addDoc(collection(db, 'notifications'), {
           userId: targetUser.uid,
           userName: targetUser.displayName,
@@ -294,34 +307,39 @@ const Admin: React.FC = () => {
         });
         showToast(`Notification sent to ${targetUser.displayName}`);
       }
+
       setNotifSubject('');
       setNotifMessage('');
       fetchData();
     } catch (err) {
       console.error(err);
+      showToast('Failed to send notification');
     } finally {
       setNotifSending(false);
     }
   };
 
-  // ── Filtered data ──────────────────────────────────────────────────────
-  const filteredListings = allListings.filter(l => {
-    const matchSearch = !listingSearch ||
-      l.title.toLowerCase().includes(listingSearch.toLowerCase()) ||
-      l.author.toLowerCase().includes(listingSearch.toLowerCase()) ||
-      l.userName.toLowerCase().includes(listingSearch.toLowerCase());
+  const filteredListings = useMemo(() => allListings.filter(l => {
+    const search = listingSearch.toLowerCase();
+    const matchSearch = !search ||
+      l.title?.toLowerCase().includes(search) ||
+      l.author?.toLowerCase().includes(search) ||
+      l.userName?.toLowerCase().includes(search);
     const now = Date.now();
+
     if (listingFilter === 'active') return matchSearch && l.active && l.expiresAt > now;
     if (listingFilter === 'expired') return matchSearch && (!l.active || l.expiresAt <= now);
     if (listingFilter === 'flagged') return matchSearch && l.flagged;
     return matchSearch;
-  });
+  }), [allListings, listingFilter, listingSearch]);
 
-  const filteredUsers = allUsers
+  const filteredUsers = useMemo(() => allUsers
     .filter(u => {
-      const matchSearch = !userSearch ||
-        u.displayName.toLowerCase().includes(userSearch.toLowerCase()) ||
-        u.email.toLowerCase().includes(userSearch.toLowerCase());
+      const search = userSearch.toLowerCase();
+      const matchSearch = !search ||
+        u.displayName?.toLowerCase().includes(search) ||
+        u.email?.toLowerCase().includes(search);
+
       if (userFilter === 'active') return matchSearch && !(u as any).deactivated;
       if (userFilter === 'deactivated') return matchSearch && (u as any).deactivated;
       if (userFilter === 'flagged') return matchSearch && u.flagged;
@@ -332,701 +350,456 @@ const Admin: React.FC = () => {
       if (a.isAdmin && !b.isAdmin) return -1;
       if (!a.isAdmin && b.isAdmin) return 1;
       return (a.displayName || '').localeCompare(b.displayName || '');
-    });
+    }), [allUsers, userFilter, userSearch]);
 
-  // ── Access guard ───────────────────────────────────────────────────────
   if (!userProfile?.isAdmin) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
+      <div className="mx-auto max-w-4xl px-4 py-16 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-500">
+          <Icon name="reports" />
         </div>
         <h2 className="text-xl font-bold text-stone-700">Access Denied</h2>
-        <p className="text-stone-500 mt-2">You don't have admin privileges.</p>
-        <Link to="/" className="mt-4 inline-block text-primary-600 font-medium">Back to Home</Link>
+        <p className="mt-2 text-stone-500">You do not have admin privileges.</p>
+        <Link to="/" className="mt-4 inline-block font-medium text-primary-600">Back to Home</Link>
       </div>
     );
   }
 
-  const TABS: { key: Tab; label: string; count?: number }[] = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'reports', label: 'Reports', count: reports.length },
-    { key: 'listings', label: 'Listings', count: allListings.length },
-    { key: 'users', label: 'Users', count: allUsers.length },
-    { key: 'notifications', label: 'Notifications' },
-    { key: 'settings', label: 'Settings' },
-  ];
-
   const activeListings = allListings.filter(l => l.active && l.expiresAt > Date.now());
   const deactivatedUsers = allUsers.filter(u => (u as any).deactivated);
+  const pageTitles: Record<Tab, string> = {
+    overview: 'Dashboard',
+    reports: 'Reports',
+    listings: 'Listings',
+    users: 'Users',
+    reviews: 'Reviews',
+    analytics: 'Analytics',
+    activity: 'Platform Activity',
+    notifications: 'Notifications',
+    blog: 'Blog',
+    legal: 'Legal Pages',
+    settings: 'Settings',
+  };
+
+  const NavButton = ({ item }: { item: { key: Tab; label: string; icon: string; count?: number } }) => {
+    const active = tab === item.key;
+    return (
+      <button
+        type="button"
+        onClick={() => setTab(item.key)}
+        className={`flex h-11 w-full items-center gap-3.5 rounded-lg px-3.5 text-left text-[16px] transition ${
+          active
+            ? 'border border-stone-300 bg-gradient-to-b from-stone-100 to-stone-200 font-semibold text-black'
+            : 'font-medium text-stone-700 hover:bg-stone-100'
+        }`}
+      >
+        <Icon name={item.icon} />
+        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+        {item.count !== undefined && item.count > 0 && (
+          <span className={`rounded-full px-2 py-0.5 text-xs ${active ? 'bg-white text-stone-700' : 'bg-stone-100 text-stone-500'}`}>{item.count}</span>
+        )}
+      </button>
+    );
+  };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-      {/* Toast */}
+    <div className="min-h-screen bg-[#fafafa] text-stone-900">
       {toast && (
-        <div className="fixed top-6 right-6 z-50 bg-stone-800 text-white px-5 py-3 rounded-xl shadow-xl text-sm font-medium animate-fade-in">
+        <div className="fixed right-6 top-6 z-50 rounded-xl bg-stone-900 px-5 py-3 text-sm font-medium text-white shadow-xl">
           {toast}
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-stone-800">Admin Dashboard</h1>
-          <p className="text-stone-500 mt-0.5 text-sm">Reshelved platform management</p>
-        </div>
-        <button
-          onClick={fetchData}
-          className="flex items-center gap-2 px-4 py-2 border border-stone-200 text-stone-600 rounded-xl hover:bg-stone-50 transition text-sm font-medium"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Refresh
-        </button>
-      </div>
+      <div className="flex min-h-screen">
+        <aside className="hidden min-h-screen w-[296px] shrink-0 border-r border-[#e5e5e5] bg-white px-6 pt-6 lg:block">
+          <Link to="/" className="flex h-12 items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-600 text-white">
+              <Icon name="listings" />
+            </div>
+            <div className="text-xl font-bold text-stone-950">Reshelved Admin</div>
+          </Link>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-stone-100 rounded-xl p-1 mb-6 overflow-x-auto">
-        {TABS.map(t => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
-              tab === t.key ? 'bg-white text-stone-800 shadow-sm' : 'text-stone-500 hover:text-stone-700'
-            }`}
+            type="button"
+            onClick={() => setTab('notifications')}
+            className="mt-9 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary-600 text-[16px] font-semibold text-white transition hover:bg-primary-700"
           >
-            {t.label}
-            {t.count !== undefined && (
-              <span className={`px-1.5 py-0.5 rounded-full text-xs ${
-                tab === t.key ? 'bg-primary-100 text-primary-700' : 'bg-stone-200 text-stone-600'
-              }`}>
-                {t.count}
-              </span>
-            )}
+            <span className="text-xl leading-none">+</span>
+            Send Update
           </button>
-        ))}
-      </div>
 
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="animate-pulse bg-white rounded-xl border border-stone-200 h-20" />
-          ))}
-        </div>
-      ) : (
-        <>
-          {/* ── OVERVIEW ─────────────────────────────────────────────── */}
-          {tab === 'overview' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard
-                  label="Total Users" value={allUsers.length} color="bg-blue-100"
-                  icon={<svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
-                />
-                <StatCard
-                  label="Active Listings" value={activeListings.length} color="bg-green-100"
-                  icon={<svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>}
-                />
-                <StatCard
-                  label="Open Reports" value={reports.length} color="bg-red-100"
-                  icon={<svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
-                />
-                <StatCard
-                  label="Deactivated Users" value={deactivatedUsers.length} color="bg-orange-100"
-                  icon={<svg className="w-6 h-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>}
-                />
-              </div>
+          <nav className="mt-9">
+            <SectionLabel>Manage</SectionLabel>
+            <div className="space-y-1.5">
+              {[
+                { key: 'overview' as Tab, label: 'Dashboard', icon: 'dashboard' },
+                { key: 'reports' as Tab, label: 'Reports', icon: 'reports', count: reports.length },
+                { key: 'listings' as Tab, label: 'Listings', icon: 'listings', count: allListings.length },
+                { key: 'users' as Tab, label: 'Users', icon: 'users', count: allUsers.length },
+                { key: 'reviews' as Tab, label: 'Reviews', icon: 'reviews' },
+              ].map(item => <NavButton key={item.key} item={item} />)}
+            </div>
 
-              {/* Quick Actions */}
-              <div className="bg-white rounded-xl border border-stone-200 p-5">
-                <h3 className="font-semibold text-stone-800 mb-4">Quick Actions</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {[
-                    { label: 'Review Reports', count: reports.length, tab: 'reports' as Tab, color: 'text-red-600 bg-red-50 border-red-200' },
-                    { label: 'Flagged Listings', count: flaggedListings.length, tab: 'listings' as Tab, color: 'text-orange-600 bg-orange-50 border-orange-200' },
-                    { label: 'Flagged Users', count: flaggedUsers.length, tab: 'users' as Tab, color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
-                  ].map(a => (
-                    <button
-                      key={a.tab}
-                      onClick={() => setTab(a.tab)}
-                      className={`p-4 rounded-xl border text-left transition hover:opacity-80 ${a.color}`}
-                    >
-                      <div className="text-2xl font-bold">{a.count}</div>
-                      <div className="text-sm font-medium mt-1">{a.label}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <SectionLabel>Growth</SectionLabel>
+            <div className="space-y-1.5">
+              <NavButton item={{ key: 'analytics', label: 'Analytics', icon: 'analytics' }} />
+              <NavButton item={{ key: 'activity', label: 'Platform Activity', icon: 'activity' }} />
+            </div>
 
-              {/* Platform Settings Summary */}
-              <div className="bg-white rounded-xl border border-stone-200 p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-stone-800">Current Platform Settings</h3>
-                  <button onClick={() => setTab('settings')} className="text-sm text-primary-600 font-medium hover:text-primary-700">Edit</button>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {[
-                    { label: 'Listing Expiry', value: `${settings.listingExpiryDays} days` },
-                    { label: 'Max Images', value: settings.maxImagesPerListing },
-                    { label: 'Max Listings/User', value: settings.maxListingsPerUser },
-                    { label: 'Maintenance Mode', value: settings.maintenanceMode ? 'ON' : 'Off' },
-                    { label: 'New Registrations', value: settings.allowNewRegistrations ? 'Allowed' : 'Disabled' },
-                  ].map(s => (
-                    <div key={s.label} className="bg-stone-50 rounded-lg p-3">
-                      <div className="text-xs text-stone-500">{s.label}</div>
-                      <div className="text-sm font-semibold text-stone-800 mt-0.5">{s.value}</div>
-                    </div>
-                  ))}
-                </div>
+            <SectionLabel>Tools</SectionLabel>
+            <div className="space-y-1.5">
+              <NavButton item={{ key: 'notifications', label: 'Notifications', icon: 'notifications' }} />
+              <NavButton item={{ key: 'blog', label: 'Blog', icon: 'blog' }} />
+              <NavButton item={{ key: 'legal', label: 'Legal Pages', icon: 'legal' }} />
+              <NavButton item={{ key: 'settings', label: 'Settings', icon: 'settings' }} />
+            </div>
+
+            <SectionLabel>Others</SectionLabel>
+            <div className="space-y-1.5">
+              <Link to="/" className="flex h-11 items-center gap-3.5 rounded-lg px-3.5 text-[16px] font-medium text-stone-700 transition hover:bg-stone-100">
+                <Icon name="site" />
+                <span>View Site</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => logout?.()}
+                className="flex h-11 w-full items-center gap-3.5 rounded-lg px-3.5 text-left text-[16px] font-medium text-stone-700 transition hover:bg-stone-100"
+              >
+                <Icon name="signout" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </nav>
+        </aside>
+
+        <main className="min-w-0 flex-1">
+          <header className="flex h-[84px] items-center justify-between border-b border-[#eeeeee] bg-white px-5 sm:px-10">
+            <div>
+              <h1 className="text-2xl font-bold text-black">{pageTitles[tab]}</h1>
+              <p className="mt-0.5 text-sm text-stone-500">Reshelved platform management</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={fetchData}
+                className="hidden rounded-lg border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 sm:block"
+              >
+                Refresh
+              </button>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-100 bg-white text-xs font-bold text-primary-700 shadow-sm">
+                {userProfile?.displayName?.[0]?.toUpperCase() || 'A'}
               </div>
             </div>
-          )}
+          </header>
 
-          {/* ── REPORTS ──────────────────────────────────────────────── */}
-          {tab === 'reports' && (
-            <div className="space-y-3">
-              {reports.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-xl border border-stone-200">
-                  <div className="text-4xl mb-3">🎉</div>
-                  <p className="text-stone-500">No open reports</p>
-                </div>
-              ) : reports.map(r => (
-                <div key={r.id} className="bg-white rounded-xl border border-stone-200 p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${r.targetType === 'listing' ? 'bg-accent-100 text-accent-700' : 'bg-red-100 text-red-700'}`}>
-                          {r.targetType}
-                        </span>
-                        <span className="font-medium text-stone-800 truncate">{r.targetName}</span>
-                      </div>
-                      <p className="text-sm text-stone-600 mt-1"><span className="font-medium">Reason:</span> {r.reason}</p>
-                      {r.details && <p className="text-sm text-stone-500 mt-0.5">{r.details}</p>}
-                      <p className="text-xs text-stone-400 mt-2">
-                        Reported by <strong>{r.reporterName}</strong> · {new Date(r.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {r.targetType === 'listing' && (
-                        <Link to={`/listing/${r.targetId}`} className="px-3 py-1.5 text-sm text-primary-600 border border-primary-200 rounded-lg hover:bg-primary-50 transition font-medium">
-                          View
-                        </Link>
-                      )}
-                      <button onClick={() => resolveReport(r.id)} className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200 transition">
-                        Resolve
-                      </button>
-                    </div>
-                  </div>
-                </div>
+          <div className="border-b border-stone-200 bg-white px-4 py-3 lg:hidden">
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {[
+                { key: 'overview' as Tab, label: 'Dashboard' },
+                { key: 'reports' as Tab, label: 'Reports' },
+                { key: 'listings' as Tab, label: 'Listings' },
+                { key: 'users' as Tab, label: 'Users' },
+                { key: 'notifications' as Tab, label: 'Notifications' },
+                { key: 'settings' as Tab, label: 'Settings' },
+              ].map(item => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setTab(item.key)}
+                  className={`h-10 shrink-0 rounded-lg px-4 text-sm font-semibold ${tab === item.key ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-700'}`}
+                >
+                  {item.label}
+                </button>
               ))}
             </div>
-          )}
+          </div>
 
-          {/* ── LISTINGS ─────────────────────────────────────────────── */}
-          {tab === 'listings' && (
-            <div className="space-y-4">
-              {/* Filters */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <input
-                  type="text"
-                  placeholder="Search listings..."
-                  value={listingSearch}
-                  onChange={e => setListingSearch(e.target.value)}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:border-primary-400 outline-none"
-                />
-                <select
-                  value={listingFilter}
-                  onChange={e => setListingFilter(e.target.value as typeof listingFilter)}
-                  className="px-4 py-2.5 rounded-xl border border-stone-200 text-sm bg-white focus:border-primary-400 outline-none"
-                >
-                  <option value="all">All Listings</option>
-                  <option value="active">Active</option>
-                  <option value="expired">Expired/Disabled</option>
-                  <option value="flagged">Flagged</option>
-                </select>
+          <section className="p-5 sm:p-10">
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map(i => <div key={i} className="h-20 animate-pulse rounded-2xl border border-stone-200 bg-white" />)}
               </div>
+            ) : (
+              <>
+                {tab === 'overview' && (
+                  <div className="space-y-7">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                      <StatCard label="Total Users" value={allUsers.length} helper={`${deactivatedUsers.length} deactivated`} />
+                      <StatCard label="Active Listings" value={activeListings.length} helper={`${allListings.length} total listings`} />
+                      <StatCard label="Open Reports" value={reports.length} helper={`${flaggedListings.length} flagged listings`} />
+                      <StatCard label="Flagged Users" value={flaggedUsers.length} helper="Needs review" />
+                    </div>
 
-              <div className="text-sm text-stone-500">{filteredListings.length} listings</div>
-
-              {filteredListings.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-xl border border-stone-200">
-                  <p className="text-stone-500">No listings found</p>
-                </div>
-              ) : filteredListings.map(l => {
-                const isExpired = l.expiresAt < Date.now();
-                return (
-                  <div key={l.id} className={`bg-white rounded-xl border p-4 ${l.flagged ? 'border-orange-200' : 'border-stone-200'}`}>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3 min-w-0">
-                        {l.images?.[0] && (
-                          <img src={l.images[0]} alt="" className="w-14 h-14 rounded-lg object-cover shrink-0" />
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Link to={`/listing/${l.id}`} className="font-medium text-stone-800 hover:text-primary-700 truncate">
-                              {l.title}
-                            </Link>
-                            {!l.active && <span className="px-1.5 py-0.5 bg-stone-100 text-stone-500 rounded text-xs">Disabled</span>}
-                            {isExpired && <span className="px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-xs">Expired</span>}
-                            {l.flagged && <span className="px-1.5 py-0.5 bg-orange-100 text-orange-600 rounded text-xs">⚑ {l.flagCount} flags</span>}
-                          </div>
-                          <p className="text-sm text-stone-500 mt-0.5">by {l.author} · {l.userName} · {l.location}</p>
-                          <p className="text-xs text-stone-400 mt-0.5">
-                            {new Date(l.createdAt).toLocaleDateString()} ·
-                            {l.type === 'sell' ? ` KSh ${l.price?.toLocaleString()}` : ` ${l.type}`}
-                          </p>
-                        </div>
+                    <div className="rounded-2xl border border-stone-200 bg-white p-6">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-black">Quick Actions</h2>
+                        <span className="text-sm text-stone-400">Last 7 days</span>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                        <button
-                          onClick={() => openEditListing(l)}
-                          className="px-2.5 py-1.5 text-xs border border-stone-200 text-stone-600 rounded-lg hover:bg-stone-50 transition font-medium"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => toggleListingActive(l)}
-                          className={`px-2.5 py-1.5 text-xs rounded-lg transition font-medium ${
-                            l.active ? 'border border-orange-200 text-orange-600 hover:bg-orange-50' : 'border border-green-200 text-green-600 hover:bg-green-50'
-                          }`}
-                        >
-                          {l.active ? 'Disable' : 'Enable'}
-                        </button>
-                        {l.flagged && (
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        {[
+                          { label: 'Review Reports', value: reports.length, next: 'reports' as Tab },
+                          { label: 'Flagged Listings', value: flaggedListings.length, next: 'listings' as Tab },
+                          { label: 'Flagged Users', value: flaggedUsers.length, next: 'users' as Tab },
+                        ].map(item => (
                           <button
-                            onClick={() => unflagListing(l.id)}
-                            className="px-2.5 py-1.5 text-xs border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 transition font-medium"
+                            key={item.label}
+                            type="button"
+                            onClick={() => setTab(item.next)}
+                            className="rounded-xl border border-stone-200 bg-stone-50 p-4 text-left transition hover:bg-stone-100"
                           >
-                            Unflag
+                            <div className="text-3xl font-semibold text-black">{item.value}</div>
+                            <div className="mt-1 text-sm font-semibold text-stone-600">{item.label}</div>
                           </button>
-                        )}
-                        <button
-                          onClick={() => deleteListing(l.id)}
-                          className="px-2.5 py-1.5 text-xs border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition font-medium"
-                        >
-                          Delete
-                        </button>
+                        ))}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
 
-          {/* ── USERS ────────────────────────────────────────────────── */}
-          {tab === 'users' && (
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <input
-                  type="text"
-                  placeholder="Search users by name or email..."
-                  value={userSearch}
-                  onChange={e => setUserSearch(e.target.value)}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:border-primary-400 outline-none"
-                />
-                <select
-                  value={userFilter}
-                  onChange={e => setUserFilter(e.target.value as typeof userFilter)}
-                  className="px-4 py-2.5 rounded-xl border border-stone-200 text-sm bg-white focus:border-primary-400 outline-none"
-                >
-                  <option value="all">All Users</option>
-                  <option value="active">Active</option>
-                  <option value="deactivated">Deactivated</option>
-                  <option value="flagged">Flagged</option>
-                  <option value="admin">Admins</option>
-                </select>
-              </div>
-
-              <div className="text-sm text-stone-500">{filteredUsers.length} users</div>
-
-              {filteredUsers.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-xl border border-stone-200">
-                  <p className="text-stone-500">No users found</p>
-                </div>
-              ) : filteredUsers.map(u => {
-                const isDeactivated = (u as any).deactivated;
-                return (
-                  <div key={u.uid} className={`bg-white rounded-xl border p-4 ${isDeactivated ? 'border-stone-300 opacity-70' : u.flagged ? 'border-orange-200' : 'border-stone-200'}`}>
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold shrink-0 ${isDeactivated ? 'bg-stone-200 text-stone-400' : 'bg-primary-100 text-primary-700'}`}>
-                          {u.displayName?.[0]?.toUpperCase() || 'U'}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-stone-800">{u.displayName}</span>
-                            {u.isAdmin && <span className="px-1.5 py-0.5 bg-primary-100 text-primary-700 rounded text-xs font-medium">Admin</span>}
-                            {isDeactivated && <span className="px-1.5 py-0.5 bg-stone-200 text-stone-500 rounded text-xs">Deactivated</span>}
-                            {u.flagged && <span className="px-1.5 py-0.5 bg-orange-100 text-orange-600 rounded text-xs">⚑ {u.flagCount} flags</span>}
+                    <div className="rounded-2xl border border-stone-200 bg-white p-6">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-black">Current Platform Settings</h2>
+                        <button onClick={() => setTab('settings')} className="text-sm font-semibold text-primary-600">Edit</button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                        {[
+                          ['Listing Expiry', `${settings.listingExpiryDays} days`],
+                          ['Max Images', settings.maxImagesPerListing],
+                          ['Max Listings/User', settings.maxListingsPerUser],
+                          ['Maintenance', settings.maintenanceMode ? 'ON' : 'Off'],
+                          ['Registrations', settings.allowNewRegistrations ? 'Allowed' : 'Disabled'],
+                        ].map(([label, value]) => (
+                          <div key={label.toString()} className="rounded-xl bg-stone-50 p-4">
+                            <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">{label}</div>
+                            <div className="mt-1 text-sm font-bold text-stone-900">{value}</div>
                           </div>
-                          <p className="text-sm text-stone-500 truncate">{u.email}</p>
-                          <p className="text-xs text-stone-400">{u.location} · Joined {new Date(u.createdAt).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                        <button
-                          onClick={() => {
-                            setNotifTarget('user');
-                            setNotifUserId(u.email);
-                            setTab('notifications');
-                          }}
-                          className="px-2.5 py-1.5 text-xs border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 transition font-medium"
-                        >
-                          Message
-                        </button>
-                        <button
-                          onClick={() => toggleAdmin(u)}
-                          className={`px-2.5 py-1.5 text-xs rounded-lg transition font-medium ${
-                            u.isAdmin ? 'border border-stone-200 text-stone-600 hover:bg-stone-50' : 'border border-primary-200 text-primary-600 hover:bg-primary-50'
-                          }`}
-                        >
-                          {u.isAdmin ? 'Remove Admin' : 'Make Admin'}
-                        </button>
-                        {u.flagged && (
-                          <button
-                            onClick={() => unflagUser(u.uid)}
-                            className="px-2.5 py-1.5 text-xs border border-green-200 text-green-600 rounded-lg hover:bg-green-50 transition font-medium"
-                          >
-                            Unflag
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setConfirmUser(u)}
-                          className={`px-2.5 py-1.5 text-xs rounded-lg transition font-medium ${
-                            isDeactivated
-                              ? 'border border-green-200 text-green-600 hover:bg-green-50'
-                              : 'border border-red-200 text-red-600 hover:bg-red-50'
-                          }`}
-                        >
-                          {isDeactivated ? 'Reactivate' : 'Deactivate'}
-                        </button>
+                        ))}
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                )}
 
-          {/* ── NOTIFICATIONS ────────────────────────────────────────── */}
-          {tab === 'notifications' && (
-            <div className="space-y-6">
-              {/* Composer */}
-              <div className="bg-white rounded-xl border border-stone-200 p-6">
-                <h3 className="font-semibold text-stone-800 mb-4">Send Notification</h3>
-                <div className="space-y-4">
-                  {/* Target */}
-                  <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-2">Send To</label>
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => setNotifTarget('all')}
-                        className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition ${notifTarget === 'all' ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-stone-200 text-stone-600 hover:border-stone-300'}`}
-                      >
-                        📢 All Users ({allUsers.length})
-                      </button>
-                      <button
-                        onClick={() => setNotifTarget('user')}
-                        className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition ${notifTarget === 'user' ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-stone-200 text-stone-600 hover:border-stone-300'}`}
-                      >
-                        👤 Specific User
-                      </button>
-                    </div>
-                  </div>
-
-                  {notifTarget === 'user' && (
-                    <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">User Email or ID</label>
-                      <input
-                        type="text"
-                        value={notifUserId}
-                        onChange={e => setNotifUserId(e.target.value)}
-                        placeholder="user@example.com"
-                        className="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:border-primary-400 outline-none"
-                      />
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1">Subject</label>
-                    <input
-                      type="text"
-                      value={notifSubject}
-                      onChange={e => setNotifSubject(e.target.value)}
-                      placeholder="e.g. Important platform update"
-                      className="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:border-primary-400 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1">Message</label>
-                    <textarea
-                      value={notifMessage}
-                      onChange={e => setNotifMessage(e.target.value)}
-                      placeholder="Write your message here..."
-                      rows={4}
-                      className="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:border-primary-400 outline-none resize-none"
-                    />
-                  </div>
-
-                  <button
-                    onClick={sendNotification}
-                    disabled={notifSending || !notifSubject.trim() || !notifMessage.trim()}
-                    className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {notifSending ? (
-                      <>
-                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                        Send Notification
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Sent notifications history */}
-              <div className="bg-white rounded-xl border border-stone-200 p-5">
-                <h3 className="font-semibold text-stone-800 mb-4">Sent Notifications ({notifications.length})</h3>
-                {notifications.length === 0 ? (
-                  <p className="text-stone-500 text-sm">No notifications sent yet</p>
-                ) : (
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {notifications.map(n => (
-                      <div key={n.id} className="p-3 bg-stone-50 rounded-lg">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="font-medium text-stone-800 text-sm">{n.subject}</p>
-                            <p className="text-xs text-stone-500 mt-0.5">To: {n.userName}</p>
-                            <p className="text-sm text-stone-600 mt-1 line-clamp-2">{n.message}</p>
+                {tab === 'reports' && (
+                  <div className="space-y-3">
+                    {reports.length === 0 ? <EmptyState message="No open reports" /> : reports.map(r => (
+                      <div key={r.id} className="rounded-2xl border border-stone-200 bg-white p-4">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-md bg-stone-100 px-2 py-0.5 text-xs font-semibold text-stone-600">{r.targetType}</span>
+                              <span className="font-semibold text-stone-900">{r.targetName}</span>
+                            </div>
+                            <p className="mt-1 text-sm text-stone-600"><strong>Reason:</strong> {r.reason}</p>
+                            {r.details && <p className="mt-1 text-sm text-stone-500">{r.details}</p>}
+                            <p className="mt-2 text-xs text-stone-400">Reported by {r.reporterName} · {new Date(r.createdAt).toLocaleDateString()}</p>
                           </div>
-                          <p className="text-xs text-stone-400 shrink-0">{new Date(n.createdAt).toLocaleDateString()}</p>
+                          <div className="flex shrink-0 gap-2">
+                            {r.targetType === 'listing' && <Link to={`/listing/${r.targetId}`} className="rounded-lg border border-primary-200 px-3 py-1.5 text-sm font-semibold text-primary-600 hover:bg-primary-50">View</Link>}
+                            <button onClick={() => resolveReport(r.id)} className="rounded-lg bg-green-100 px-3 py-1.5 text-sm font-semibold text-green-700 hover:bg-green-200">Resolve</button>
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
-            </div>
-          )}
 
-          {/* ── SETTINGS ─────────────────────────────────────────────── */}
-          {tab === 'settings' && (
-            <div className="space-y-5">
-              <div className="bg-white rounded-xl border border-stone-200 p-6">
-                <h3 className="font-semibold text-stone-800 mb-5">Platform Settings</h3>
-                <div className="space-y-6">
-                  {/* Listing Expiry Days */}
-                  <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1">
-                      Listing Expiry (days)
-                    </label>
-                    <p className="text-xs text-stone-500 mb-2">How many days before a listing automatically expires</p>
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="range"
-                        min={1}
-                        max={90}
-                        value={settingsDraft.listingExpiryDays}
-                        onChange={e => setSettingsDraft(d => ({ ...d, listingExpiryDays: parseInt(e.target.value) }))}
-                        className="flex-1 accent-primary-600"
-                      />
-                      <div className="w-16 px-3 py-1.5 border border-stone-200 rounded-lg text-sm text-center font-semibold text-stone-800">
-                        {settingsDraft.listingExpiryDays}d
-                      </div>
-                    </div>
-                    <div className="flex justify-between text-xs text-stone-400 mt-1">
-                      <span>1 day</span><span>90 days</span>
-                    </div>
+                {tab === 'listings' && (
+                  <div className="space-y-4">
+                    <FilterBar
+                      searchValue={listingSearch}
+                      onSearchChange={setListingSearch}
+                      searchPlaceholder="Search listings..."
+                      selectValue={listingFilter}
+                      onSelectChange={value => setListingFilter(value as typeof listingFilter)}
+                      options={[['all', 'All Listings'], ['active', 'Active'], ['expired', 'Expired/Disabled'], ['flagged', 'Flagged']]}
+                    />
+                    <p className="text-sm text-stone-500">{filteredListings.length} listings</p>
+                    {filteredListings.length === 0 ? <EmptyState message="No listings found" /> : filteredListings.map(l => {
+                      const isExpired = l.expiresAt < Date.now();
+                      return (
+                        <div key={l.id} className={`rounded-2xl border bg-white p-4 ${l.flagged ? 'border-orange-200' : 'border-stone-200'}`}>
+                          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                            <div className="flex min-w-0 items-start gap-3">
+                              {l.images?.[0] && <img src={l.images[0]} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />}
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Link to={`/listing/${l.id}`} className="font-semibold text-stone-900 hover:text-primary-700">{l.title}</Link>
+                                  {!l.active && <Badge>Disabled</Badge>}
+                                  {isExpired && <Badge tone="red">Expired</Badge>}
+                                  {l.flagged && <Badge tone="orange">⚑ {l.flagCount} flags</Badge>}
+                                </div>
+                                <p className="mt-0.5 text-sm text-stone-500">by {l.author} · {l.userName} · {l.location}</p>
+                                <p className="mt-0.5 text-xs text-stone-400">{new Date(l.createdAt).toLocaleDateString()} · {l.type === 'sell' ? `KSh ${l.price?.toLocaleString()}` : l.type}</p>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 xl:justify-end">
+                              <ActionButton onClick={() => openEditListing(l)}>Edit</ActionButton>
+                              <ActionButton onClick={() => toggleListingActive(l)}>{l.active ? 'Disable' : 'Enable'}</ActionButton>
+                              {l.flagged && <ActionButton onClick={() => unflagListing(l.id)}>Unflag</ActionButton>}
+                              <ActionButton danger onClick={() => deleteListing(l.id)}>Delete</ActionButton>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
+                )}
 
-                  {/* Max Images */}
-                  <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1">
-                      Max Images per Listing
-                    </label>
-                    <p className="text-xs text-stone-500 mb-2">Maximum number of photos a seller can upload per listing</p>
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5, 6, 8].map(n => (
-                        <button
-                          key={n}
-                          onClick={() => setSettingsDraft(d => ({ ...d, maxImagesPerListing: n }))}
-                          className={`w-10 h-10 rounded-lg border text-sm font-medium transition ${
-                            settingsDraft.maxImagesPerListing === n
-                              ? 'border-primary-500 bg-primary-50 text-primary-700'
-                              : 'border-stone-200 text-stone-600 hover:border-stone-300'
-                          }`}
-                        >
-                          {n}
+                {tab === 'users' && (
+                  <div className="space-y-4">
+                    <FilterBar
+                      searchValue={userSearch}
+                      onSearchChange={setUserSearch}
+                      searchPlaceholder="Search users by name or email..."
+                      selectValue={userFilter}
+                      onSelectChange={value => setUserFilter(value as typeof userFilter)}
+                      options={[['all', 'All Users'], ['active', 'Active'], ['deactivated', 'Deactivated'], ['flagged', 'Flagged'], ['admin', 'Admins']]}
+                    />
+                    <p className="text-sm text-stone-500">{filteredUsers.length} users</p>
+                    {filteredUsers.length === 0 ? <EmptyState message="No users found" /> : filteredUsers.map(u => {
+                      const isDeactivated = (u as any).deactivated;
+                      return (
+                        <div key={u.uid} className={`rounded-2xl border bg-white p-4 ${isDeactivated ? 'border-stone-300 opacity-70' : u.flagged ? 'border-orange-200' : 'border-stone-200'}`}>
+                          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-semibold ${isDeactivated ? 'bg-stone-200 text-stone-400' : 'bg-primary-100 text-primary-700'}`}>
+                                {u.displayName?.[0]?.toUpperCase() || 'U'}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-semibold text-stone-900">{u.displayName}</span>
+                                  {u.isAdmin && <Badge tone="blue">Admin</Badge>}
+                                  {isDeactivated && <Badge>Deactivated</Badge>}
+                                  {u.flagged && <Badge tone="orange">⚑ {u.flagCount} flags</Badge>}
+                                </div>
+                                <p className="truncate text-sm text-stone-500">{u.email}</p>
+                                <p className="text-xs text-stone-400">{u.location} · Joined {new Date(u.createdAt).toLocaleDateString()}</p>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 xl:justify-end">
+                              <ActionButton onClick={() => { setNotifTarget('user'); setNotifUserId(u.email); setTab('notifications'); }}>Message</ActionButton>
+                              <ActionButton onClick={() => toggleAdmin(u)}>{u.isAdmin ? 'Remove Admin' : 'Make Admin'}</ActionButton>
+                              {u.flagged && <ActionButton onClick={() => unflagUser(u.uid)}>Unflag</ActionButton>}
+                              <ActionButton danger={!isDeactivated} onClick={() => setConfirmUser(u)}>{isDeactivated ? 'Reactivate' : 'Deactivate'}</ActionButton>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {tab === 'notifications' && (
+                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+                    <div className="rounded-2xl border border-stone-200 bg-white p-6">
+                      <h2 className="mb-4 text-lg font-bold text-black">Send Notification</h2>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold text-stone-700">Send To</label>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <button onClick={() => setNotifTarget('all')} className={`rounded-xl border py-2.5 text-sm font-semibold ${notifTarget === 'all' ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-stone-200 text-stone-600 hover:bg-stone-50'}`}>All Users ({allUsers.length})</button>
+                            <button onClick={() => setNotifTarget('user')} className={`rounded-xl border py-2.5 text-sm font-semibold ${notifTarget === 'user' ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-stone-200 text-stone-600 hover:bg-stone-50'}`}>Specific User</button>
+                          </div>
+                        </div>
+                        {notifTarget === 'user' && <TextInput label="User Email or ID" value={notifUserId} onChange={setNotifUserId} placeholder="user@example.com" />}
+                        <TextInput label="Subject" value={notifSubject} onChange={setNotifSubject} placeholder="Important platform update" />
+                        <div>
+                          <label className="mb-1 block text-sm font-semibold text-stone-700">Message</label>
+                          <textarea value={notifMessage} onChange={e => setNotifMessage(e.target.value)} rows={5} className="w-full resize-none rounded-xl border border-stone-200 px-4 py-3 text-sm outline-none focus:border-primary-400" placeholder="Write your message here..." />
+                        </div>
+                        <button onClick={sendNotification} disabled={notifSending || !notifSubject.trim() || !notifMessage.trim()} className="flex w-full items-center justify-center rounded-xl bg-primary-600 py-3 font-semibold text-white transition hover:bg-primary-700 disabled:opacity-50">
+                          {notifSending ? 'Sending...' : 'Send Notification'}
                         </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Max Listings per User */}
-                  <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1">
-                      Max Active Listings per User
-                    </label>
-                    <p className="text-xs text-stone-500 mb-2">Maximum concurrent active listings allowed per user account</p>
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="range"
-                        min={1}
-                        max={100}
-                        value={settingsDraft.maxListingsPerUser}
-                        onChange={e => setSettingsDraft(d => ({ ...d, maxListingsPerUser: parseInt(e.target.value) }))}
-                        className="flex-1 accent-primary-600"
-                      />
-                      <div className="w-16 px-3 py-1.5 border border-stone-200 rounded-lg text-sm text-center font-semibold text-stone-800">
-                        {settingsDraft.maxListingsPerUser}
                       </div>
                     </div>
-                    <div className="flex justify-between text-xs text-stone-400 mt-1">
-                      <span>1</span><span>100</span>
+
+                    <div className="rounded-2xl border border-stone-200 bg-white p-6">
+                      <h2 className="mb-4 text-lg font-bold text-black">Sent Notifications ({notifications.length})</h2>
+                      {notifications.length === 0 ? <p className="text-sm text-stone-500">No notifications sent yet</p> : (
+                        <div className="max-h-[520px] space-y-3 overflow-y-auto pr-1">
+                          {notifications.map(n => (
+                            <div key={n.id} className="rounded-xl bg-stone-50 p-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-semibold text-stone-900">{n.subject}</p>
+                                  <p className="mt-0.5 text-xs text-stone-500">To: {n.userName}</p>
+                                  <p className="mt-1 line-clamp-2 text-sm text-stone-600">{n.message}</p>
+                                </div>
+                                <p className="shrink-0 text-xs text-stone-400">{new Date(n.createdAt).toLocaleDateString()}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
+                )}
 
-                  {/* Toggles */}
-                  <div className="space-y-4 pt-2 border-t border-stone-100">
-                    <div className="flex items-center justify-between">
+                {tab === 'settings' && (
+                  <div className="max-w-3xl rounded-2xl border border-stone-200 bg-white p-6">
+                    <h2 className="mb-5 text-lg font-bold text-black">Platform Settings</h2>
+                    <div className="space-y-6">
+                      <RangeSetting label="Listing Expiry (days)" helper="How many days before a listing automatically expires" min={1} max={90} value={settingsDraft.listingExpiryDays} suffix="d" onChange={value => setSettingsDraft(d => ({ ...d, listingExpiryDays: value }))} />
                       <div>
-                        <p className="text-sm font-medium text-stone-700">Maintenance Mode</p>
-                        <p className="text-xs text-stone-500">Show a maintenance message to all users</p>
+                        <label className="mb-1 block text-sm font-semibold text-stone-700">Max Images per Listing</label>
+                        <p className="mb-2 text-xs text-stone-500">Maximum number of photos a seller can upload per listing</p>
+                        <div className="flex flex-wrap gap-2">
+                          {[1, 2, 3, 4, 5, 6, 8].map(n => (
+                            <button key={n} onClick={() => setSettingsDraft(d => ({ ...d, maxImagesPerListing: n }))} className={`h-10 w-10 rounded-lg border text-sm font-semibold ${settingsDraft.maxImagesPerListing === n ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-stone-200 text-stone-600 hover:bg-stone-50'}`}>{n}</button>
+                          ))}
+                        </div>
                       </div>
-                      <button
-                        onClick={() => setSettingsDraft(d => ({ ...d, maintenanceMode: !d.maintenanceMode }))}
-                        className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${settingsDraft.maintenanceMode ? 'bg-red-500' : 'bg-stone-300'}`}
-                      >
-                        <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${settingsDraft.maintenanceMode ? 'translate-x-7' : 'translate-x-1'}`} />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-stone-700">Allow New Registrations</p>
-                        <p className="text-xs text-stone-500">Disable to prevent new accounts from being created</p>
+                      <RangeSetting label="Max Active Listings per User" helper="Maximum concurrent active listings allowed per user account" min={1} max={100} value={settingsDraft.maxListingsPerUser} onChange={value => setSettingsDraft(d => ({ ...d, maxListingsPerUser: value }))} />
+                      <ToggleSetting label="Maintenance Mode" helper="Show a maintenance message to all users" enabled={settingsDraft.maintenanceMode} onClick={() => setSettingsDraft(d => ({ ...d, maintenanceMode: !d.maintenanceMode }))} danger />
+                      <ToggleSetting label="Allow New Registrations" helper="Disable to prevent new accounts from being created" enabled={settingsDraft.allowNewRegistrations} onClick={() => setSettingsDraft(d => ({ ...d, allowNewRegistrations: !d.allowNewRegistrations }))} />
+                      <div className="flex gap-3 border-t border-stone-100 pt-4">
+                        <button onClick={saveSettings} disabled={settingsSaving} className="rounded-xl bg-primary-600 px-6 py-2.5 font-semibold text-white transition hover:bg-primary-700 disabled:opacity-50">{settingsSaving ? 'Saving...' : 'Save Settings'}</button>
+                        <button onClick={() => setSettingsDraft(settings)} className="rounded-xl border border-stone-200 px-6 py-2.5 text-sm font-semibold text-stone-600 transition hover:bg-stone-50">Reset</button>
                       </div>
-                      <button
-                        onClick={() => setSettingsDraft(d => ({ ...d, allowNewRegistrations: !d.allowNewRegistrations }))}
-                        className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${settingsDraft.allowNewRegistrations ? 'bg-primary-500' : 'bg-stone-300'}`}
-                      >
-                        <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${settingsDraft.allowNewRegistrations ? 'translate-x-7' : 'translate-x-1'}`} />
-                      </button>
                     </div>
                   </div>
+                )}
 
-                  {/* Save */}
-                  <div className="flex items-center gap-3 pt-4 border-t border-stone-100">
-                    <button
-                      onClick={saveSettings}
-                      disabled={settingsSaving}
-                      className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:opacity-50 flex items-center gap-2"
-                    >
-                      {settingsSaving ? (
-                        <>
-                          <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                          Saving...
-                        </>
-                      ) : 'Save Settings'}
-                    </button>
-                    <button
-                      onClick={() => setSettingsDraft(settings)}
-                      className="px-6 py-2.5 border border-stone-200 text-stone-600 rounded-xl hover:bg-stone-50 transition text-sm font-medium"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ── Edit Listing Modal ──────────────────────────────────────── */}
-      {editListing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6">
-            <h3 className="text-lg font-bold text-stone-800 mb-4">Edit Listing</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Title</label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={e => setEditTitle(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:border-primary-400 outline-none"
-                />
-              </div>
-              {editListing.type === 'sell' && (
-                <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1">Price (KSh)</label>
-                  <input
-                    type="number"
-                    value={editPrice}
-                    onChange={e => setEditPrice(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:border-primary-400 outline-none"
+                {['reviews', 'analytics', 'activity', 'blog', 'legal'].includes(tab) && (
+                  <ComingSoon
+                    title={pageTitles[tab]}
+                    message={tab === 'activity' ? 'Use this area for platform activity logs, moderation events, and admin history.' : 'This admin section has been added to the new dashboard structure and can be connected to live data next.'}
                   />
-                </div>
-              )}
+                )}
+              </>
+            )}
+          </section>
+        </main>
+      </div>
+
+      {editListing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6">
+            <h3 className="mb-4 text-lg font-bold text-stone-900">Edit Listing</h3>
+            <div className="space-y-4">
+              <TextInput label="Title" value={editTitle} onChange={setEditTitle} />
+              {editListing.type === 'sell' && <TextInput label="Price (KSh)" value={editPrice} onChange={setEditPrice} type="number" />}
               <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Description</label>
-                <textarea
-                  value={editDescription}
-                  onChange={e => setEditDescription(e.target.value)}
-                  rows={4}
-                  className="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:border-primary-400 outline-none resize-none"
-                />
+                <label className="mb-1 block text-sm font-semibold text-stone-700">Description</label>
+                <textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} rows={4} className="w-full resize-none rounded-xl border border-stone-200 px-4 py-3 text-sm outline-none focus:border-primary-400" />
               </div>
               <div className="flex gap-2 pt-2">
-                <button onClick={() => setEditListing(null)} className="flex-1 py-2.5 border border-stone-200 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-50 transition">
-                  Cancel
-                </button>
-                <button onClick={saveEditListing} className="flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition">
-                  Save Changes
-                </button>
+                <button onClick={() => setEditListing(null)} className="flex-1 rounded-xl border border-stone-200 py-2.5 text-sm font-semibold text-stone-600 hover:bg-stone-50">Cancel</button>
+                <button onClick={saveEditListing} className="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">Save Changes</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Deactivate User Confirm Modal ─────────────────────────── */}
       {confirmUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 text-center">
-            <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-bold text-stone-800">
-              {(confirmUser as any).deactivated ? 'Reactivate Account' : 'Deactivate Account'}
-            </h3>
-            <p className="text-stone-500 text-sm mt-2">
-              {(confirmUser as any).deactivated
-                ? `Restore access for ${confirmUser.displayName}?`
-                : `This will prevent ${confirmUser.displayName} from logging in. Their listings will remain but be inaccessible.`}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center">
+            <h3 className="text-lg font-bold text-stone-900">{(confirmUser as any).deactivated ? 'Reactivate Account' : 'Deactivate Account'}</h3>
+            <p className="mt-2 text-sm text-stone-500">
+              {(confirmUser as any).deactivated ? `Restore access for ${confirmUser.displayName}?` : `This will prevent ${confirmUser.displayName} from logging in.`}
             </p>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setConfirmUser(null)} className="flex-1 py-2.5 border border-stone-200 rounded-xl text-sm font-medium text-stone-600">
-                Cancel
-              </button>
-              <button
-                onClick={() => toggleUserDeactivated(confirmUser)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition ${
-                  (confirmUser as any).deactivated ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
-                }`}
-              >
+            <div className="mt-6 flex gap-3">
+              <button onClick={() => setConfirmUser(null)} className="flex-1 rounded-xl border border-stone-200 py-2.5 text-sm font-semibold text-stone-600">Cancel</button>
+              <button onClick={() => toggleUserDeactivated(confirmUser)} className={`flex-1 rounded-xl py-2.5 text-sm font-semibold text-white ${(confirmUser as any).deactivated ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
                 {(confirmUser as any).deactivated ? 'Reactivate' : 'Deactivate'}
               </button>
             </div>
@@ -1036,5 +809,108 @@ const Admin: React.FC = () => {
     </div>
   );
 };
+
+const Badge = ({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'neutral' | 'red' | 'orange' | 'blue' }) => {
+  const tones = {
+    neutral: 'bg-stone-100 text-stone-600',
+    red: 'bg-red-100 text-red-600',
+    orange: 'bg-orange-100 text-orange-600',
+    blue: 'bg-primary-100 text-primary-700',
+  };
+  return <span className={`rounded-md px-1.5 py-0.5 text-xs font-semibold ${tones[tone]}`}>{children}</span>;
+};
+
+const ActionButton = ({ children, onClick, danger = false }: { children: React.ReactNode; onClick: () => void; danger?: boolean }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${danger ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-stone-200 text-stone-600 hover:bg-stone-50'}`}
+  >
+    {children}
+  </button>
+);
+
+const EmptyState = ({ message }: { message: string }) => (
+  <div className="rounded-2xl border border-stone-200 bg-white py-12 text-center text-stone-500">
+    {message}
+  </div>
+);
+
+const ComingSoon = ({ title, message }: { title: string; message: string }) => (
+  <div className="rounded-2xl border border-stone-200 bg-white p-8">
+    <h2 className="text-xl font-bold text-black">{title}</h2>
+    <p className="mt-2 max-w-xl text-sm leading-6 text-stone-500">{message}</p>
+  </div>
+);
+
+const FilterBar = ({
+  searchValue,
+  onSearchChange,
+  searchPlaceholder,
+  selectValue,
+  onSelectChange,
+  options,
+}: {
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  searchPlaceholder: string;
+  selectValue: string;
+  onSelectChange: (value: string) => void;
+  options: [string, string][];
+}) => (
+  <div className="flex flex-col gap-3 sm:flex-row">
+    <input
+      type="text"
+      placeholder={searchPlaceholder}
+      value={searchValue}
+      onChange={e => onSearchChange(e.target.value)}
+      className="flex-1 rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-primary-400"
+    />
+    <select
+      value={selectValue}
+      onChange={e => onSelectChange(e.target.value)}
+      className="rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary-400"
+    >
+      {options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+    </select>
+  </div>
+);
+
+const TextInput = ({ label, value, onChange, placeholder, type = 'text' }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string }) => (
+  <div>
+    <label className="mb-1 block text-sm font-semibold text-stone-700">{label}</label>
+    <input
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-primary-400"
+    />
+  </div>
+);
+
+const RangeSetting = ({ label, helper, min, max, value, onChange, suffix = '' }: { label: string; helper: string; min: number; max: number; value: number; onChange: (value: number) => void; suffix?: string }) => (
+  <div>
+    <label className="mb-1 block text-sm font-semibold text-stone-700">{label}</label>
+    <p className="mb-2 text-xs text-stone-500">{helper}</p>
+    <div className="flex items-center gap-4">
+      <input type="range" min={min} max={max} value={value} onChange={e => onChange(parseInt(e.target.value, 10))} className="flex-1 accent-primary-600" />
+      <div className="w-16 rounded-lg border border-stone-200 px-3 py-1.5 text-center text-sm font-bold text-stone-900">{value}{suffix}</div>
+    </div>
+    <div className="mt-1 flex justify-between text-xs text-stone-400"><span>{min}</span><span>{max}</span></div>
+  </div>
+);
+
+const ToggleSetting = ({ label, helper, enabled, onClick, danger = false }: { label: string; helper: string; enabled: boolean; onClick: () => void; danger?: boolean }) => (
+  <div className="flex items-center justify-between border-t border-stone-100 pt-4">
+    <div>
+      <p className="text-sm font-semibold text-stone-700">{label}</p>
+      <p className="text-xs text-stone-500">{helper}</p>
+    </div>
+    <button type="button" onClick={onClick} className={`relative h-6 w-12 rounded-full transition-colors ${enabled ? (danger ? 'bg-red-500' : 'bg-primary-500') : 'bg-stone-300'}`}>
+      <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-7' : 'translate-x-1'}`} />
+    </button>
+  </div>
+);
 
 export default Admin;
