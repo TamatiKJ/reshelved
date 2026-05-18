@@ -1,6 +1,8 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { collection, doc, getDocs, onSnapshot, updateDoc } from 'firebase/firestore';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { db } from './firebase';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -14,6 +16,10 @@ import Profile from './pages/Profile';
 import Admin from './pages/AdminUserDashboardNotifyWrapper';
 import Notifications from './pages/Notifications';
 import LegalPage from './pages/LegalPage';
+import type { Listing } from './types';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const safeListingDays = (value: unknown) => Math.max(1, Math.min(45, Number(value) || 10));
 
 const ScrollToTop: React.FC = () => {
   const { pathname, search, key } = useLocation();
@@ -138,6 +144,61 @@ const AdminFormFocusKeeper: React.FC<{ enabled: boolean }> = ({ enabled }) => {
   return null;
 };
 
+const PlatformListingDurationSync: React.FC<{ enabled: boolean }> = ({ enabled }) => {
+  const previousListingDaysRef = useRef<number | null>(null);
+  const syncingRef = useRef(false);
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+
+    const unsubscribe = onSnapshot(doc(db, 'platform', 'settings'), async (snapshot) => {
+      if (!snapshot.exists() || syncingRef.current) return;
+
+      const nextListingDays = safeListingDays(snapshot.data().listingDays);
+      const previousListingDays = previousListingDaysRef.current;
+      previousListingDaysRef.current = nextListingDays;
+
+      if (previousListingDays === null || nextListingDays <= previousListingDays) return;
+
+      syncingRef.current = true;
+      try {
+        const now = Date.now();
+        const listingSnap = await getDocs(collection(db, 'listings'));
+        const updates: Array<Promise<void>> = [];
+        const updatedListings: Listing[] = [];
+
+        listingSnap.forEach((item) => {
+          const listing = { id: item.id, ...item.data() } as Listing;
+          if (!listing.active || !listing.createdAt || !listing.expiresAt || listing.expiresAt <= now) return;
+
+          const extendedExpiresAt = listing.createdAt + nextListingDays * DAY_MS;
+          if (extendedExpiresAt <= listing.expiresAt) return;
+
+          updatedListings.push({ ...listing, expiresAt: extendedExpiresAt });
+          updates.push(updateDoc(doc(db, 'listings', item.id), {
+            expiresAt: extendedExpiresAt,
+            listingDays: nextListingDays,
+            durationAdjustedAt: now
+          }));
+        });
+
+        if (updates.length > 0) {
+          await Promise.all(updates);
+          window.dispatchEvent(new CustomEvent('reshelved:listings-duration-updated', { detail: { listingDays: nextListingDays, count: updates.length, listings: updatedListings } }));
+        }
+      } catch (error) {
+        console.error('Listing duration sync failed:', error);
+      } finally {
+        syncingRef.current = false;
+      }
+    });
+
+    return unsubscribe;
+  }, [enabled]);
+
+  return null;
+};
+
 const LoadingScreen: React.FC = () => (
   <div className="min-h-screen flex items-center justify-center px-5">
     <div className="flex flex-col items-center gap-3 p-5">
@@ -165,9 +226,10 @@ const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
 };
 
 const AppContent: React.FC = () => {
-  const { loading } = useAuth();
+  const { loading, userProfile } = useAuth();
   const location = useLocation();
   const isAdminRoute = location.pathname === '/admin';
+  const isAdminEnabled = isAdminRoute && Boolean(userProfile?.isAdmin);
 
   if (loading) {
     return (
@@ -189,7 +251,8 @@ const AppContent: React.FC = () => {
   return (
     <>
       <ScrollToTop />
-      <AdminFormFocusKeeper enabled={isAdminRoute} />
+      <AdminFormFocusKeeper enabled={isAdminEnabled} />
+      <PlatformListingDurationSync enabled={isAdminEnabled} />
       <Routes>
         <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
         <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
