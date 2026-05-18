@@ -45,6 +45,21 @@
           });
         };
 
+        var addLoggedOutContactButton = function () {
+          var path = window.location.pathname || '';
+          if (!path.startsWith('/profile/')) return;
+          if (document.querySelector('[data-login-contact-button="true"]')) return;
+          if (document.querySelector('button i.la-comment')) return;
+          var profileCard = document.querySelector('aside .rounded-\[32px\] .flex.flex-col.items-center.text-center');
+          if (!profileCard) return;
+          var button = document.createElement('a');
+          button.href = '/login';
+          button.dataset.loginContactButton = 'true';
+          button.className = 'mt-6 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[#FF5F57] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#e84f48]';
+          button.innerHTML = '<i class="las la-comment text-lg"></i>Log in to Contact';
+          profileCard.appendChild(button);
+        };
+
         var paintRange = function (range) {
           var min = Number(range.min || 0);
           var max = Number(range.max || 100);
@@ -58,6 +73,7 @@
         };
 
         updateBackLabels();
+        addLoggedOutContactButton();
         paintRanges();
         document.addEventListener('input', function (event) {
           if (event.target && event.target.matches && event.target.matches('input[type="range"]')) paintRange(event.target);
@@ -72,7 +88,7 @@
             window.setTimeout(paintRanges, 60);
           }
         }, true);
-        new MutationObserver(function () { updateBackLabels(); paintRanges(); }).observe(document.body, { childList: true, subtree: true });
+        new MutationObserver(function () { updateBackLabels(); addLoggedOutContactButton(); paintRanges(); }).observe(document.body, { childList: true, subtree: true });
       });
     </script>
     <script type="module" src="/src/main.tsx"></script>
