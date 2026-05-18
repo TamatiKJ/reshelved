@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./reshelved-overrides.css";
+import "./mobile-logo-fixes.css";
 import App from "./App";
 
 const openImageZoom = (src: string, alt: string) => {
