@@ -70,6 +70,9 @@ const AdminUserDashboardStyled: React.FC = () => {
       const bottomWrap = document.createElement('div');
       bottomWrap.className = 'admin-extra-actions';
 
+      const bottomDivider = document.createElement('div');
+      bottomDivider.className = 'admin-extra-action-divider admin-extra-action-divider-bottom';
+
       const viewLink = document.createElement('a');
       viewLink.href = '/';
       viewLink.className = 'admin-extra-action';
@@ -78,7 +81,7 @@ const AdminUserDashboardStyled: React.FC = () => {
       const logoutButton = document.createElement('button');
       logoutButton.type = 'button';
       logoutButton.className = 'admin-extra-action';
-      logoutButton.innerHTML = '<i class="las la-sign-out-alt"></i><span>Logout</span>';
+      logoutButton.innerHTML = '<i class="las la-sign-out-alt"></i><span>Sign Out</span>';
 
       const handleSend = () => sendUpdate();
       const handleLogout = () => logout?.();
@@ -87,7 +90,7 @@ const AdminUserDashboardStyled: React.FC = () => {
       logoutButton.addEventListener('click', handleLogout);
 
       topWrap.append(sendButton, topDivider);
-      bottomWrap.append(viewLink, logoutButton);
+      bottomWrap.append(bottomDivider, viewLink, logoutButton);
       sidebar.insertBefore(topWrap, sidebar.firstChild);
       sidebar.appendChild(bottomWrap);
 
