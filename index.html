@@ -10,6 +10,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/line-awesome/1.3.0/line-awesome/css/line-awesome.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
       a[aria-label="Share on X"]{display:none!important;}
+      input[type="range"]{height:8px;border-radius:999px;background:#e7e5e4;appearance:none;-webkit-appearance:none;}
+      input[type="range"]::-webkit-slider-runnable-track{height:8px;border-radius:999px;background:transparent;}
+      input[type="range"]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:20px;height:20px;margin-top:-6px;border-radius:999px;background:#fff;border:3px solid #1665CC;box-shadow:0 2px 8px rgba(0,0,0,.16);}
+      input[type="range"]::-moz-range-track{height:8px;border-radius:999px;background:transparent;}
+      input[type="range"]::-moz-range-thumb{width:20px;height:20px;border-radius:999px;background:#fff;border:3px solid #1665CC;box-shadow:0 2px 8px rgba(0,0,0,.16);}
       @media (max-width:639px){
         a.group[href^="/messages/"]>div.flex.items-center{position:relative!important;align-items:flex-start!important;padding-right:20px!important;}
         a.group[href^="/messages/"]>div.flex.items-center>.min-w-0.flex-1{min-width:0!important;padding-right:0!important;}
@@ -29,8 +34,28 @@
             if ((button.textContent || '').trim() === '← Browse listings') button.textContent = '← Back';
           });
         };
+
+        var paintRange = function (range) {
+          var min = Number(range.min || 0);
+          var max = Number(range.max || 100);
+          var value = Number(range.value || min);
+          var percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
+          range.style.background = 'linear-gradient(90deg, #1665CC 0%, #1665CC ' + percent + '%, #e7e5e4 ' + percent + '%, #e7e5e4 100%)';
+        };
+
+        var paintRanges = function () {
+          document.querySelectorAll('input[type="range"]').forEach(paintRange);
+        };
+
         updateBackLabels();
-        new MutationObserver(updateBackLabels).observe(document.body, { childList: true, subtree: true });
+        paintRanges();
+        document.addEventListener('input', function (event) {
+          if (event.target && event.target.matches && event.target.matches('input[type="range"]')) paintRange(event.target);
+        }, true);
+        document.addEventListener('change', function (event) {
+          if (event.target && event.target.matches && event.target.matches('input[type="range"]')) paintRange(event.target);
+        }, true);
+        new MutationObserver(function () { updateBackLabels(); paintRanges(); }).observe(document.body, { childList: true, subtree: true });
       });
     </script>
     <script type="module" src="/src/main.tsx"></script>
