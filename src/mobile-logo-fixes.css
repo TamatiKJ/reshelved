@@ -157,3 +157,46 @@ main table.min-w-\[1120px\] tbody td:last-child button.text-red-600:hover {
   background: #fef2f2 !important;
   border-color: #fca5a5 !important;
 }
+
+/* Media library: compact WordPress-style grid cards. */
+main section:has(input[placeholder="Search media..."]) .grid.grid-cols-1.gap-4.sm\:grid-cols-2.xl\:grid-cols-4 {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)) !important;
+  gap: 12px !important;
+}
+
+main section:has(input[placeholder="Search media..."]) article.overflow-hidden.rounded-2xl.border.border-stone-200.bg-white {
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  background: #fff !important;
+}
+
+main section:has(input[placeholder="Search media..."]) article .aspect-square {
+  aspect-ratio: 1 / 1 !important;
+}
+
+main section:has(input[placeholder="Search media..."]) article .space-y-1.p-4 {
+  padding: 8px !important;
+  line-height: 1.2 !important;
+}
+
+main section:has(input[placeholder="Search media..."]) article p.truncate.font-bold.text-stone-950 {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+main section:has(input[placeholder="Search media..."]) article p.text-stone-500 {
+  font-size: 11px !important;
+}
+
+main section:has(input[placeholder="Search media..."]) article button.text-red-600 {
+  margin-top: 4px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+
+@media (min-width: 1280px) {
+  main section:has(input[placeholder="Search media..."]) .grid.grid-cols-1.gap-4.sm\:grid-cols-2.xl\:grid-cols-4 {
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)) !important;
+  }
+}
