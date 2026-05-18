@@ -10,9 +10,13 @@ import type { UserProfile, Listing, Rating } from '../types';
 import { KENYAN_CITIES } from '../types';
 
 const inputClass = 'w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10';
+const primaryButtonClass = 'inline-flex items-center justify-center gap-2 rounded-full bg-[#FF5F57] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#e84f48] disabled:cursor-not-allowed disabled:opacity-60';
+const dangerButtonClass = 'inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-red-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60';
 const DEFAULT_RENEW_DAYS = 10;
 const getConversationKey = (a: string, b: string) => [a, b].sort().join('_');
+
 type ProfileTab = 'active' | 'expired' | 'bookmarks' | 'profile' | 'settings';
+type SecurityModal = 'email' | 'password' | 'delete' | null;
 
 const PasswordField: React.FC<{ value: string; onChange: (value: string) => void; placeholder?: string; autoComplete: string }> = ({ value, onChange, placeholder, autoComplete }) => {
   const [visible, setVisible] = useState(false);
@@ -64,6 +68,19 @@ const EmptyState: React.FC<{ icon: string; title: string; body: string; action?:
   </div>
 );
 
+const SecurityCard: React.FC<{ icon: string; title: string; body: string; tone?: 'default' | 'danger'; onClick: () => void }> = ({ icon, title, body, tone = 'default', onClick }) => (
+  <button type="button" onClick={onClick} className={`group flex w-full cursor-pointer items-center justify-between gap-4 rounded-[24px] border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${tone === 'danger' ? 'border-red-200 bg-red-50 hover:bg-red-100/60' : 'border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50'}`}>
+    <span className="flex min-w-0 items-center gap-3">
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${tone === 'danger' ? 'bg-red-100 text-red-700' : 'bg-[#FFF4E2] text-[#FF5F57]'}`}><i className={`las ${icon} text-2xl`} /></span>
+      <span className="min-w-0">
+        <span className={`block text-sm font-bold ${tone === 'danger' ? 'text-red-700' : 'text-stone-950'}`}>{title}</span>
+        <span className={`mt-0.5 block text-xs leading-5 ${tone === 'danger' ? 'text-red-700/75' : 'text-stone-500'}`}>{body}</span>
+      </span>
+    </span>
+    <i className="las la-angle-right shrink-0 text-xl text-stone-400 transition group-hover:translate-x-0.5" />
+  </button>
+);
+
 const Profile: React.FC = () => {
   const { userId } = useParams<{ userId?: string }>();
   const navigate = useNavigate();
@@ -74,6 +91,7 @@ const Profile: React.FC = () => {
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ProfileTab>('active');
+  const [securityModal, setSecurityModal] = useState<SecurityModal>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [messageLoading, setMessageLoading] = useState(false);
@@ -220,7 +238,7 @@ const Profile: React.FC = () => {
     const cleanEmail = newEmail.trim().toLowerCase();
     if (!cleanEmail || cleanEmail === currentUser.email) return setSaveError('Enter a new email address first.');
     setAccountLoading(true); setSaveError(''); setSaveMessage('');
-    try { await reauthenticate(emailPassword); await verifyBeforeUpdateEmail(currentUser, cleanEmail); setEmailPassword(''); setSaveMessage(`Confirmation email sent to ${cleanEmail}.`); }
+    try { await reauthenticate(emailPassword); await verifyBeforeUpdateEmail(currentUser, cleanEmail); setEmailPassword(''); setSecurityModal(null); setSaveMessage(`Confirmation email sent to ${cleanEmail}.`); }
     catch (err: any) { setSaveError(err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential' ? 'Current password is incorrect.' : err?.message || 'Email change failed.'); }
     finally { setAccountLoading(false); }
   };
@@ -230,7 +248,7 @@ const Profile: React.FC = () => {
     if (newPassword.length < 6) return setSaveError('New password must be at least 6 characters.');
     if (newPassword !== confirmNewPassword) return setSaveError('New passwords do not match.');
     setAccountLoading(true); setSaveError(''); setSaveMessage('');
-    try { await reauthenticate(currentPassword); await updatePassword(currentUser, newPassword); setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); setSaveMessage('Password updated successfully.'); }
+    try { await reauthenticate(currentPassword); await updatePassword(currentUser, newPassword); setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); setSecurityModal(null); setSaveMessage('Password updated successfully.'); }
     catch (err: any) { setSaveError(err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential' ? 'Current password is incorrect.' : err?.message || 'Password update failed.'); }
     finally { setAccountLoading(false); }
   };
@@ -291,26 +309,54 @@ const Profile: React.FC = () => {
   };
 
   const tabs = isOwnProfile ? [
-    { id: 'active' as ProfileTab, label: 'Active listings', short: 'Active', icon: 'la-book-open', count: activeListings.length },
-    { id: 'expired' as ProfileTab, label: 'Expired listings', short: 'Expired', icon: 'la-hourglass-half', count: expiredListings.length },
-    { id: 'bookmarks' as ProfileTab, label: 'Bookmarked books', short: 'Saved', icon: 'la-heart', count: bookmarkedListings.length },
-    { id: 'profile' as ProfileTab, label: 'Public profile', short: 'Profile', icon: 'la-user', count: null },
-    { id: 'settings' as ProfileTab, label: 'Account settings', short: 'Settings', icon: 'la-cog', count: null }
+    { id: 'active' as ProfileTab, label: 'Active listings', icon: 'la-book-open', count: activeListings.length },
+    { id: 'expired' as ProfileTab, label: 'Expired listings', icon: 'la-hourglass-half', count: expiredListings.length },
+    { id: 'bookmarks' as ProfileTab, label: 'Bookmarked books', icon: 'la-heart', count: bookmarkedListings.length },
+    { id: 'profile' as ProfileTab, label: 'Public profile', icon: 'la-user', count: null },
+    { id: 'settings' as ProfileTab, label: 'Account settings', icon: 'la-cog', count: null }
   ] : [];
+
+  const closeSecurityModal = () => {
+    setSecurityModal(null);
+    setSaveError('');
+  };
+
+  const renderSecurityModal = () => {
+    if (!securityModal) return null;
+    const title = securityModal === 'email' ? 'Change email' : securityModal === 'password' ? 'Change password' : 'Delete account';
+    const subtitle = securityModal === 'delete' ? 'This action deactivates your listings and deletes your login account.' : 'Confirm the change securely using your current password.';
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
+        <div className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-stone-950">{title}</h3>
+              <p className="mt-1 text-sm leading-6 text-stone-500">{subtitle}</p>
+            </div>
+            <button type="button" onClick={closeSecurityModal} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200" aria-label="Close modal"><i className="las la-times text-xl" /></button>
+          </div>
+          {saveError && <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{saveError}</div>}
+          {securityModal === 'email' && <div className="mt-5 space-y-3"><input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className={inputClass} placeholder="New email address" autoComplete="email" /><PasswordField value={emailPassword} onChange={setEmailPassword} placeholder="Current password" autoComplete="current-password" /><button type="button" onClick={handleChangeEmail} disabled={accountLoading} className={`w-full cursor-pointer ${primaryButtonClass}`}>{accountLoading ? 'Sending...' : 'Send confirmation email'}</button></div>}
+          {securityModal === 'password' && <div className="mt-5 space-y-3"><PasswordField value={currentPassword} onChange={setCurrentPassword} placeholder="Current password" autoComplete="current-password" /><PasswordField value={newPassword} onChange={setNewPassword} placeholder="New password" autoComplete="new-password" /><PasswordField value={confirmNewPassword} onChange={setConfirmNewPassword} placeholder="Confirm new password" autoComplete="new-password" /><button type="button" onClick={handleChangePassword} disabled={accountLoading} className={`w-full cursor-pointer ${primaryButtonClass}`}>{accountLoading ? 'Updating...' : 'Update password'}</button></div>}
+          {securityModal === 'delete' && <div className="mt-5 space-y-3"><PasswordField value={deletePassword} onChange={setDeletePassword} placeholder="Current password" autoComplete="current-password" /><button type="button" onClick={handleDeleteAccount} disabled={accountLoading} className={dangerButtonClass}>{accountLoading ? 'Deleting...' : 'Delete my account'}</button></div>}
+        </div>
+      </div>
+    );
+  };
 
   if (loading) return <div className="mx-auto max-w-[1180px] px-4 py-8 pb-10 sm:px-6 sm:pb-20"><div className="animate-pulse rounded-[32px] border border-stone-200 bg-white p-6"><div className="flex items-center gap-5"><div className="h-24 w-24 rounded-[28px] bg-stone-200" /><div className="space-y-3"><div className="h-7 w-48 rounded bg-stone-200" /><div className="h-4 w-64 rounded bg-stone-100" /></div></div></div></div>;
   if (!profile) return <div className="mx-auto max-w-[996px] px-4 py-16 text-center pb-10 sm:pb-20"><h2 className="text-xl font-bold text-stone-700">User not found</h2><p className="mt-2 text-stone-500">This profile does not exist or you do not have permission to view it.</p><Link to="/browse" className="mt-4 inline-block font-semibold text-primary-600">Back to Browse</Link></div>;
 
   const renderListingGrid = (items: Listing[], empty: React.ReactNode) => items.length === 0 ? empty : <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">{items.map(l => <BookCard key={l.id} listing={l} />)}</div>;
-  const primaryButtonClass = 'inline-flex items-center justify-center gap-2 rounded-full bg-[#FF5F57] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#e84f48]';
 
   return (
     <div className="mx-auto max-w-[1180px] px-4 py-8 pb-10 sm:px-6 sm:pb-20">
+      {renderSecurityModal()}
       <div className="grid gap-8 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
         <aside className="lg:sticky lg:top-24">
           <div className="rounded-[32px] border border-stone-200 bg-white p-6 shadow-sm">
             {saveMessage && <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">{saveMessage}</div>}
-            {saveError && <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{saveError}</div>}
+            {saveError && !securityModal && <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{saveError}</div>}
             <div className="flex flex-col items-center text-center">
               <div className="relative">
                 {profile.photoURL ? <img src={profile.photoURL} alt={profile.displayName} className="h-28 w-28 rounded-full object-cover ring-1 ring-stone-200" /> : <div className="flex h-28 w-28 items-center justify-center rounded-full bg-stone-100 text-4xl font-bold text-stone-500 ring-1 ring-stone-200">{profile.displayName?.[0]?.toUpperCase() || 'U'}</div>}
@@ -326,25 +372,18 @@ const Profile: React.FC = () => {
               {!isOwnProfile && currentUser && <button onClick={handleMessageUser} disabled={messageLoading} className="mt-6 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-stone-950 px-5 py-3 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"><i className="las la-comment text-lg" />{messageLoading ? 'Opening...' : 'Message'}</button>}
             </div>
           </div>
-
           {isOwnProfile && <nav className="mt-5 overflow-hidden rounded-[28px] border border-stone-200 bg-white p-2 shadow-sm"><div className="grid gap-1.5">{tabs.map(tab => {
             const selected = activeTab === tab.id;
-            return <button key={tab.id} type="button" onClick={() => { setActiveTab(tab.id); setSaveError(''); setSaveMessage(''); }} className={`flex h-11 cursor-pointer items-center justify-between rounded-lg px-3.5 text-left text-[16px] transition ${selected ? 'border border-stone-300 bg-gradient-to-b from-stone-100 to-stone-200 font-semibold text-black' : 'font-medium text-stone-700 hover:bg-stone-100'}`}><span className="flex min-w-0 items-center gap-3.5"><i className={`las ${tab.icon} text-xl`} />{tab.label}</span>{tab.count !== null && <span className={`rounded-full px-2 py-0.5 text-xs ${selected ? 'bg-white text-stone-700' : 'bg-stone-100 text-stone-500'}`}>{tab.count}</span>}</button>;
+            return <button key={tab.id} type="button" onClick={() => { setActiveTab(tab.id); setSaveError(''); setSaveMessage(''); }} className={`flex h-11 cursor-pointer items-center justify-between rounded-full px-4 text-left text-[16px] transition ${selected ? 'border border-stone-300 bg-gradient-to-b from-stone-100 to-stone-200 font-semibold text-black' : 'font-medium text-stone-700 hover:bg-stone-100'}`}><span className="flex min-w-0 items-center gap-3.5"><i className={`las ${tab.icon} text-xl`} />{tab.label}</span>{tab.count !== null && <span className={`rounded-full px-2 py-0.5 text-xs ${selected ? 'bg-white text-stone-700' : 'bg-stone-100 text-stone-500'}`}>{tab.count}</span>}</button>;
           })}</div></nav>}
         </aside>
-
         <main className="min-w-0">
           {!isOwnProfile && <section><SectionHeader eyebrow="Listings" title={`${profile.displayName}'s books`} subtitle={`${activeListings.length} active book${activeListings.length === 1 ? '' : 's'} listed on Reshelved.`} />{renderListingGrid(activeListings, <EmptyState icon="la-book-open" title="No active listings" body="This user does not have any books available right now." />)}</section>}
-
           {isOwnProfile && activeTab === 'active' && <section><SectionHeader eyebrow="Your shelf" title="Active listings" subtitle="Books buyers can currently discover and message you about." action={<Link to="/create" className={primaryButtonClass}><i className="las la-plus text-lg" />List a Book</Link>} />{renderListingGrid(activeListings, <EmptyState icon="la-book-open" title="No active listings" body="List your first book so people nearby can find it." action={<Link to="/create" className={primaryButtonClass}>List your first book</Link>} />)}</section>}
-
           {isOwnProfile && activeTab === 'expired' && <section><SectionHeader eyebrow="Shelf history" title="Expired listings" subtitle="Renew books you still want to keep visible." />{expiredListings.length === 0 ? <EmptyState icon="la-book-open" title="No expired listings" body="Expired books will appear here when their listing period ends." /> : <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">{expiredListings.map(l => <div key={l.id}><BookCard listing={l} /><button type="button" onClick={() => handleRenewListing(l)} disabled={renewingId === l.id} className="mt-3 w-full cursor-pointer rounded-full bg-[#1665CC] px-4 py-3 text-sm font-bold text-white hover:bg-[#1254a9] disabled:cursor-not-allowed disabled:opacity-60">{renewingId === l.id ? 'Renewing...' : 'Renew listing'}</button></div>)}</div>}</section>}
-
           {isOwnProfile && activeTab === 'bookmarks' && <section><SectionHeader eyebrow="Saved books" title="Bookmarked books" subtitle="Books you saved for later." action={<Link to="/browse" className="text-sm font-bold text-[#1665CC] hover:text-[#1254a9]">Browse books</Link>} />{bookmarkedListings.length === 0 ? <EmptyState icon="la-heart" title="No bookmarked books yet" body="Save books while browsing and they will appear here." action={<Link to="/browse" className={primaryButtonClass}>Find books to save</Link>} /> : <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">{bookmarkedListings.map(l => <div key={l.id}><BookCard listing={l} /><button type="button" onClick={() => removeBookmark(l.id)} className="mt-3 w-full cursor-pointer rounded-full border border-stone-200 px-4 py-3 text-sm font-bold text-stone-700 hover:bg-stone-50">Remove bookmark</button></div>)}</div>}</section>}
-
           {isOwnProfile && activeTab === 'profile' && <section><SectionHeader eyebrow="Public profile" title="Profile details" subtitle="This is the information other users use to decide whether to contact you." /><div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]"><div className="rounded-[28px] border border-stone-200 bg-white p-6"><h3 className="text-lg font-bold text-stone-950">Details</h3><div className="mt-5 divide-y divide-stone-100 text-sm"><div className="flex justify-between gap-4 py-4"><span className="font-semibold text-stone-500">Name</span><span className="text-right font-semibold text-stone-950">{profile.displayName}</span></div><div className="flex justify-between gap-4 py-4"><span className="font-semibold text-stone-500">Location</span><span className="text-right text-stone-700">{profile.location || 'Not set'}</span></div><div className="flex justify-between gap-4 py-4"><span className="font-semibold text-stone-500">Phone</span><span className="text-right text-stone-700">{profile.phone || 'Not set'}</span></div><div className="py-4"><span className="font-semibold text-stone-500">Bio</span><p className="mt-2 leading-6 text-stone-700">{profile.bio || 'No bio added yet.'}</p></div></div></div><div className="rounded-[28px] border border-stone-200 bg-white p-6"><h3 className="text-lg font-bold text-stone-950">Reviews</h3>{ratings.length === 0 ? <p className="mt-4 text-sm text-stone-500">No reviews yet.</p> : <div className="mt-5 space-y-3">{ratings.map(r => <div key={r.id} className="rounded-2xl border border-stone-200 p-4"><div className="flex items-center justify-between gap-4"><span className="font-bold text-stone-800">{r.fromUserName}</span><span className="text-sm text-[#F59E0B]">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span></div>{r.review && <p className="mt-2 text-sm leading-6 text-stone-600">{r.review}</p>}<p className="mt-2 text-xs text-stone-400">{new Date(r.createdAt).toLocaleDateString()} · Re: {r.listingTitle}</p></div>)}</div>}</div></div></section>}
-
-          {isOwnProfile && activeTab === 'settings' && <section><SectionHeader eyebrow="Settings" title="Account settings" subtitle="Update profile details, email, password, and account status." /><div className="grid gap-6 xl:grid-cols-2"><div className="rounded-[28px] border border-stone-200 bg-white p-6"><h3 className="text-lg font-bold text-stone-950">Profile settings</h3><div className="mt-5 space-y-3"><input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className={inputClass} placeholder="Display name" /><textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} className={`${inputClass} resize-none`} rows={4} placeholder="About you..." /><select value={editLocation} onChange={(e) => setEditLocation(e.target.value)} className={inputClass}>{KENYAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}</select><input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className={inputClass} placeholder="Phone number" /><button onClick={handleSaveProfile} disabled={saving} className="w-full cursor-pointer rounded-full bg-[#FF5F57] px-4 py-3 text-sm font-bold text-white hover:bg-[#e84f48] disabled:cursor-not-allowed disabled:opacity-60">{saving ? 'Saving...' : 'Save profile'}</button></div></div><div className="rounded-[28px] border border-stone-200 bg-white p-6"><h3 className="text-lg font-bold text-stone-950">Security</h3><div className="mt-5 space-y-6"><div><p className="font-bold text-stone-900">Change email</p><div className="mt-3 space-y-3"><input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className={inputClass} placeholder="New email address" autoComplete="email" /><PasswordField value={emailPassword} onChange={setEmailPassword} placeholder="Current password" autoComplete="current-password" /><button type="button" onClick={handleChangeEmail} disabled={accountLoading} className="w-full cursor-pointer rounded-full bg-[#FF5F57] px-4 py-3 text-sm font-bold text-white hover:bg-[#e84f48] disabled:cursor-not-allowed disabled:opacity-60">Send confirmation email</button></div></div><div><p className="font-bold text-stone-900">Change password</p><div className="mt-3 space-y-3"><PasswordField value={currentPassword} onChange={setCurrentPassword} placeholder="Current password" autoComplete="current-password" /><PasswordField value={newPassword} onChange={setNewPassword} placeholder="New password" autoComplete="new-password" /><PasswordField value={confirmNewPassword} onChange={setConfirmNewPassword} placeholder="Confirm new password" autoComplete="new-password" /><button type="button" onClick={handleChangePassword} disabled={accountLoading} className="w-full cursor-pointer rounded-full bg-[#FF5F57] px-4 py-3 text-sm font-bold text-white hover:bg-[#e84f48] disabled:cursor-not-allowed disabled:opacity-60">Update password</button></div></div><div className="rounded-2xl border border-red-200 bg-red-50 p-4"><p className="font-bold text-red-700">Delete account</p><p className="mt-1 text-sm leading-6 text-red-700/80">This deactivates your listings and deletes your login account.</p><div className="mt-3 space-y-3"><PasswordField value={deletePassword} onChange={setDeletePassword} placeholder="Current password" autoComplete="current-password" /><button type="button" onClick={handleDeleteAccount} disabled={accountLoading} className="w-full cursor-pointer rounded-full bg-red-600 px-4 py-3 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60">Delete my account</button></div></div></div></div></div></section>}
+          {isOwnProfile && activeTab === 'settings' && <section><SectionHeader eyebrow="Settings" title="Account settings" subtitle="Update profile details, email, password, and account status." /><div className="grid gap-6 xl:grid-cols-2"><div className="rounded-[28px] border border-stone-200 bg-white p-6"><h3 className="text-lg font-bold text-stone-950">Profile settings</h3><div className="mt-5 space-y-3"><input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className={inputClass} placeholder="Display name" /><textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} className={`${inputClass} resize-none`} rows={4} placeholder="About you..." /><select value={editLocation} onChange={(e) => setEditLocation(e.target.value)} className={inputClass}>{KENYAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}</select><input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className={inputClass} placeholder="Phone number" /><button onClick={handleSaveProfile} disabled={saving} className={`w-full cursor-pointer ${primaryButtonClass}`}>{saving ? 'Saving...' : 'Save profile'}</button></div></div><div className="rounded-[28px] border border-stone-200 bg-white p-6"><h3 className="text-lg font-bold text-stone-950">Security</h3><p className="mt-1 text-sm leading-6 text-stone-500">Choose an action to open a focused editor.</p><div className="mt-5 space-y-3"><SecurityCard icon="la-envelope" title="Change email" body="Send a confirmation link to a new email address." onClick={() => setSecurityModal('email')} /><SecurityCard icon="la-lock" title="Change password" body="Update your password after confirming the current one." onClick={() => setSecurityModal('password')} /><SecurityCard icon="la-trash-alt" title="Delete account" body="Deactivate listings and remove your login account." tone="danger" onClick={() => setSecurityModal('delete')} /></div></div></div></section>}
         </main>
       </div>
     </div>
