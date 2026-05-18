@@ -68,6 +68,19 @@
   }
 }
 
+/* Admin listings table typography. */
+main table.min-w-\[1120px\] tbody td {
+  font-size: 13px !important;
+  line-height: 1.35 !important;
+}
+
+main table.min-w-\[1120px\] tbody td:nth-child(1),
+main table.min-w-\[1120px\] tbody td:nth-child(1) a,
+main table.min-w-\[1120px\] tbody td:nth-child(2) {
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+}
+
 /* Admin listings table: replace Delete text with a trash icon. */
 main table.min-w-\[1120px\] tbody td:last-child button.text-red-600 {
   display: inline-flex !important;
