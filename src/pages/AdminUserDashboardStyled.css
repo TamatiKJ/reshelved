@@ -145,3 +145,14 @@
     box-shadow: none !important;
   }
 }
+
+.admin-tiktok-shell .admin-editor-button-active {
+  background: #1665CC !important;
+  border-color: #1665CC !important;
+  color: #ffffff !important;
+}
+
+.admin-tiktok-shell .admin-editor-button-active i,
+.admin-tiktok-shell .admin-editor-button-active span {
+  color: #ffffff !important;
+}
