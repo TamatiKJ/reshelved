@@ -22,14 +22,16 @@
         a.group[href^="/messages/"]>div.flex.items-center>.min-w-0.flex-1>div:first-child>span:first-child{display:block!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
         a.group[href^="/messages/"]>div.flex.items-center>.min-w-0.flex-1>div:first-child>span:last-child{position:absolute!important;right:20px!important;top:17px!important;width:auto!important;min-width:0!important;text-align:right!important;display:block!important;}
         a.group[href^="/messages/"]>div.flex.items-center>span.flex.h-6.min-w-6{position:absolute!important;right:20px!important;top:48px!important;margin:0!important;}
-        .fixed.inset-0.z-50[class*="bg-stone-950"]{align-items:flex-start!important;overflow-y:auto!important;padding-top:max(12px,env(safe-area-inset-top))!important;padding-bottom:16px!important;}
+        .fixed.inset-0.z-50[class*="bg-stone-950"]{top:64px!important;bottom:0!important;height:calc(100dvh - 64px)!important;align-items:flex-start!important;overflow-y:auto!important;padding-top:8px!important;padding-bottom:14px!important;}
         .fixed.inset-0.z-50[class*="bg-stone-950"]>.flex{max-height:none!important;min-height:0!important;width:100%!important;}
         .fixed.inset-0.z-50[class*="bg-stone-950"] .min-h-\[430px\]{min-height:300px!important;padding:14px!important;}
         .fixed.inset-0.z-50[class*="bg-stone-950"] .max-w-\[560px\]{max-width:min(82vw,360px)!important;}
         .fixed.inset-0.z-50[class*="bg-stone-950"] .px-5.py-4{padding-top:12px!important;padding-bottom:12px!important;}
         .fixed.inset-0.z-50[class*="bg-stone-950"] .p-5{padding:14px!important;}
         .fixed.inset-0.z-50[class*="bg-stone-950"] .grid.min-h-0.flex-1{display:block!important;}
-        .fixed.inset-0.z-50[class*="bg-stone-950"] .grid.min-h-0.flex-1>.flex.flex-col{display:none!important;}
+        .fixed.inset-0.z-50[class*="bg-stone-950"] .grid.min-h-0.flex-1>.flex.flex-col{display:flex!important;}
+        .fixed.inset-0.z-50[class*="bg-stone-950"] .grid.min-h-0.flex-1>.flex.flex-col>div:first-child{display:none!important;}
+        .fixed.inset-0.z-50[class*="bg-stone-950"] .grid.min-h-0.flex-1>.flex.flex-col .mt-auto{margin-top:14px!important;padding-top:0!important;}
       }
     </style>
   </head>
