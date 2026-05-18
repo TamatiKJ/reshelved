@@ -178,6 +178,38 @@ const AdminUserDashboardStyled: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const clickAddNewPost = () => {
+      const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.admin-tiktok-shell button'));
+      const addNewButton = buttons.find((button) => button.textContent?.trim().toLowerCase() === 'add new');
+      addNewButton?.click();
+    };
+
+    const addPostsButton = () => {
+      const headings = Array.from(document.querySelectorAll<HTMLHeadingElement>('.admin-tiktok-shell section h3'));
+      const postsHeading = headings.find((heading) => heading.textContent?.trim().toLowerCase().startsWith('all posts'));
+      const panel = postsHeading?.closest('section') as HTMLElement | null;
+      if (!postsHeading || !panel || panel.querySelector('.admin-add-post-button')) return;
+
+      panel.classList.add('admin-posts-panel');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'admin-add-post-button';
+      button.innerHTML = '<span>+ Add Post</span>';
+      button.addEventListener('click', clickAddNewPost);
+      panel.appendChild(button);
+    };
+
+    const mutationObserver = new MutationObserver(addPostsButton);
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
+    addPostsButton();
+
+    return () => {
+      mutationObserver.disconnect();
+      document.querySelectorAll('.admin-add-post-button').forEach((button) => button.remove());
+    };
+  }, []);
+
   return (
     <div className="admin-tiktok-shell">
       <AdminUserDashboard />
