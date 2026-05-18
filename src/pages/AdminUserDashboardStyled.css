@@ -161,3 +161,39 @@
 .admin-tiktok-shell .admin-editor-button-active span {
   color: #ffffff !important;
 }
+
+.admin-posts-panel {
+  position: relative !important;
+}
+
+.admin-add-post-button {
+  position: absolute;
+  top: 28px;
+  right: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 22px;
+  border: 1px solid #D54215;
+  border-radius: 12px;
+  background: #D54215;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.admin-add-post-button:hover {
+  background: #B53811;
+  border-color: #B53811;
+}
+
+@media (max-width: 767px) {
+  .admin-add-post-button {
+    position: static;
+    width: 100%;
+    margin-bottom: 14px;
+  }
+}
