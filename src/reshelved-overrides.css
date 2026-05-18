@@ -134,7 +134,9 @@ article button[aria-label="Remove from favorites"] i {
   }
 
   nav .fixed.inset-0.bg-white a[aria-label="Reshelved home"] img {
+    display: block !important;
     width: 100% !important;
+    max-width: 100% !important;
     height: auto !important;
     max-height: 48px !important;
     object-fit: contain !important;
@@ -281,4 +283,27 @@ span[title="Read"]::before {
   div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group:has(> div.flex.items-center > span.flex.h-6.min-w-6) .min-w-0.flex-1 {
     padding-right: 58px !important;
   }
+}
+
+/* Restore seller review filter buttons to the review blue style. */
+section:has(> div h2):has(button[class*="bg-\[\#1665CC\]"]) > div.mt-8.flex.flex-wrap.gap-2.border-t.border-stone-200.pt-5 button.rounded-full,
+section:has(> div h2):has(button[class*="bg-\[\#1665CC\]"]) > div.mt-8.flex.flex-wrap.gap-2.border-t.border-stone-200.pt-5 button {
+  border-color: #1665CC !important;
+  border-radius: 9999px !important;
+  color: #1665CC !important;
+  background: #ffffff !important;
+}
+
+section:has(> div h2):has(button[class*="bg-\[\#1665CC\]"]) > div.mt-8.flex.flex-wrap.gap-2.border-t.border-stone-200.pt-5 button.bg-\[\#1665CC\] {
+  background: #1665CC !important;
+  border-color: #1665CC !important;
+  color: #ffffff !important;
+}
+
+section:has(> div h2):has(button[class*="bg-\[\#1665CC\]"]) > div.mt-8.flex.flex-wrap.gap-2.border-t.border-stone-200.pt-5 button.bg-\[\#1665CC\] span {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+section:has(> div h2):has(button[class*="bg-\[\#1665CC\]"]) > div.mt-8.flex.flex-wrap.gap-2.border-t.border-stone-200.pt-5 button:not(.bg-\[\#1665CC\]) span {
+  color: #64748b !important;
 }
