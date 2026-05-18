@@ -12,6 +12,17 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      window.addEventListener('DOMContentLoaded', function () {
+        var updateBackLabels = function () {
+          document.querySelectorAll('button').forEach(function (button) {
+            if ((button.textContent || '').trim() === '← Browse listings') button.textContent = '← Back';
+          });
+        };
+        updateBackLabels();
+        new MutationObserver(updateBackLabels).observe(document.body, { childList: true, subtree: true });
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
