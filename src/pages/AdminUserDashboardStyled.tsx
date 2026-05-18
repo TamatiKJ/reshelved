@@ -5,6 +5,7 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import AdminUserDashboard from './AdminUserDashboard';
 import type { UserProfile } from '../types';
+import './AdminUserDashboardStyled.css';
 
 const AdminUserDashboardStyled: React.FC = () => {
   const { userProfile, logout } = useAuth() as any;
