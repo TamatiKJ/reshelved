@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { addDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,6 +22,7 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
   const [message, setMessage] = useState('');
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [sending, setSending] = useState(false);
+  const listingFiltersInitialized = useRef(false);
 
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true);
@@ -65,6 +66,41 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
       document.removeEventListener('mousedown', handleClick, true);
     };
   }, [openModal]);
+
+  useEffect(() => {
+    const applyListingFilterOrder = () => {
+      const listingPanel = Array.from(document.querySelectorAll<HTMLElement>('.admin-tiktok-shell section'))
+        .find((section) => section.querySelector('h3')?.textContent?.trim() === 'Listings');
+      const filterRow = listingPanel?.querySelector<HTMLElement>('.mb-4.flex.flex-wrap.items-center.gap-2');
+      if (!filterRow) return;
+
+      const buttons = Array.from(filterRow.querySelectorAll<HTMLButtonElement>('button'));
+      const allButton = buttons.find((button) => button.textContent?.trim().toLowerCase().startsWith('all'));
+      const activeButton = buttons.find((button) => button.textContent?.trim().toLowerCase().startsWith('active'));
+      const inactiveButton = buttons.find((button) => button.textContent?.trim().toLowerCase().startsWith('inactive'));
+      if (!allButton || !activeButton || !inactiveButton) return;
+
+      const allCount = allButton.querySelector('span')?.outerHTML || '';
+      allButton.innerHTML = `All listings ${allCount}`;
+
+      if (filterRow.children[0] !== allButton || filterRow.children[1] !== activeButton || filterRow.children[2] !== inactiveButton) {
+        filterRow.append(allButton, activeButton, inactiveButton);
+      }
+
+      if (!listingFiltersInitialized.current) {
+        listingFiltersInitialized.current = true;
+        allButton.click();
+      }
+    };
+
+    const runSoon = () => window.setTimeout(applyListingFilterOrder, 60);
+    const timers = [0, 250, 800, 1600].map((delay) => window.setTimeout(applyListingFilterOrder, delay));
+    document.addEventListener('click', runSoon, true);
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      document.removeEventListener('click', runSoon, true);
+    };
+  }, []);
 
   const adminCount = users.filter((user) => user.isAdmin).length;
   const eligibleUsers = useMemo(() => excludeAdmins ? users.filter((user) => !user.isAdmin) : users, [excludeAdmins, users]);
