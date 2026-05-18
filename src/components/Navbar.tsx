@@ -41,7 +41,7 @@ const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           <div className={`flex items-center ${isAdmin ? 'gap-8' : ''}`}>
-            <Link to="/" className="flex items-center shrink-0 max-md:w-[25%]" aria-label="Reshelved home">
+            <Link to="/" className="flex items-center shrink-0 max-md:w-[40%]" aria-label="Reshelved home">
               <img src="/reshelved-logo.svg" alt="Reshelved" className="h-6 w-auto max-md:h-auto max-md:w-full" />
             </Link>
             {isAdmin && (
