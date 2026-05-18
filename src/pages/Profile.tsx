@@ -359,7 +359,7 @@ const Profile: React.FC = () => {
         {cameFromListing ? (
           <button type="button" onClick={() => navigate(-1)} className="inline-flex cursor-pointer items-center text-sm font-bold text-[#1665CC] hover:text-[#1254a9]">← Back to listing</button>
         ) : (
-          <Link to="/browse" className="inline-flex items-center text-sm font-bold text-[#1665CC] hover:text-[#1254a9]">← Browse listings</Link>
+          <button type="button" onClick={() => navigate(-1)} className="inline-flex cursor-pointer items-center text-sm font-bold text-[#1665CC] hover:text-[#1254a9]">← Browse listings</button>
         )}
       </div>
       <div className="grid gap-8 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
