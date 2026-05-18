@@ -53,8 +53,12 @@
     display: grid;
     gap: 6px;
     margin-top: 18px;
-    padding-top: 18px;
-    border-top: 1px solid #eeeeee;
+  }
+
+  .admin-extra-action-divider {
+    height: 1px;
+    margin: 10px 0 2px;
+    background: #eeeeee;
   }
 
   .admin-extra-action {
@@ -65,6 +69,7 @@
   }
 
   .admin-extra-action-primary {
+    min-height: 54px !important;
     justify-content: center !important;
     background: #FF5F57 !important;
     color: #ffffff !important;
