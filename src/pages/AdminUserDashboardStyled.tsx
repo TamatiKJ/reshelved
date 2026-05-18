@@ -1,14 +1,29 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { addDoc, collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { db, storage } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import AdminUserDashboard from './AdminUserDashboard';
 import type { UserProfile } from '../types';
 import './AdminUserDashboardStyled.css';
 
+type LibraryImage = {
+  id: string;
+  url: string;
+  filename?: string;
+  altText?: string;
+  uploadedAt?: number;
+};
+
 const AdminUserDashboardStyled: React.FC = () => {
   const { userProfile, logout } = useAuth() as any;
   const [sending, setSending] = useState(false);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [imageModalTab, setImageModalTab] = useState<'upload' | 'library'>('upload');
+  const [imageUploading, setImageUploading] = useState(false);
+  const [libraryImages, setLibraryImages] = useState<LibraryImage[]>([]);
+  const [imageAltText, setImageAltText] = useState('');
+  const savedEditorRangeRef = useRef<Range | null>(null);
 
   const sendUpdate = useCallback(async () => {
     if (!userProfile?.isAdmin || sending) return;
@@ -43,6 +58,102 @@ const AdminUserDashboardStyled: React.FC = () => {
       setSending(false);
     }
   }, [sending, userProfile?.isAdmin]);
+
+  const getEditor = useCallback(() => document.querySelector<HTMLElement>('.admin-tiktok-shell [contenteditable="true"]'), []);
+
+  const selectionIsInsideEditor = useCallback(() => {
+    const editor = getEditor();
+    const selection = window.getSelection();
+    const activeNode = selection?.anchorNode;
+    return Boolean(editor && activeNode && editor.contains(activeNode.nodeType === Node.TEXT_NODE ? activeNode.parentElement : activeNode as Node));
+  }, [getEditor]);
+
+  const rememberEditorSelection = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || !selectionIsInsideEditor()) return;
+    savedEditorRangeRef.current = selection.getRangeAt(0).cloneRange();
+  }, [selectionIsInsideEditor]);
+
+  const restoreEditorSelection = useCallback(() => {
+    const editor = getEditor();
+    const selection = window.getSelection();
+    if (!editor || !selection || !savedEditorRangeRef.current) return;
+    editor.focus();
+    selection.removeAllRanges();
+    selection.addRange(savedEditorRangeRef.current);
+  }, [getEditor]);
+
+  const syncEditorContent = useCallback(() => {
+    const editor = getEditor();
+    editor?.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertHTML' }));
+  }, [getEditor]);
+
+  const loadLibraryImages = useCallback(async () => {
+    try {
+      const snap = await getDocs(collection(db, 'media'));
+      const items: LibraryImage[] = [];
+      snap.forEach((item) => {
+        const data = item.data() as LibraryImage;
+        if (data.url) items.push({ id: item.id, ...data });
+      });
+      items.sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
+      setLibraryImages(items);
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
+
+  const openImageModal = useCallback(() => {
+    rememberEditorSelection();
+    setImageAltText('');
+    setImageModalTab('upload');
+    setImageModalOpen(true);
+    loadLibraryImages();
+  }, [loadLibraryImages, rememberEditorSelection]);
+
+  const insertImageUrl = useCallback((url: string, altText = '') => {
+    restoreEditorSelection();
+    const cleanAlt = altText.replace(/"/g, '&quot;');
+    const html = `<img src="${url}" alt="${cleanAlt}" class="my-6 w-full rounded-2xl" />`;
+    document.execCommand('insertHTML', false, html);
+    rememberEditorSelection();
+    syncEditorContent();
+    setImageModalOpen(false);
+  }, [rememberEditorSelection, restoreEditorSelection, syncEditorContent]);
+
+  const uploadEditorImage = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      window.alert('Please choose an image file.');
+      return;
+    }
+
+    setImageUploading(true);
+    try {
+      const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+      const path = `blog/content/${Date.now()}-${cleanName}`;
+      const fileRef = ref(storage, path);
+      await uploadBytes(fileRef, file, { contentType: file.type });
+      const url = await getDownloadURL(fileRef);
+      const mediaDoc = {
+        url,
+        filename: cleanName,
+        altText: imageAltText.trim(),
+        uploadedAt: Date.now(),
+        source: 'Blog editor',
+        contentType: file.type,
+        size: file.size,
+        path,
+      };
+      const created = await addDoc(collection(db, 'media'), mediaDoc);
+      setLibraryImages((current) => [{ id: created.id, ...mediaDoc }, ...current]);
+      insertImageUrl(url, imageAltText.trim());
+    } catch (error) {
+      console.error(error);
+      window.alert('Image upload failed. Check Firebase Storage and Firestore rules.');
+    } finally {
+      setImageUploading(false);
+    }
+  }, [imageAltText, insertImageUrl]);
 
   useEffect(() => {
     if (!userProfile?.isAdmin) return undefined;
@@ -114,24 +225,17 @@ const AdminUserDashboardStyled: React.FC = () => {
   }, [logout, sendUpdate, sending, userProfile?.isAdmin]);
 
   useEffect(() => {
-    const getEditor = () => document.querySelector<HTMLElement>('.admin-tiktok-shell [contenteditable="true"]');
     let savedRange: Range | null = null;
 
     const getToolbar = () => getEditor()?.previousElementSibling?.querySelector<HTMLElement>('.mt-4.flex.flex-wrap.gap-2') || null;
     const getToolbarButtons = () => Array.from(getToolbar()?.querySelectorAll<HTMLButtonElement>('button') || []);
     const getButtonFormat = (button: HTMLButtonElement) => button.dataset.adminFormat || button.textContent?.trim().toLowerCase() || '';
 
-    const selectionIsInsideEditor = () => {
-      const editor = getEditor();
-      const selection = window.getSelection();
-      const activeNode = selection?.anchorNode;
-      return Boolean(editor && activeNode && editor.contains(activeNode.nodeType === Node.TEXT_NODE ? activeNode.parentElement : activeNode as Node));
-    };
-
     const rememberSelection = () => {
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0 || !selectionIsInsideEditor()) return;
       savedRange = selection.getRangeAt(0).cloneRange();
+      savedEditorRangeRef.current = savedRange.cloneRange();
     };
 
     const restoreSelection = () => {
@@ -141,11 +245,6 @@ const AdminUserDashboardStyled: React.FC = () => {
       editor.focus();
       selection.removeAllRanges();
       selection.addRange(savedRange);
-    };
-
-    const syncContent = () => {
-      const editor = getEditor();
-      editor?.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'formatSetBlockText' }));
     };
 
     const getBlockFormat = () => {
@@ -172,7 +271,7 @@ const AdminUserDashboardStyled: React.FC = () => {
         restoreSelection();
         document.execCommand('formatBlock', false, 'p');
         rememberSelection();
-        syncContent();
+        syncEditorContent();
         window.setTimeout(setActiveToolbarButton, 0);
       });
 
@@ -184,11 +283,21 @@ const AdminUserDashboardStyled: React.FC = () => {
         if (button.dataset.adminSelectionProtected === 'true') return;
         button.dataset.adminSelectionProtected = 'true';
         button.addEventListener('mousedown', (event) => event.preventDefault());
-        button.addEventListener('click', () => {
+        button.addEventListener('click', (event) => {
+          const isImageButton = Boolean(button.querySelector('.la-image'));
+          if (isImageButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            (event as any).stopImmediatePropagation?.();
+            savedEditorRangeRef.current = savedRange?.cloneRange() || savedEditorRangeRef.current;
+            openImageModal();
+            return;
+          }
+
           restoreSelection();
           window.setTimeout(() => {
             rememberSelection();
-            syncContent();
+            syncEditorContent();
             setActiveToolbarButton();
           }, 0);
         }, true);
@@ -196,9 +305,8 @@ const AdminUserDashboardStyled: React.FC = () => {
     };
 
     function setActiveToolbarButton() {
-      const editor = getEditor();
       const buttons = getToolbarButtons();
-      if (!editor || buttons.length === 0) return;
+      if (!getEditor() || buttons.length === 0) return;
 
       const isInsideEditor = selectionIsInsideEditor();
       const blockFormat = getBlockFormat();
@@ -263,7 +371,7 @@ const AdminUserDashboardStyled: React.FC = () => {
       document.removeEventListener('input', handleSelectionChange, true);
       mutationObserver.disconnect();
     };
-  }, []);
+  }, [getEditor, openImageModal, selectionIsInsideEditor, syncEditorContent]);
 
   useEffect(() => {
     const clickAddNewPost = () => {
@@ -300,6 +408,57 @@ const AdminUserDashboardStyled: React.FC = () => {
   return (
     <div className="admin-tiktok-shell">
       <AdminUserDashboard />
+
+      {imageModalOpen && (
+        <div className="admin-image-modal-backdrop" onClick={() => setImageModalOpen(false)}>
+          <div className="admin-image-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="admin-image-modal-header">
+              <div>
+                <h2>Add image</h2>
+                <p>Upload a new image or insert one from the media library.</p>
+              </div>
+              <button type="button" onClick={() => setImageModalOpen(false)}><i className="las la-times" /></button>
+            </div>
+
+            <div className="admin-image-tabs">
+              <button type="button" className={imageModalTab === 'upload' ? 'active' : ''} onClick={() => setImageModalTab('upload')}>Upload</button>
+              <button type="button" className={imageModalTab === 'library' ? 'active' : ''} onClick={() => { setImageModalTab('library'); loadLibraryImages(); }}>Library</button>
+            </div>
+
+            {imageModalTab === 'upload' ? (
+              <div className="admin-image-upload-panel">
+                <label className="admin-image-alt-label">
+                  Alt text
+                  <input value={imageAltText} onChange={(event) => setImageAltText(event.target.value)} placeholder="Describe this image" />
+                </label>
+                <label
+                  className="admin-image-dropzone"
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const file = event.dataTransfer.files?.[0];
+                    if (file) uploadEditorImage(file);
+                  }}
+                >
+                  <input type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) uploadEditorImage(file); }} />
+                  <i className="las la-cloud-upload-alt" />
+                  <strong>{imageUploading ? 'Uploading...' : 'Drag image here or click to upload'}</strong>
+                  <span>Image will be saved to Firebase Storage and inserted into the post.</span>
+                </label>
+              </div>
+            ) : (
+              <div className="admin-image-library-panel">
+                {libraryImages.length > 0 ? libraryImages.map((image) => (
+                  <button key={image.id} type="button" onClick={() => insertImageUrl(image.url, image.altText || image.filename || '')}>
+                    <img src={image.url} alt={image.altText || image.filename || 'Library image'} />
+                    <span>{image.altText || image.filename || 'Image'}</span>
+                  </button>
+                )) : <p className="admin-image-empty">No images in the media library yet. Upload one first.</p>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
