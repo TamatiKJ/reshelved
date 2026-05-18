@@ -246,7 +246,7 @@ const SettingsSavedModal: React.FC<{ enabled: boolean }> = ({ enabled }) => {
     const showModal = () => {
       if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
       setVisible(true);
-      timeoutRef.current = window.setTimeout(() => setVisible(false), 2200);
+      timeoutRef.current = window.setTimeout(() => setVisible(false), 1500);
     };
 
     const checkToastText = () => {
@@ -268,8 +268,14 @@ const SettingsSavedModal: React.FC<{ enabled: boolean }> = ({ enabled }) => {
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 px-4">
       <div className="w-full max-w-sm rounded-[28px] bg-white p-6 text-center shadow-2xl ring-1 ring-black/5">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50 text-green-600">
-          <i className="las la-check text-4xl" />
+        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[28px] bg-[#FFF4E2] ring-1 ring-[#F7AF31]/30">
+          <svg viewBox="0 0 96 96" className="h-20 w-20" role="img" aria-label="Settings saved illustration">
+            <circle cx="48" cy="48" r="34" fill="#ffffff" stroke="#1665CC" strokeWidth="4" />
+            <path d="M31 49.5L42.5 61L66.5 36.5" fill="none" stroke="#FF5F57" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="25" cy="27" r="4" fill="#F7AF31" />
+            <circle cx="73" cy="69" r="5" fill="#F7AF31" />
+            <path d="M70 23l6 3-6 3-3 6-3-6-6-3 6-3 3-6 3 6z" fill="#1665CC" opacity="0.9" />
+          </svg>
         </div>
         <h3 className="mt-4 text-xl font-bold text-stone-950">Settings saved</h3>
         <p className="mt-2 text-sm leading-6 text-stone-500">Your platform settings have been updated successfully.</p>
