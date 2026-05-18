@@ -66,14 +66,14 @@ const Navbar: React.FC = () => {
                 type="search"
                 value={headerSearch}
                 onChange={(e) => setHeaderSearch(e.target.value)}
-                placeholder="Search books"
+                placeholder="Search title or author..."
                 aria-label="Search book titles and authors"
-                className="w-[220px] rounded-[100px] border border-[#E8E9E9] bg-white py-2.5 pl-11 pr-4 text-sm font-semibold text-stone-950 placeholder:text-stone-500 outline-none transition focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10"
+                className="w-[220px] rounded-lg border border-[#D6D8DA] bg-white py-2 pl-11 pr-4 text-sm font-semibold text-stone-950 placeholder:text-stone-500 outline-none transition focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10"
               />
             </form>
             {currentUser ? (
               <>
-                <Link to="/create" className="cursor-pointer px-4 py-2 text-sm font-semibold text-stone-700 border border-[#E8E9E9] rounded-lg hover:bg-stone-50 transition">List a Book</Link>
+                <Link to="/create" className="cursor-pointer px-4 py-2 text-sm font-semibold text-stone-700 border border-[#D6D8DA] rounded-lg hover:bg-stone-50 transition">List a Book</Link>
                 {isAdmin && <Link to="/admin" className="cursor-pointer px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition">Admin</Link>}
                 <Link to="/notifications" className="relative p-2 rounded-lg hover:bg-stone-100 transition">
                   <i className="las la-bell text-2xl text-stone-600" />
@@ -102,7 +102,7 @@ const Navbar: React.FC = () => {
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <Link to="/create" className="cursor-pointer px-4 py-2 text-sm font-semibold text-stone-700 border border-[#E8E9E9] rounded-lg hover:bg-stone-50 transition">List a Book</Link>
+                <Link to="/create" className="cursor-pointer px-4 py-2 text-sm font-semibold text-stone-700 border border-[#D6D8DA] rounded-lg hover:bg-stone-50 transition">List a Book</Link>
                 <Link to="/register" className="px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition">Join Free</Link>
               </div>
             )}
