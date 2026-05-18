@@ -87,9 +87,35 @@ const normalizeProfileRatingLabels = () => {
   });
 };
 
+const normalizeProfileJoinDate = () => {
+  const profileCard = document.querySelector('aside.lg\\:sticky');
+  if (!profileCard) return;
+
+  const today = new Date().toLocaleDateString();
+  const badges = Array.from(document.querySelectorAll<HTMLSpanElement>('aside .rounded-full.border.border-stone-200'));
+  badges.forEach((badge) => {
+    if (badge.dataset.joinDateNormalized === 'true') return;
+    if (!badge.querySelector('.la-calendar')) return;
+
+    const raw = badge.textContent?.trim() || '';
+    const joinedText = raw.replace(/^Joined\s*/i, '').trim();
+    if (!joinedText) return;
+
+    const parsed = new Date(joinedText);
+    if (Number.isNaN(parsed.getTime())) return;
+
+    const isToday = parsed.toLocaleDateString() === today;
+    if (!isToday) return;
+
+    badge.innerHTML = '<i class="las la-calendar mr-1"></i>Joined date unavailable';
+    badge.dataset.joinDateNormalized = 'true';
+  });
+};
+
 const runDomEnhancements = () => {
   addBlogEditorHistoryControls();
   normalizeProfileRatingLabels();
+  normalizeProfileJoinDate();
 };
 
 document.addEventListener("click", (event) => {
