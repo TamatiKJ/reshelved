@@ -68,7 +68,7 @@ const Navbar: React.FC = () => {
                 onChange={(e) => setHeaderSearch(e.target.value)}
                 placeholder="Search title or author..."
                 aria-label="Search book titles and authors"
-                className="w-[220px] rounded-lg border border-[#D6D8DA] bg-white py-2 pl-11 pr-4 text-sm font-semibold text-stone-950 placeholder:text-stone-500 outline-none transition focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10"
+                className="w-[270px] rounded-lg border border-[#D6D8DA] bg-white py-2 pl-11 pr-4 text-sm font-semibold text-stone-950 placeholder:text-stone-500 outline-none transition focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10"
               />
             </form>
             {currentUser ? (
