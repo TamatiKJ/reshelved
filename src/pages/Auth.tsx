@@ -6,6 +6,7 @@ import { KENYAN_CITIES } from '../types';
 const LINK_BLUE = '#1665CC';
 const inputClass = 'w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
 const passwordInputClass = 'w-full rounded-md border border-stone-300 px-3 py-2.5 pr-10 text-sm outline-none transition focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
+const labelClass = 'text-sm font-bold text-stone-800';
 const errorClass = 'mt-6 text-sm font-medium text-red-600';
 
 const getAuthErrorMessage = (error: any, fallback: string) => {
@@ -97,8 +98,8 @@ export const Login: React.FC = () => {
         {error && <p className={errorClass}>{error}</p>}
         {message && <div className="mt-6 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>}
         <form onSubmit={handleSubmit} className="mt-7 space-y-4">
-          <div><div className="mb-1 flex items-center justify-between gap-3"><label className="text-xs font-medium text-stone-800">Email</label></div><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" /></div>
-          <div><div className="mb-1 flex items-center justify-between gap-3"><label className="text-xs font-medium text-stone-800">Password</label><button type="button" onClick={handlePasswordReset} disabled={resetLoading} className="cursor-pointer text-xs font-medium hover:underline disabled:cursor-not-allowed disabled:opacity-60" style={{ color: LINK_BLUE }}>{resetLoading ? 'Sending...' : 'Forgot password?'}</button></div><PasswordField value={password} onChange={setPassword} autoComplete="current-password" /></div>
+          <div><div className="mb-1 flex items-center justify-between gap-3"><label className={labelClass}>Email</label></div><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" /></div>
+          <div><div className="mb-1 flex items-center justify-between gap-3"><label className={labelClass}>Password</label><button type="button" onClick={handlePasswordReset} disabled={resetLoading} className="cursor-pointer text-xs font-medium hover:underline disabled:cursor-not-allowed disabled:opacity-60" style={{ color: LINK_BLUE }}>{resetLoading ? 'Sending...' : 'Forgot password?'}</button></div><PasswordField value={password} onChange={setPassword} autoComplete="current-password" /></div>
           <button type="submit" disabled={loading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Logging in...' : 'Log in'}</button>
         </form>
         <p className="mt-6 text-center text-sm text-stone-600">Don&apos;t have an account? <Link to="/register" className="font-semibold hover:underline" style={{ color: LINK_BLUE }}>Sign up</Link></p>
@@ -145,7 +146,7 @@ export const ForgotPassword: React.FC = () => {
       <section className="w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
         <div className="text-center"><AuthLogo /><h1 className="mt-7 text-xl font-semibold text-stone-950">Reset your password</h1><p className="mt-2 text-sm text-stone-500">Enter your email and we will send reset instructions.</p></div>
         {error && <p className={errorClass}>{error}</p>}
-        <form onSubmit={sendReset} className="mt-7 space-y-4"><div><label className="mb-1 block text-xs font-medium text-stone-800">Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" /></div><button type="submit" disabled={loading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Sending...' : 'Send reset email'}</button></form>
+        <form onSubmit={sendReset} className="mt-7 space-y-4"><div><label className={`mb-1 block ${labelClass}`}>Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" /></div><button type="submit" disabled={loading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Sending...' : 'Send reset email'}</button></form>
         <button onClick={() => navigate('/login')} className="mt-4 w-full cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-900 hover:bg-stone-50">Go back</button>
       </section>
     </AuthShell>
@@ -180,11 +181,11 @@ export const Register: React.FC = () => {
         <div className="text-center"><AuthLogo /><h1 className="mt-7 text-xl font-semibold text-stone-950">Create your Reshelved account</h1></div>
         {error && <p className={errorClass}>{error}</p>}
         <form onSubmit={handleSubmit} className="mt-7 space-y-4">
-          <div><label className="mb-1 block text-xs font-medium text-stone-800">Full name</label><input type="text" required value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputClass} autoComplete="name" /></div>
-          <div><label className="mb-1 block text-xs font-medium text-stone-800">Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" /></div>
-          <div><label className="mb-1 block text-xs font-medium text-stone-800">Location</label><select required value={location} onChange={(e) => setLocation(e.target.value)} className={`${inputClass} cursor-pointer bg-white`} autoComplete="address-level2"><option value="" disabled>Select your location</option>{KENYAN_CITIES.map((city) => <option key={city} value={city}>{city}</option>)}</select></div>
-          <div><label className="mb-1 block text-xs font-medium text-stone-800">Password</label><PasswordField value={password} onChange={setPassword} autoComplete="new-password" /></div>
-          <div><label className="mb-1 block text-xs font-medium text-stone-800">Confirm password</label><PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" /></div>
+          <div><label className={`mb-1 block ${labelClass}`}>Full name</label><input type="text" required value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputClass} autoComplete="name" /></div>
+          <div><label className={`mb-1 block ${labelClass}`}>Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" /></div>
+          <div><label className={`mb-1 block ${labelClass}`}>Location</label><select required value={location} onChange={(e) => setLocation(e.target.value)} className={`${inputClass} cursor-pointer bg-white`} autoComplete="address-level2"><option value="" disabled>Select your location</option>{KENYAN_CITIES.map((city) => <option key={city} value={city}>{city}</option>)}</select></div>
+          <div><label className={`mb-1 block ${labelClass}`}>Password</label><PasswordField value={password} onChange={setPassword} autoComplete="new-password" /></div>
+          <div><label className={`mb-1 block ${labelClass}`}>Confirm password</label><PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" /></div>
           <button type="submit" disabled={loading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Creating account...' : 'Create account'}</button>
         </form>
         <p className="mt-6 text-center text-sm text-stone-600">Already have an account? <Link to="/login" className="font-semibold hover:underline" style={{ color: LINK_BLUE }}>Log in</Link></p>
