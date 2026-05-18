@@ -41,8 +41,8 @@ const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           <div className={`flex items-center ${isAdmin ? 'gap-8' : ''}`}>
-            <Link to="/" className="flex items-center shrink-0" aria-label="Reshelved home">
-              <img src="/reshelved-logo.svg" alt="Reshelved" className="h-6 w-auto" />
+            <Link to="/" className="flex items-center shrink-0 max-md:w-[25%]" aria-label="Reshelved home">
+              <img src="/reshelved-logo.svg" alt="Reshelved" className="h-6 w-auto max-md:h-auto max-md:w-full" />
             </Link>
             {isAdmin && (
               <div className="hidden md:flex items-center gap-1">
@@ -106,7 +106,7 @@ const Navbar: React.FC = () => {
         <div className="md:hidden fixed inset-0 z-[10000] bg-white overflow-y-auto">
           <div className="p-5 min-h-full flex flex-col">
             <div className="flex items-center justify-between mb-6">
-              <Link to="/" onClick={closeMobile} className="flex items-center w-[25%]" aria-label="Reshelved home">
+              <Link to="/" onClick={closeMobile} className="flex items-center w-[40%]" aria-label="Reshelved home">
                 <img src="/reshelved-logo.svg" alt="Reshelved" className="w-full h-auto" />
               </Link>
               <button onClick={closeMobile} className="cursor-pointer p-1 -mr-1 text-stone-950" aria-label="Close menu"><i className="las la-times text-[20px] leading-none" /></button>
