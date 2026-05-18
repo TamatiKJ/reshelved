@@ -20,7 +20,7 @@ interface AuthContextType {
   currentUser: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
-  register: (email: string, password: string, displayName: string, location: string) => Promise<void>;
+  register: (email: string, password: string, displayName: string, location?: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -43,7 +43,7 @@ const getIsAdminFromClaims = async (user: User | null, forceRefresh = false) => 
   }
 };
 
-const buildUserProfile = (user: User, displayName?: string, location = 'Lavington', isAdmin = false): UserProfile => ({
+const buildUserProfile = (user: User, displayName?: string, location = '', isAdmin = false): UserProfile => ({
   uid: user.uid,
   displayName: displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
   email: user.email || '',
@@ -102,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, { merge: true });
   };
 
-  const ensureUserProfile = async (user: User, displayName?: string, location = 'Lavington') => {
+  const ensureUserProfile = async (user: User, displayName?: string, location = '') => {
     const userRef = doc(db, 'users', user.uid);
     const snap = await getDoc(userRef);
     const adminStatus = await getIsAdminFromClaims(user, true);
@@ -115,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         displayName: existingProfile.displayName || displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
         email: user.email || existingProfile.email || '',
         photoURL: existingProfile.photoURL || user.photoURL || '',
-        location: existingProfile.location || location,
+        location: existingProfile.location || location || '',
         isAdmin: adminStatus,
         online: true,
         lastSeen: Date.now(),
@@ -160,6 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const normalizedProfile = {
           ...profile,
           email: auth.currentUser?.email || profile.email || '',
+          location: profile.location || '',
           isAdmin: adminStatus
         };
         setUserProfile(normalizedProfile);
@@ -167,6 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         syncConversationProfile(normalizedProfile).catch((err) => console.error('Conversation avatar sync failed:', err));
         await setDoc(doc(db, 'users', uid), {
           email: normalizedProfile.email,
+          location: normalizedProfile.location,
           isAdmin: normalizedProfile.isAdmin,
           online: true,
           lastSeen: Date.now()
@@ -180,7 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error fetching profile:', err);
       if (auth.currentUser) {
         const adminStatus = await getIsAdminFromClaims(auth.currentUser, true);
-        setUserProfile(buildUserProfile(auth.currentUser, undefined, 'Lavington', adminStatus));
+        setUserProfile(buildUserProfile(auth.currentUser, undefined, '', adminStatus));
       } else {
         setUserProfile(null);
       }
@@ -193,10 +195,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (email: string, password: string, displayName: string, location: string) => {
+  const register = async (email: string, password: string, displayName: string, location = '') => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = displayName.trim();
-    const cleanLocation = location || 'Lavington';
+    const cleanLocation = location.trim();
 
     await setPersistence(auth, browserSessionPersistence);
     const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
