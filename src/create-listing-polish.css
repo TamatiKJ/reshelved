@@ -24,11 +24,16 @@ body:has(form input[type="file"][accept="image/*"]) form .grid.grid-cols-2.gap-3
   background-repeat: no-repeat !important;
 }
 
-/* Listing type cards: keep the selected option visibly active. Swap is already the default state in React. */
+/* Listing type cards: keep only the selected option border and a subtle blue active fill. Swap is already the default state in React. */
 body:has(form input[type="file"][accept="image/*"]) form button.border-primary-600 {
   border-color: #1665CC !important;
-  background: #ffffff !important;
-  box-shadow: 0 0 0 1px rgba(22, 101, 204, 0.18) !important;
+  background: #EFF6FF !important;
+  box-shadow: 0 0 0 1px rgba(22, 101, 204, 0.16) !important;
+}
+
+body:has(form input[type="file"][accept="image/*"]) form button.border-primary-600:hover {
+  border-color: #1665CC !important;
+  background: #EAF3FF !important;
 }
 
 body:has(form input[type="file"][accept="image/*"]) form button.border-primary-600 i,
@@ -37,13 +42,8 @@ body:has(form input[type="file"][accept="image/*"]) form button.border-primary-6
 }
 
 body:has(form input[type="file"][accept="image/*"]) form button.border-primary-600::after {
-  content: "";
-  display: block;
-  width: 8px;
-  height: 8px;
-  margin-top: 14px;
-  border-radius: 999px;
-  background: #1665CC;
+  display: none !important;
+  content: none !important;
 }
 
 /* Live preview cover area. */
