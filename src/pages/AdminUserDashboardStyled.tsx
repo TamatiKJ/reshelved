@@ -63,6 +63,9 @@ const AdminUserDashboardStyled: React.FC = () => {
       sendButton.innerHTML = `<i class="las la-paper-plane"></i><span>${sending ? 'Sending...' : 'Send Update'}</span>`;
       sendButton.disabled = sending;
 
+      const divider = document.createElement('div');
+      divider.className = 'admin-extra-action-divider';
+
       const viewLink = document.createElement('a');
       viewLink.href = '/';
       viewLink.className = 'admin-extra-action';
@@ -79,7 +82,7 @@ const AdminUserDashboardStyled: React.FC = () => {
       sendButton.addEventListener('click', handleSend);
       logoutButton.addEventListener('click', handleLogout);
 
-      wrap.append(sendButton, viewLink, logoutButton);
+      wrap.append(sendButton, divider, viewLink, logoutButton);
       sidebar.appendChild(wrap);
 
       cleanups.push(() => {
