@@ -61,6 +61,10 @@
     background: #eeeeee;
   }
 
+  .admin-extra-action-divider-top {
+    margin-top: 10px;
+  }
+
   .admin-extra-action {
     width: 100%;
     border: 0;
@@ -69,7 +73,9 @@
   }
 
   .admin-extra-action-primary {
-    min-height: 54px !important;
+    min-height: auto !important;
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
     justify-content: center !important;
     background: #FF5F57 !important;
     color: #ffffff !important;
