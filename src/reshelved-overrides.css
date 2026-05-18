@@ -285,13 +285,20 @@ span[title="Read"]::before {
   }
 }
 
-/* Restore seller review filter buttons to the review blue style. */
+/* Seller review filter buttons. Active is blue, inactive mimics neutral grey marketplace pills. */
 section:has(> div h2):has(button[class*="bg-\[\#1665CC\]"]) > div.mt-8.flex.flex-wrap.gap-2.border-t.border-stone-200.pt-5 button.rounded-full,
 section:has(> div h2):has(button[class*="bg-\[\#1665CC\]"]) > div.mt-8.flex.flex-wrap.gap-2.border-t.border-stone-200.pt-5 button {
-  border-color: #1665CC !important;
   border-radius: 9999px !important;
-  color: #1665CC !important;
+  border-color: #d6d3d1 !important;
   background: #ffffff !important;
+  color: #292524 !important;
+  box-shadow: none !important;
+}
+
+section:has(> div h2):has(button[class*="bg-\[\#1665CC\]"]) > div.mt-8.flex.flex-wrap.gap-2.border-t.border-stone-200.pt-5 button:not(.bg-\[\#1665CC\]):hover {
+  border-color: #a8a29e !important;
+  background: #fafafa !important;
+  color: #1c1917 !important;
 }
 
 section:has(> div h2):has(button[class*="bg-\[\#1665CC\]"]) > div.mt-8.flex.flex-wrap.gap-2.border-t.border-stone-200.pt-5 button.bg-\[\#1665CC\] {
@@ -305,7 +312,7 @@ section:has(> div h2):has(button[class*="bg-\[\#1665CC\]"]) > div.mt-8.flex.flex
 }
 
 section:has(> div h2):has(button[class*="bg-\[\#1665CC\]"]) > div.mt-8.flex.flex-wrap.gap-2.border-t.border-stone-200.pt-5 button:not(.bg-\[\#1665CC\]) span {
-  color: #64748b !important;
+  color: #9ca3af !important;
 }
 
 /* Single listing metadata icon row: tighter mobile spacing. */
