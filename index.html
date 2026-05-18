@@ -47,10 +47,11 @@
 
         var addLoggedOutContactButton = function () {
           var path = window.location.pathname || '';
-          if (!path.startsWith('/profile/')) return;
+          if (!path.startsWith('/user/')) return;
           if (document.querySelector('[data-login-contact-button="true"]')) return;
           if (document.querySelector('button i.la-comment')) return;
-          var profileCard = document.querySelector('aside .rounded-\[32px\] .flex.flex-col.items-center.text-center');
+          if (document.querySelector('nav.mt-5')) return;
+          var profileCard = document.querySelector('aside .flex.flex-col.items-center.text-center');
           if (!profileCard) return;
           var button = document.createElement('a');
           button.href = '/login';
