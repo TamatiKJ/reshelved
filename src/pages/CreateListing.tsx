@@ -12,6 +12,8 @@ const MAX_IMAGES = 4;
 const MAX_LISTING_IMAGE_SIZE = 1400;
 const UPLOAD_STALL_TIMEOUT = 30000;
 const focusFieldClass = 'focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
+const inputClass = `w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-950 outline-none transition placeholder:text-stone-400 disabled:bg-stone-50 ${focusFieldClass}`;
+const labelClass = 'mb-1.5 block text-sm font-bold text-stone-800';
 
 const listingTypes = [
   { value: 'swap', label: 'Swap', icon: 'las la-sync', desc: 'Trade for another book' },
@@ -260,38 +262,126 @@ const CreateListing: React.FC = () => {
     }
   };
 
+  const previewTitle = title.trim() || 'Book title will appear here';
+  const previewAuthor = author.trim() || 'Author name';
+  const activeListingType = listingTypes.find((item) => item.value === type);
+
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-      <h1 className="text-2xl font-bold text-stone-800">List a Book</h1>
-      <p className="text-stone-500 mt-1">Share your book with the Reshelved community</p>
-      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 sm:p-8 mt-6">
-        {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{error}</div>}
+    <div className="bg-[#F7F7F5] px-4 py-8 sm:px-6 lg:py-10">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-stone-950 sm:text-5xl">List a Book</h1>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-stone-500">Create a clean, trustworthy listing in a few guided steps.</p>
+          </div>
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#F7AF31]/60 bg-[#FFF4E2] px-4 py-2 text-sm font-bold text-stone-700">
+            <i className="las la-bolt text-lg text-primary-600" /> Draft saved automatically
+          </div>
+        </div>
+
+        <div className="mb-6 grid gap-3 rounded-[28px] border border-stone-200 bg-white p-3 shadow-sm sm:grid-cols-4">
+          {[['1', 'Photos'], ['2', 'Details'], ['3', 'Terms'], ['4', 'Publish']].map(([step, label], index) => (
+            <div key={step} className={`flex items-center gap-3 rounded-2xl px-3 py-2 ${index < 2 ? 'bg-stone-50' : ''}`}>
+              <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${index < 2 ? 'bg-primary-600 text-white' : 'bg-stone-100 text-stone-500'}`}>{step}</span>
+              <span className={`text-sm font-bold ${index < 2 ? 'text-stone-950' : 'text-stone-400'}`}>{label}</span>
+            </div>
+          ))}
+        </div>
+
+        {error && <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</div>}
         {uploadProgress.active && (
-          <div className="mb-4 rounded-xl border border-green-200 bg-green-50 p-4">
+          <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 p-4">
             <div className="flex items-center justify-between gap-3 text-sm"><p className="font-semibold text-green-700 truncate">{uploadProgress.phase}{uploadProgress.fileName ? `: ${uploadProgress.fileName}` : ''}</p><span className="font-bold text-green-700">{uploadProgress.percent}%</span></div>
             {!uploadProgress.done && <p className="text-green-600 mt-1 text-sm">File {uploadProgress.currentFile} of {uploadProgress.totalFiles} · {formatBytes(uploadProgress.bytesTransferred)} / {formatBytes(uploadProgress.totalBytes)}</p>}
             <div className="mt-3 h-2 rounded-full bg-white overflow-hidden"><div className="h-full rounded-full bg-green-600 transition-all duration-200" style={{ width: `${uploadProgress.percent}%` }} /></div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-2">Photos (up to 4)</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {previews.map((preview, i) => <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-stone-200 group"><img src={preview} alt="" className="w-full h-full object-cover" /><button type="button" onClick={() => removeImage(i)} disabled={loading} className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-xs disabled:opacity-40">×</button></div>)}
-              {previews.length < MAX_IMAGES && <label className={`aspect-square rounded-xl border-2 border-dashed border-stone-300 hover:border-[#1665CC] flex flex-col items-center justify-center transition hover:bg-[#1665CC]/5 ${loading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}><i className="las la-plus text-3xl text-stone-400" /><span className="text-xs text-stone-500 mt-1">Add Photo</span><input type="file" accept="image/*" multiple onChange={handleImageChange} disabled={loading} className="hidden" /></label>}
-            </div>
-            <p className="text-xs text-stone-500 mt-2">The full photo opens first. Cropping only happens after you adjust it and click Use Photo.</p>
+        <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)] lg:items-start">
+          <div className="rounded-[32px] border border-stone-200 bg-white p-5 shadow-sm sm:p-7 lg:p-8">
+            <section>
+              <div className="mb-5">
+                <h2 className="text-2xl font-bold text-stone-950">Photos</h2>
+                <p className="mt-1 text-sm leading-6 text-stone-500">Add up to 4 photos. The first photo becomes the cover.</p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-[minmax(230px,0.85fr)_1fr]">
+                <label className={`flex min-h-[220px] flex-col items-center justify-center rounded-[28px] border-2 border-dashed border-stone-300 bg-stone-50 text-center transition hover:border-[#1665CC] hover:bg-[#1665CC]/5 ${loading || previews.length >= MAX_IMAGES ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+                  <i className="las la-plus text-5xl text-primary-600" />
+                  <span className="mt-3 text-base font-bold text-stone-950">Drag photos here</span>
+                  <span className="mt-1 text-sm text-stone-500">or click to upload</span>
+                  <input type="file" accept="image/*" multiple onChange={handleImageChange} disabled={loading || previews.length >= MAX_IMAGES} className="hidden" />
+                </label>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4">
+                  {previews.map((preview, i) => (
+                    <div key={i} className="group relative aspect-square overflow-hidden rounded-3xl border border-stone-200 bg-stone-100">
+                      <img src={preview} alt="" className="h-full w-full object-cover" />
+                      <button type="button" onClick={() => removeImage(i)} disabled={loading} className="absolute right-2 top-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white opacity-0 transition group-hover:opacity-100 disabled:opacity-40">×</button>
+                    </div>
+                  ))}
+                  {Array.from({ length: Math.max(0, MAX_IMAGES - previews.length) }).map((_, i) => (
+                    <div key={`empty-${i}`} className="aspect-square rounded-3xl border border-stone-200 bg-stone-50" />
+                  ))}
+                </div>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-stone-500">The full photo opens first. Cropping only happens after you adjust it and click Use Photo.</p>
+            </section>
+
+            <section className="mt-8 border-t border-stone-100 pt-8">
+              <h2 className="text-2xl font-bold text-stone-950">Book Details</h2>
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div><label className={labelClass}>Book Title *</label><input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} disabled={loading} className={inputClass} placeholder="e.g. Things Fall Apart" /></div>
+                <div><label className={labelClass}>Author *</label><input type="text" required value={author} onChange={(e) => setAuthor(e.target.value)} disabled={loading} className={inputClass} placeholder="e.g. Chinua Achebe" /></div>
+                <div className="sm:col-span-2"><label className={labelClass}>Description</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={loading} rows={4} className={`${inputClass} resize-none`} placeholder="Tell us about the book condition, edition, and notes." /></div>
+                <div><label className={labelClass}>Condition *</label><select value={condition} onChange={(e) => setCondition(e.target.value as Listing['condition'])} disabled={loading} className={`${inputClass} pr-10`}>{CONDITIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+                <div><label className={labelClass}>Category *</label><select value={category} onChange={(e) => setCategory(e.target.value)} disabled={loading} className={`${inputClass} pr-10`}>{CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+                <div><label className={labelClass}>Location *</label><select value={location} onChange={(e) => setLocation(e.target.value)} disabled={loading} className={`${inputClass} pr-10`}>{KENYAN_CITIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+                {type === 'sell' && <div><label className={labelClass}>Price (KSh) *</label><input type="number" required min="0" value={price} onChange={(e) => setPrice(e.target.value)} disabled={loading} className={inputClass} placeholder="e.g. 500" /></div>}
+                {!userProfile?.location && <p className="sm:col-span-2 text-xs leading-5 text-stone-500"><i className="las la-info-circle mr-1.5 align-[-2px] text-base text-stone-400" /><span>You can change your default location in <Link to="/profile#settings" className="font-semibold text-[#1665CC] underline underline-offset-2 hover:text-[#1254a9]">profile settings</Link>.</span></p>}
+              </div>
+            </section>
+
+            <section className="mt-8 border-t border-stone-100 pt-8">
+              <h2 className="text-2xl font-bold text-stone-950">Listing Type</h2>
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {listingTypes.map((item) => (
+                  <button key={item.value} type="button" disabled={loading} onClick={() => setType(item.value)} className={`cursor-pointer rounded-[24px] border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${type === item.value ? 'border-primary-600 bg-[#FFF4E2]' : 'border-stone-200 bg-white hover:border-[#1665CC] hover:bg-[#1665CC]/5'}`}>
+                    <i className={`${item.icon} text-3xl ${type === item.value ? 'text-primary-600' : 'text-stone-500'}`} />
+                    <div className="mt-3 text-sm font-bold text-stone-950">{item.label}</div>
+                    <div className="mt-1 text-xs leading-5 text-stone-500">{item.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </section>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="block text-sm font-medium text-stone-700 mb-1">Book Title *</label><input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} disabled={loading} className={`w-full px-4 py-3 rounded-xl border border-stone-200 ${focusFieldClass} outline-none transition text-sm disabled:bg-stone-50`} placeholder="e.g. Things Fall Apart" /></div><div><label className="block text-sm font-medium text-stone-700 mb-1">Author *</label><input type="text" required value={author} onChange={(e) => setAuthor(e.target.value)} disabled={loading} className={`w-full px-4 py-3 rounded-xl border border-stone-200 ${focusFieldClass} outline-none transition text-sm disabled:bg-stone-50`} placeholder="e.g. Chinua Achebe" /></div></div>
-          <div><label className="block text-sm font-medium text-stone-700 mb-1">Description</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={loading} rows={3} className={`w-full px-4 py-3 rounded-xl border border-stone-200 ${focusFieldClass} outline-none transition text-sm resize-none disabled:bg-stone-50`} placeholder="Tell us about the book condition, edition, and notes." /></div>
-          <div><label className="block text-sm font-medium text-stone-700 mb-2">Listing Type *</label><div className="grid grid-cols-3 gap-3">{listingTypes.map((item) => <button key={item.value} type="button" disabled={loading} onClick={() => setType(item.value)} className={`cursor-pointer p-3 rounded-xl border-2 text-center transition disabled:cursor-not-allowed disabled:opacity-60 ${type === item.value ? 'border-[#1665CC] bg-[#1665CC]/10' : 'border-stone-200 hover:border-[#1665CC] hover:bg-[#1665CC]/5'}`}><i className={`${item.icon} text-3xl text-primary-600`} /><div className="text-sm font-semibold text-stone-800 mt-1">{item.label}</div><div className="text-xs text-stone-500 mt-0.5">{item.desc}</div></button>)}</div></div>
-          {type === 'sell' && <div><label className="block text-sm font-medium text-stone-700 mb-1">Price (KSh) *</label><input type="number" required min="0" value={price} onChange={(e) => setPrice(e.target.value)} disabled={loading} className={`w-full px-4 py-3 rounded-xl border border-stone-200 ${focusFieldClass} outline-none transition text-sm disabled:bg-stone-50`} placeholder="e.g. 500" /></div>}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4"><div><label className="block text-sm font-medium text-stone-700 mb-1">Condition *</label><select value={condition} onChange={(e) => setCondition(e.target.value as Listing['condition'])} disabled={loading} className={`w-full pl-4 pr-10 py-3 rounded-xl border border-stone-200 ${focusFieldClass} outline-none transition text-sm bg-white disabled:bg-stone-50`}>{CONDITIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><div><label className="block text-sm font-medium text-stone-700 mb-1">Category *</label><select value={category} onChange={(e) => setCategory(e.target.value)} disabled={loading} className={`w-full pl-4 pr-10 py-3 rounded-xl border border-stone-200 ${focusFieldClass} outline-none transition text-sm bg-white disabled:bg-stone-50`}>{CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><div><label className="block text-sm font-medium text-stone-700 mb-1">Location *</label><select value={location} onChange={(e) => setLocation(e.target.value)} disabled={loading} className={`w-full pl-4 pr-10 py-3 rounded-xl border border-stone-200 ${focusFieldClass} outline-none transition text-sm bg-white disabled:bg-stone-50`}>{KENYAN_CITIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>{!userProfile?.location && <p className="sm:col-span-3 w-full text-xs leading-5 text-stone-500"><i className="las la-info-circle mr-1.5 align-[-2px] text-base text-stone-400" /><span>You can change your default location in <Link to="/profile#settings" className="font-semibold text-[#1665CC] underline underline-offset-2 hover:text-[#1254a9]">profile settings</Link>.</span></p>}</div>
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3"><i className="las la-info-circle text-2xl text-green-700" /><div className="text-sm text-green-800"><p className="font-medium">Your listing will publish after images finish uploading</p><p className="text-green-700 mt-0.5">Images are converted to WebP before upload so they look clean and load faster.</p></div></div>
-          <button type="submit" disabled={loading} className="w-full cursor-pointer py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2">{loading ? 'Publishing...' : 'Publish Listing'}</button>
-          <button type="button" onClick={() => navigate(-1)} disabled={loading} className="mx-auto block cursor-pointer border-0 bg-transparent px-4 py-1 text-sm font-semibold text-stone-500 transition hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>
+          <aside className="lg:sticky lg:top-24">
+            <div className="rounded-[32px] border border-stone-200 bg-white p-5 shadow-sm sm:p-7">
+              <div>
+                <h2 className="text-2xl font-bold text-stone-950">Live Preview</h2>
+                <p className="mt-1 text-sm leading-6 text-stone-500">See what buyers will see before you publish.</p>
+              </div>
+              <div className="mt-6 overflow-hidden rounded-[28px] border border-stone-200 bg-[#FFF4E2]">
+                <div className="flex aspect-[4/3] items-center justify-center bg-[#FFF4E2] p-5">
+                  {previews[0] ? <img src={previews[0]} alt="Book cover preview" className="h-full w-full rounded-2xl object-cover" /> : <div className="flex h-full w-full flex-col items-center justify-center rounded-2xl bg-primary-600 p-6 text-center text-white"><span className="text-xl font-bold leading-tight">{previewTitle}</span><span className="mt-4 text-xs opacity-80">{previewAuthor}</span></div>}
+                </div>
+              </div>
+              <h3 className="mt-6 text-xl font-bold leading-tight text-stone-950">{previewTitle}</h3>
+              <p className="mt-1 text-sm text-stone-500">by {previewAuthor}</p>
+              <div className="mt-5 grid grid-cols-3 gap-2 text-xs font-bold text-stone-700">
+                <span className="rounded-2xl bg-stone-50 px-3 py-2"><i className="las la-check-circle mr-1 text-primary-600" />{condition}</span>
+                <span className="rounded-2xl bg-stone-50 px-3 py-2"><i className="las la-map-marker mr-1 text-primary-600" />{location}</span>
+                <span className="rounded-2xl bg-stone-50 px-3 py-2"><i className="las la-book mr-1 text-primary-600" />{category}</span>
+              </div>
+              <div className="mt-6">
+                <p className="text-sm font-bold text-stone-950">Listing Type</p>
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-primary-600 bg-[#FFF4E2] px-4 py-2 text-sm font-bold text-stone-950"><i className={`${activeListingType?.icon || 'las la-tag'} text-primary-600`} />{activeListingType?.label || 'Listing'}</div>
+                {type === 'sell' && <div className="mt-3 text-sm font-bold text-stone-950">KSh {price || '0'}</div>}
+              </div>
+              <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm leading-6 text-green-800"><i className="las la-info-circle mr-1 text-lg text-green-700" />Images are converted to WebP before upload so they look clean and load faster.</div>
+              <button type="submit" disabled={loading} className="mt-5 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-primary-600 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Publishing...' : 'Publish Listing'}</button>
+              <button type="button" onClick={() => navigate(-1)} disabled={loading} className="mx-auto mt-3 block cursor-pointer border-0 bg-transparent px-4 py-1 text-sm font-bold text-stone-500 transition hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>
+            </div>
+          </aside>
         </form>
       </div>
 
