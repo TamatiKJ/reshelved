@@ -181,9 +181,9 @@
   justify-content: center;
   min-height: 46px;
   padding: 0 22px;
-  border: 1px solid #D54215;
+  border: 1px solid #FF5F57;
   border-radius: 12px;
-  background: #D54215;
+  background: #FF5F57;
   color: #ffffff;
   font-size: 15px;
   font-weight: 800;
@@ -192,8 +192,8 @@
 }
 
 .admin-add-post-button:hover {
-  background: #B53811;
-  border-color: #B53811;
+  background: #e65049;
+  border-color: #e65049;
 }
 
 @media (max-width: 767px) {
