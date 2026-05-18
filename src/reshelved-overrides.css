@@ -116,16 +116,28 @@ article button[aria-label="Remove from favorites"] i {
 
 /* Mobile menu logo sizing. */
 @media (max-width: 767px) {
-  nav .fixed.inset-0.z-50.bg-white a[aria-label="Reshelved home"] {
-    width: 40% !important;
-    max-width: 180px !important;
+  nav .fixed.inset-0.bg-white a[aria-label="Reshelved home"] {
+    width: 25% !important;
+    max-width: 120px !important;
   }
 
-  nav .fixed.inset-0.z-50.bg-white a[aria-label="Reshelved home"] img {
+  nav .fixed.inset-0.bg-white a[aria-label="Reshelved home"] img {
     width: 100% !important;
     height: auto !important;
-    max-height: 48px !important;
+    max-height: 40px !important;
     object-fit: contain !important;
+  }
+
+  nav .fixed.inset-0.bg-white {
+    z-index: 10000 !important;
+  }
+
+  body.reshelved-mobile-menu-open nav[aria-label="Breadcrumb"] {
+    visibility: hidden !important;
+  }
+
+  body.reshelved-mobile-menu-open {
+    overflow: hidden !important;
   }
 
   /* Chats list area below filters should be white on mobile. */
