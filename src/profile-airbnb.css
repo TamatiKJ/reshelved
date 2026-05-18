@@ -1,0 +1,213 @@
+/* Profile page: Airbnb-style polish using the current Reshelved palette. */
+
+/* Scope this to the profile layout only: left sticky profile column + main content column. */
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) {
+  max-width: 1180px !important;
+  padding-top: 28px !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) > .mb-5 button {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-height: 40px !important;
+  padding: 0 14px !important;
+  border: 1px solid #d6d3d1 !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  color: #292524 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 1px 2px rgba(28,25,23,.04) !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) > .mb-5 button:hover {
+  background: #fafaf9 !important;
+  color: #1c1917 !important;
+  border-color: #a8a29e !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) > div.grid.gap-8 {
+  gap: 28px !important;
+}
+
+/* Left profile card. */
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) aside.lg\:sticky > div.rounded-\[32px\] {
+  border-color: #e7e5e4 !important;
+  border-radius: 32px !important;
+  background: #ffffff !important;
+  box-shadow: 0 18px 48px rgba(28,25,23,.07) !important;
+  padding: 24px !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) aside img.h-28,
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) aside div.h-28.w-28 {
+  width: 104px !important;
+  height: 104px !important;
+  border-radius: 999px !important;
+  box-shadow: 0 1px 0 rgba(28,25,23,.06) !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) aside label:has(input[type="file"]) {
+  border-color: #d6d3d1 !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  color: #292524 !important;
+  box-shadow: 0 6px 18px rgba(28,25,23,.10) !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) aside label:has(input[type="file"]) i {
+  color: #ff5f57 !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) aside h1 {
+  font-family: 'Work Sans','Source Sans 3',system-ui,sans-serif !important;
+  font-size: 28px !important;
+  line-height: 1.05 !important;
+  letter-spacing: -0.04em !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) aside .flex.flex-wrap.justify-center.gap-2 span.rounded-full {
+  border-color: #e7e5e4 !important;
+  background: #fafaf9 !important;
+  color: #57534e !important;
+  padding: 7px 11px !important;
+  font-weight: 800 !important;
+}
+
+/* Public/contact CTA and primary profile actions. */
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) a.bg-\[\#FF5F57\],
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) button.bg-\[\#FF5F57\],
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) .bg-\[\#FF5F57\] {
+  background: #ff5f57 !important;
+  border: 1px solid #ff5f57 !important;
+  color: #ffffff !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) a.bg-\[\#FF5F57\]:hover,
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) button.bg-\[\#FF5F57\]:hover {
+  background: #e84f48 !important;
+  border-color: #e84f48 !important;
+}
+
+/* Sidebar nav as calm Airbnb-style pills. */
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) nav.mt-5 {
+  border-color: #e7e5e4 !important;
+  border-radius: 28px !important;
+  background: #ffffff !important;
+  box-shadow: 0 10px 32px rgba(28,25,23,.055) !important;
+  padding: 10px !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) nav.mt-5 button {
+  border-radius: 999px !important;
+  min-height: 46px !important;
+  font-size: 15px !important;
+  letter-spacing: -0.01em !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) nav.mt-5 button.bg-gradient-to-b {
+  background: #292524 !important;
+  border-color: #292524 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) nav.mt-5 button.bg-gradient-to-b span.rounded-full {
+  background: rgba(255,255,255,.16) !important;
+  color: #ffffff !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) nav.mt-5 button:not(.bg-gradient-to-b):hover {
+  background: #fafaf9 !important;
+}
+
+/* Main content headers and cards. */
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main section > div.mb-6 h2 {
+  font-family: 'Work Sans','Source Sans 3',system-ui,sans-serif !important;
+  font-size: 32px !important;
+  line-height: 1.05 !important;
+  letter-spacing: -0.045em !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main section > div.mb-6 p:not(.uppercase) {
+  color: #78716c !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main .rounded-\[28px\].border.border-stone-200.bg-white,
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main div.rounded-\[28px\] {
+  border-color: #e7e5e4 !important;
+  border-radius: 32px !important;
+  background: #ffffff !important;
+  box-shadow: 0 10px 30px rgba(28,25,23,.045) !important;
+}
+
+/* Forms and security cards. */
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) input,
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) textarea,
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) select {
+  border-color: #d6d3d1 !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+  color: #1c1917 !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) input:focus,
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) textarea:focus,
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) select:focus {
+  border-color: #292524 !important;
+  box-shadow: 0 0 0 3px rgba(41,37,36,.08) !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main button.group.rounded-\[24px\] {
+  border-color: #e7e5e4 !important;
+  border-radius: 24px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main button.group.rounded-\[24px\]:hover {
+  background: #fafaf9 !important;
+  border-color: #d6d3d1 !important;
+  transform: none !important;
+}
+
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main button.group.rounded-\[24px\] .bg-\[\#FFF4E2\] {
+  background: #f7f7f5 !important;
+  color: #ff5f57 !important;
+}
+
+/* Lists and reviews should feel like clean cards, not dashboard blocks. */
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main .divide-y > div,
+div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main .space-y-3 > div.rounded-2xl {
+  border-color: #e7e5e4 !important;
+  border-radius: 22px !important;
+  background: #ffffff !important;
+}
+
+@media (max-width: 1023px) {
+  div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) {
+    padding-top: 18px !important;
+  }
+
+  div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) > div.grid.gap-8 {
+    gap: 20px !important;
+  }
+}
+
+@media (max-width: 639px) {
+  div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) aside.lg\:sticky > div.rounded-\[32px\] {
+    border-radius: 28px !important;
+    padding: 22px !important;
+  }
+
+  div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main section > div.mb-6 h2 {
+    font-size: 27px !important;
+  }
+}
