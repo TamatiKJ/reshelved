@@ -15,9 +15,21 @@ type LibraryImage = {
   uploadedAt?: number;
 };
 
+type NotificationTarget = 'all' | 'specific';
+type NotificationStep = 'form' | 'confirm';
+
 const AdminUserDashboardStyled: React.FC = () => {
   const { userProfile, logout } = useAuth() as any;
   const [sending, setSending] = useState(false);
+  const [notificationModalOpen, setNotificationModalOpen] = useState(false);
+  const [notificationStep, setNotificationStep] = useState<NotificationStep>('form');
+  const [notificationTarget, setNotificationTarget] = useState<NotificationTarget>('all');
+  const [notificationSubject, setNotificationSubject] = useState('');
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationUsers, setNotificationUsers] = useState<UserProfile[]>([]);
+  const [notificationUserSearch, setNotificationUserSearch] = useState('');
+  const [selectedNotificationUserId, setSelectedNotificationUserId] = useState('');
+  const [loadingNotificationUsers, setLoadingNotificationUsers] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [imageModalTab, setImageModalTab] = useState<'upload' | 'library'>('upload');
   const [imageUploading, setImageUploading] = useState(false);
@@ -25,39 +37,77 @@ const AdminUserDashboardStyled: React.FC = () => {
   const [imageAltText, setImageAltText] = useState('');
   const savedEditorRangeRef = useRef<Range | null>(null);
 
-  const sendUpdate = useCallback(async () => {
-    if (!userProfile?.isAdmin || sending) return;
-
-    const subject = window.prompt('Notification subject');
-    if (!subject?.trim()) return;
-
-    const message = window.prompt('Notification message');
-    if (!message?.trim()) return;
-
-    setSending(true);
+  const loadNotificationUsers = useCallback(async () => {
+    setLoadingNotificationUsers(true);
     try {
       const usersSnap = await getDocs(collection(db, 'users'));
       const users: UserProfile[] = [];
       usersSnap.forEach((item) => users.push({ uid: item.id, ...item.data() } as UserProfile));
+      users.sort((a, b) => (a.displayName || a.email || '').localeCompare(b.displayName || b.email || ''));
+      setNotificationUsers(users);
+    } catch (error) {
+      console.error(error);
+      window.alert('Could not load registered users. Check Firestore rules.');
+    } finally {
+      setLoadingNotificationUsers(false);
+    }
+  }, []);
 
-      await Promise.all(users.map((user) => addDoc(collection(db, 'notifications'), {
+  const openSendUpdateModal = useCallback(() => {
+    if (!userProfile?.isAdmin || sending) return;
+    setNotificationStep('form');
+    setNotificationTarget('all');
+    setNotificationUserSearch('');
+    setSelectedNotificationUserId('');
+    setNotificationModalOpen(true);
+    loadNotificationUsers();
+  }, [loadNotificationUsers, sending, userProfile?.isAdmin]);
+
+  const selectedNotificationUser = notificationUsers.find((item) => item.uid === selectedNotificationUserId);
+  const notificationRecipients = notificationTarget === 'all'
+    ? notificationUsers
+    : selectedNotificationUser
+      ? [selectedNotificationUser]
+      : [];
+  const notificationRecipientCount = notificationRecipients.length;
+  const canReviewNotification = notificationSubject.trim().length > 0 && notificationMessage.trim().length > 0 && notificationRecipientCount > 0;
+  const filteredNotificationUsers = notificationUsers.filter((item) => {
+    const query = notificationUserSearch.trim().toLowerCase();
+    if (!query) return true;
+    return [item.displayName, item.email, item.uid].join(' ').toLowerCase().includes(query);
+  }).slice(0, 8);
+
+  const sendReviewedNotification = useCallback(async () => {
+    if (!userProfile?.isAdmin || sending || !canReviewNotification) return;
+    setSending(true);
+    try {
+      const subject = notificationSubject.trim();
+      const message = notificationMessage.trim();
+      await Promise.all(notificationRecipients.map((user) => addDoc(collection(db, 'notifications'), {
         userId: user.uid,
-        userName: user.displayName || 'User',
+        userName: user.displayName || user.email || 'User',
         fromAdmin: true,
-        subject: subject.trim(),
-        message: message.trim(),
+        subject,
+        message,
         createdAt: Date.now(),
         read: false,
       })));
 
-      window.alert(`Update sent to ${users.length} platform users.`);
+      window.alert(`Update sent to ${notificationRecipientCount} ${notificationRecipientCount === 1 ? 'user' : 'users'}.`);
+      setNotificationModalOpen(false);
+      setNotificationStep('form');
+      setNotificationSubject('');
+      setNotificationMessage('');
+      setNotificationUserSearch('');
+      setSelectedNotificationUserId('');
+      setNotificationTarget('all');
     } catch (error) {
       console.error(error);
       window.alert('Update could not be sent. Check Firestore rules.');
     } finally {
       setSending(false);
     }
-  }, [sending, userProfile?.isAdmin]);
+  }, [canReviewNotification, notificationMessage, notificationRecipientCount, notificationRecipients, notificationSubject, sending, userProfile?.isAdmin]);
 
   const getEditor = useCallback(() => document.querySelector<HTMLElement>('.admin-tiktok-shell [contenteditable="true"]'), []);
 
@@ -194,7 +244,7 @@ const AdminUserDashboardStyled: React.FC = () => {
       logoutButton.className = 'admin-extra-action';
       logoutButton.innerHTML = '<i class="las la-sign-out-alt"></i><span>Sign Out</span>';
 
-      const handleSend = () => sendUpdate();
+      const handleSend = () => openSendUpdateModal();
       const handleLogout = () => logout?.();
 
       const placeExtraActions = () => {
@@ -222,7 +272,7 @@ const AdminUserDashboardStyled: React.FC = () => {
     });
 
     return () => cleanups.forEach((cleanup) => cleanup());
-  }, [logout, sendUpdate, sending, userProfile?.isAdmin]);
+  }, [logout, openSendUpdateModal, sending, userProfile?.isAdmin]);
 
   useEffect(() => {
     let savedRange: Range | null = null;
@@ -408,6 +458,100 @@ const AdminUserDashboardStyled: React.FC = () => {
   return (
     <div className="admin-tiktok-shell">
       <AdminUserDashboard />
+
+      {notificationModalOpen && (
+        <div className="admin-notification-modal-backdrop" onClick={() => setNotificationModalOpen(false)}>
+          <div className="admin-notification-modal" onClick={(event) => event.stopPropagation()}>
+            {notificationStep === 'form' ? (
+              <>
+                <div className="admin-notification-modal-header">
+                  <button type="button" onClick={() => setNotificationModalOpen(false)}>← Back to overview</button>
+                  <span>/</span>
+                  <strong>Send notification</strong>
+                </div>
+                <div className="admin-notification-modal-body">
+                  <label className="admin-notification-label">Send to</label>
+                  <div className="admin-notification-target-grid">
+                    <button
+                      type="button"
+                      className={notificationTarget === 'all' ? 'active' : ''}
+                      onClick={() => setNotificationTarget('all')}
+                    >
+                      <strong>All users</strong>
+                      <span>{loadingNotificationUsers ? 'Loading recipients...' : `${notificationUsers.length} recipients`}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={notificationTarget === 'specific' ? 'active' : ''}
+                      onClick={() => setNotificationTarget('specific')}
+                    >
+                      <strong>Specific user</strong>
+                      <span>{selectedNotificationUser ? selectedNotificationUser.displayName || selectedNotificationUser.email : 'Search by name or email'}</span>
+                    </button>
+                  </div>
+
+                  {notificationTarget === 'specific' && (
+                    <div className="admin-notification-user-picker">
+                      <input value={notificationUserSearch} onChange={(event) => setNotificationUserSearch(event.target.value)} placeholder="Search registered users..." />
+                      <div>
+                        {filteredNotificationUsers.map((item) => (
+                          <button key={item.uid} type="button" className={selectedNotificationUserId === item.uid ? 'active' : ''} onClick={() => setSelectedNotificationUserId(item.uid)}>
+                            <strong>{item.displayName || 'Unnamed user'}</strong>
+                            <span>{item.email}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <label className="admin-notification-label" htmlFor="admin-notification-subject">Subject</label>
+                  <input
+                    id="admin-notification-subject"
+                    className="admin-notification-input"
+                    value={notificationSubject}
+                    onChange={(event) => setNotificationSubject(event.target.value)}
+                    placeholder="System maintenance on Sunday"
+                  />
+
+                  <label className="admin-notification-label" htmlFor="admin-notification-message">Message</label>
+                  <textarea
+                    id="admin-notification-message"
+                    className="admin-notification-textarea"
+                    value={notificationMessage}
+                    onChange={(event) => setNotificationMessage(event.target.value)}
+                    placeholder="Write the notification message..."
+                  />
+
+                  <div className="admin-notification-actions">
+                    <button type="button" disabled={!canReviewNotification} onClick={() => setNotificationStep('confirm')} className="admin-notification-primary">→ Review before sending</button>
+                    <button type="button" onClick={() => setNotificationModalOpen(false)} className="admin-notification-secondary">Cancel</button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="admin-notification-modal-header">
+                  <button type="button" onClick={() => setNotificationStep('form')}>← Edit notification</button>
+                  <span>/</span>
+                  <strong>Confirm</strong>
+                </div>
+                <div className="admin-notification-modal-body">
+                  <div className="admin-notification-summary">
+                    <div><span>Send to</span><strong><i className="las la-users" /> {notificationTarget === 'all' ? `All users — ${notificationRecipientCount} recipients` : `${selectedNotificationUser?.displayName || selectedNotificationUser?.email || 'Specific user'} — 1 recipient`}</strong></div>
+                    <div><span>Subject</span><strong>{notificationSubject.trim()}</strong></div>
+                    <div><span>Message</span><p>{notificationMessage.trim()}</p></div>
+                  </div>
+                  <div className="admin-notification-warning"><i className="las la-exclamation-triangle" /> This will create {notificationRecipientCount} notification {notificationRecipientCount === 1 ? 'document' : 'documents'} in Firestore. This action cannot be undone.</div>
+                  <div className="admin-notification-actions">
+                    <button type="button" disabled={sending} onClick={sendReviewedNotification} className="admin-notification-primary"><i className="las la-paper-plane" /> {sending ? 'Sending...' : `Send to ${notificationRecipientCount} ${notificationRecipientCount === 1 ? 'user' : 'users'}`}</button>
+                    <button type="button" disabled={sending} onClick={() => setNotificationStep('form')} className="admin-notification-secondary">← Edit</button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {imageModalOpen && (
         <div className="admin-image-modal-backdrop" onClick={() => setImageModalOpen(false)}>
