@@ -117,14 +117,14 @@ article button[aria-label="Remove from favorites"] i {
 /* Mobile menu logo sizing. */
 @media (max-width: 767px) {
   nav > .max-w-7xl a[aria-label="Reshelved home"] {
-    width: 25% !important;
-    max-width: 120px !important;
+    width: 40% !important;
+    max-width: 180px !important;
   }
 
   nav > .max-w-7xl a[aria-label="Reshelved home"] img {
     width: 100% !important;
     height: auto !important;
-    max-height: 32px !important;
+    max-height: 48px !important;
     object-fit: contain !important;
   }
 
@@ -306,4 +306,35 @@ section:has(> div h2):has(button[class*="bg-\[\#1665CC\]"]) > div.mt-8.flex.flex
 
 section:has(> div h2):has(button[class*="bg-\[\#1665CC\]"]) > div.mt-8.flex.flex-wrap.gap-2.border-t.border-stone-200.pt-5 button:not(.bg-\[\#1665CC\]) span {
   color: #64748b !important;
+}
+
+/* Single listing metadata icon row: tighter mobile spacing. */
+@media (max-width: 639px) {
+  main .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 {
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    font-size: 12px !important;
+  }
+
+  main .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 > div.flex.items-center.gap-2 {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    flex: 1 1 0 !important;
+  }
+
+  main .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 > div.flex.items-center.gap-2 span {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  main .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 > div.flex.items-center.gap-2 i {
+    flex-shrink: 0 !important;
+    font-size: 15px !important;
+  }
 }
