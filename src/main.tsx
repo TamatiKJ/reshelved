@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./reshelved-overrides.css";
 import "./mobile-logo-fixes.css";
+import "./profile-airbnb.css";
 import App from "./App";
 import { enforceWebpUploadCompression } from "./utils/enforceWebpUploadCompression";
 
