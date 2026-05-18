@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { collection, doc, getDocs, onSnapshot, updateDoc } from 'firebase/firestore';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -199,6 +199,85 @@ const PlatformListingDurationSync: React.FC<{ enabled: boolean }> = ({ enabled }
   return null;
 };
 
+const RangeInputStyleSync: React.FC<{ enabled: boolean }> = ({ enabled }) => {
+  useEffect(() => {
+    if (!enabled) return undefined;
+
+    const paintRange = (range: HTMLInputElement) => {
+      const min = Number(range.min || 0);
+      const max = Number(range.max || 100);
+      const value = Number(range.value || min);
+      const percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
+      range.style.background = `linear-gradient(90deg, #1665CC 0%, #1665CC ${percent}%, #e7e5e4 ${percent}%, #e7e5e4 100%)`;
+    };
+
+    const paintAllRanges = () => {
+      document.querySelectorAll<HTMLInputElement>('input[type="range"]').forEach(paintRange);
+    };
+
+    const handleInput = (event: Event) => {
+      const target = event.target;
+      if (target instanceof HTMLInputElement && target.type === 'range') paintRange(target);
+    };
+
+    paintAllRanges();
+    const observer = new MutationObserver(() => paintAllRanges());
+    observer.observe(document.body, { childList: true, subtree: true });
+    document.addEventListener('input', handleInput, true);
+    document.addEventListener('change', handleInput, true);
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('input', handleInput, true);
+      document.removeEventListener('change', handleInput, true);
+    };
+  }, [enabled]);
+
+  return null;
+};
+
+const SettingsSavedModal: React.FC<{ enabled: boolean }> = ({ enabled }) => {
+  const [visible, setVisible] = useState(false);
+  const timeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+
+    const showModal = () => {
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+      setVisible(true);
+      timeoutRef.current = window.setTimeout(() => setVisible(false), 2200);
+    };
+
+    const checkToastText = () => {
+      const bodyText = document.body.innerText || '';
+      if (bodyText.includes('Platform settings saved.')) showModal();
+    };
+
+    const observer = new MutationObserver(checkToastText);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+    return () => {
+      observer.disconnect();
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    };
+  }, [enabled]);
+
+  if (!visible) return null;
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 px-4">
+      <div className="w-full max-w-sm rounded-[28px] bg-white p-6 text-center shadow-2xl ring-1 ring-black/5">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50 text-green-600">
+          <i className="las la-check text-4xl" />
+        </div>
+        <h3 className="mt-4 text-xl font-bold text-stone-950">Settings saved</h3>
+        <p className="mt-2 text-sm leading-6 text-stone-500">Your platform settings have been updated successfully.</p>
+      </div>
+    </div>
+  );
+};
+
 const LoadingScreen: React.FC = () => (
   <div className="min-h-screen flex items-center justify-center px-5">
     <div className="flex flex-col items-center gap-3 p-5">
@@ -253,6 +332,8 @@ const AppContent: React.FC = () => {
       <ScrollToTop />
       <AdminFormFocusKeeper enabled={isAdminEnabled} />
       <PlatformListingDurationSync enabled={isAdminEnabled} />
+      <RangeInputStyleSync enabled={isAdminEnabled} />
+      <SettingsSavedModal enabled={isAdminEnabled} />
       <Routes>
         <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
         <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
