@@ -120,6 +120,7 @@ const Profile: React.FC = () => {
   const avgRating = ratings.length ? ratings.reduce((s, r) => s + r.rating, 0) / ratings.length : 0;
 
   useEffect(() => { if (!isOwnProfile) setActiveTab('active'); }, [isOwnProfile]);
+  useEffect(() => { if (isOwnProfile && location.hash === '#settings') setActiveTab('settings'); }, [isOwnProfile, location.hash]);
   useEffect(() => { if (targetUserId) fetchData(); }, [targetUserId, currentUser?.uid, userProfile?.bookmarks?.join('|')]);
   useEffect(() => { if (!saveMessage) return; const timer = window.setTimeout(() => setSaveMessage(''), 5000); return () => window.clearTimeout(timer); }, [saveMessage]);
   useEffect(() => { setNewEmail(currentUser?.email || profile?.email || ''); }, [currentUser?.email, profile?.email]);
