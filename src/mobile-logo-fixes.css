@@ -68,6 +68,21 @@
   }
 }
 
+/* Admin sidebar: tighten the real first nav gap caused by the Manage label margin. */
+aside.hidden.min-h-screen nav.mt-4,
+aside.hidden.min-h-screen nav.mt-9 {
+  margin-top: 12px !important;
+}
+
+aside.hidden.min-h-screen nav > div:first-child {
+  margin-top: 0 !important;
+  margin-bottom: 8px !important;
+}
+
+aside.hidden.min-h-screen nav > div:first-child + div {
+  margin-top: 0 !important;
+}
+
 /* Admin listings table: fit inside the panel without sideways scrolling. */
 main table.min-w-\[1120px\] {
   min-width: 0 !important;
