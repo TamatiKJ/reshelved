@@ -52,10 +52,11 @@ const AdminUserDashboardStyled: React.FC = () => {
     const cleanups: Array<() => void> = [];
 
     sidebars.forEach((sidebar) => {
+      sidebar.querySelector('.admin-sidebar-top-action')?.remove();
       sidebar.querySelector('.admin-extra-actions')?.remove();
 
-      const wrap = document.createElement('div');
-      wrap.className = 'admin-extra-actions';
+      const topWrap = document.createElement('div');
+      topWrap.className = 'admin-sidebar-top-action';
 
       const sendButton = document.createElement('button');
       sendButton.type = 'button';
@@ -63,8 +64,11 @@ const AdminUserDashboardStyled: React.FC = () => {
       sendButton.innerHTML = `<i class="las la-paper-plane"></i><span>${sending ? 'Sending...' : 'Send Update'}</span>`;
       sendButton.disabled = sending;
 
-      const divider = document.createElement('div');
-      divider.className = 'admin-extra-action-divider';
+      const topDivider = document.createElement('div');
+      topDivider.className = 'admin-extra-action-divider admin-extra-action-divider-top';
+
+      const bottomWrap = document.createElement('div');
+      bottomWrap.className = 'admin-extra-actions';
 
       const viewLink = document.createElement('a');
       viewLink.href = '/';
@@ -82,13 +86,16 @@ const AdminUserDashboardStyled: React.FC = () => {
       sendButton.addEventListener('click', handleSend);
       logoutButton.addEventListener('click', handleLogout);
 
-      wrap.append(sendButton, divider, viewLink, logoutButton);
-      sidebar.appendChild(wrap);
+      topWrap.append(sendButton, topDivider);
+      bottomWrap.append(viewLink, logoutButton);
+      sidebar.insertBefore(topWrap, sidebar.firstChild);
+      sidebar.appendChild(bottomWrap);
 
       cleanups.push(() => {
         sendButton.removeEventListener('click', handleSend);
         logoutButton.removeEventListener('click', handleLogout);
-        wrap.remove();
+        topWrap.remove();
+        bottomWrap.remove();
       });
     });
 
