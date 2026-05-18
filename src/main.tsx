@@ -4,6 +4,9 @@ import "./index.css";
 import "./reshelved-overrides.css";
 import "./mobile-logo-fixes.css";
 import App from "./App";
+import { enforceWebpUploadCompression } from "./utils/enforceWebpUploadCompression";
+
+enforceWebpUploadCompression();
 
 const openImageZoom = (src: string, alt: string) => {
   const existing = document.getElementById("listing-image-zoom-modal");
