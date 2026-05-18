@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { addDoc, arrayRemove, collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { deleteUser, EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateProfile, verifyBeforeUpdateEmail } from 'firebase/auth';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
@@ -84,6 +84,9 @@ const SecurityCard: React.FC<{ icon: string; title: string; body: string; tone?:
 const Profile: React.FC = () => {
   const { userId } = useParams<{ userId?: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const profileNavState = location.state as { from?: string; listingId?: string; listingTitle?: string } | null;
+  const cameFromListing = profileNavState?.from === 'listing';
   const { currentUser, userProfile, refreshProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
@@ -352,6 +355,13 @@ const Profile: React.FC = () => {
   return (
     <div className="mx-auto max-w-[1180px] px-4 py-8 pb-10 sm:px-6 sm:pb-20">
       {renderSecurityModal()}
+      <div className="mb-5">
+        {cameFromListing ? (
+          <button type="button" onClick={() => navigate(-1)} className="inline-flex cursor-pointer items-center text-sm font-bold text-[#1665CC] hover:text-[#1254a9]">← Back to listing</button>
+        ) : (
+          <Link to="/browse" className="inline-flex items-center text-sm font-bold text-[#1665CC] hover:text-[#1254a9]">← Browse listings</Link>
+        )}
+      </div>
       <div className="grid gap-8 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
         <aside className="lg:sticky lg:top-24">
           <div className="rounded-[32px] border border-stone-200 bg-white p-6 shadow-sm">
@@ -369,7 +379,7 @@ const Profile: React.FC = () => {
                 {ratings.length > 0 && <span className="rounded-full border border-stone-200 px-3 py-1.5"><i className="las la-star mr-1 text-[#F7AF31]" />{avgRating.toFixed(1)} · {ratings.length}</span>}
               </div>
               {profile.bio ? <p className="mt-5 text-sm leading-6 text-stone-600">{profile.bio}</p> : isOwnProfile ? <p className="mt-5 text-sm leading-6 text-stone-500">Add a short bio in Settings so buyers know who they are dealing with.</p> : null}
-              {!isOwnProfile && currentUser && <button onClick={handleMessageUser} disabled={messageLoading} className="mt-6 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-stone-950 px-5 py-3 text-sm font-bold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"><i className="las la-comment text-lg" />{messageLoading ? 'Opening...' : 'Message'}</button>}
+              {!isOwnProfile && currentUser && <button onClick={handleMessageUser} disabled={messageLoading} className="mt-6 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[#FF5F57] px-5 py-3 text-sm font-bold text-white hover:bg-[#e84f48] disabled:cursor-not-allowed disabled:opacity-60"><i className="las la-comment text-lg" />{messageLoading ? 'Opening...' : 'Message'}</button>}
             </div>
           </div>
           {isOwnProfile && <nav className="mt-5 overflow-hidden rounded-[28px] border border-stone-200 bg-white p-2 shadow-sm"><div className="grid gap-1.5">{tabs.map(tab => {
