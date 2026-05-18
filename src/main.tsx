@@ -4,6 +4,7 @@ import "./index.css";
 import "./reshelved-overrides.css";
 import "./mobile-logo-fixes.css";
 import "./profile-airbnb.css";
+import "./create-listing-polish.css";
 import App from "./App";
 import { enforceWebpUploadCompression } from "./utils/enforceWebpUploadCompression";
 
