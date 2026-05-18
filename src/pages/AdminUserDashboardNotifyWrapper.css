@@ -55,12 +55,13 @@
 }
 
 .send-update-label,
-.send-update-field label {
+.send-update-field label,
+.send-update-search-label {
   display: block;
   margin-bottom: 6px;
   color: #292524;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .send-update-targets {
@@ -119,8 +120,8 @@
 
 .send-update-check span {
   color: #292524;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .send-update-check small {
@@ -132,6 +133,15 @@
 
 .send-update-picker {
   margin: 0 0 18px;
+}
+
+.send-update-picker::before {
+  content: 'Search users';
+  display: block;
+  margin-bottom: 6px;
+  color: #292524;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .send-update-picker > input,
@@ -263,12 +273,14 @@
 
 .send-update-summary span {
   color: #78716c;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .send-update-summary strong {
   color: #1c1917;
   font-size: 14px;
+  font-weight: 700;
 }
 
 .send-update-summary p {
