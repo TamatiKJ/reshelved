@@ -11,7 +11,7 @@ import EditListing from './pages/EditListing';
 import ListingDetail from './pages/ListingDetail';
 import Messages from './pages/Messages';
 import Profile from './pages/Profile';
-import Admin from './pages/AdminListingsManagementWrapper';
+import Admin from './pages/AdminUserDashboardNotifyWrapper';
 import Notifications from './pages/Notifications';
 import LegalPage from './pages/LegalPage';
 
