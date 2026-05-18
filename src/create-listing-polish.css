@@ -46,12 +46,32 @@ body:has(form input[type="file"][accept="image/*"]) form button.border-primary-6
   content: none !important;
 }
 
+/* Persistent live preview for steps 2 and 3: make it visually match the photo step card style. */
+body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky {
+  display: block !important;
+}
+
+body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky > div {
+  border-radius: 24px !important;
+  border-color: #e7e5e4 !important;
+  background: #ffffff !important;
+  box-shadow: 0 10px 30px rgba(28, 25, 23, 0.045) !important;
+}
+
+body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky h2 {
+  font-family: 'Work Sans', 'Source Sans 3', system-ui, sans-serif !important;
+  letter-spacing: -0.035em !important;
+}
+
 /* Live preview cover area. */
 body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspect-\[4\/3\] {
+  aspect-ratio: 1 / 1 !important;
   background: var(--reshelved-create-placeholder) !important;
   background-repeat: no-repeat !important;
   background-size: cover !important;
   background-position: center !important;
+  border: 1px solid #e7e5e4 !important;
+  border-radius: 18px !important;
 }
 
 body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspect-\[4\/3\] img {
@@ -67,7 +87,14 @@ body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspec
 }
 
 /* Live preview condition, location, and category row. */
+body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .grid.grid-cols-3.gap-2 {
+  gap: 8px !important;
+}
+
 body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .grid.grid-cols-3.gap-2 span {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-width: 0 !important;
   color: #1c1917 !important;
   font-size: 14px !important;
   line-height: 1.25 !important;
@@ -80,6 +107,7 @@ body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .grid.
   line-height: 1 !important;
   vertical-align: -4px !important;
   margin-right: 4px !important;
+  flex-shrink: 0 !important;
 }
 
 /* Live preview listing type and price typography. */
@@ -91,8 +119,28 @@ body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky div.mt
   line-height: 1.35 !important;
 }
 
+body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky span.mt-3.inline-flex {
+  border-radius: 999px !important;
+  background: #fafaf9 !important;
+}
+
 body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky span.mt-3.inline-flex i {
   color: #1c1917 !important;
   font-size: 20px !important;
   line-height: 1 !important;
+}
+
+@media (max-width: 1023px) {
+  body:has(form input[type="file"][accept="image/*"]) form {
+    grid-template-columns: 1fr !important;
+  }
+
+  body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky {
+    position: static !important;
+    order: 2 !important;
+  }
+
+  body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspect-\[4\/3\] {
+    max-height: 380px !important;
+  }
 }
