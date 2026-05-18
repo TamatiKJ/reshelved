@@ -250,6 +250,48 @@ span[title="Read"]::before {
   }
 }
 
+/* Chat cards: keep date and unread bubble on the same right edge. */
+aside.bg-\[\#FFFAF2\] a.group[href^="/messages/"] > div.flex.items-center {
+  position: relative !important;
+  align-items: flex-start !important;
+  padding-right: 20px !important;
+}
+
+aside.bg-\[\#FFFAF2\] a.group[href^="/messages/"] > div.flex.items-center > .min-w-0.flex-1 {
+  min-width: 0 !important;
+  padding-right: 88px !important;
+}
+
+aside.bg-\[\#FFFAF2\] a.group[href^="/messages/"] > div.flex.items-center > .min-w-0.flex-1 > div:first-child {
+  display: block !important;
+  padding-right: 0 !important;
+}
+
+aside.bg-\[\#FFFAF2\] a.group[href^="/messages/"] > div.flex.items-center > .min-w-0.flex-1 > div:first-child > span:first-child {
+  display: block !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+aside.bg-\[\#FFFAF2\] a.group[href^="/messages/"] > div.flex.items-center > .min-w-0.flex-1 > div:first-child > span:last-child {
+  position: absolute !important;
+  right: 20px !important;
+  top: 18px !important;
+  width: 76px !important;
+  min-width: 76px !important;
+  text-align: right !important;
+  display: block !important;
+}
+
+aside.bg-\[\#FFFAF2\] a.group[href^="/messages/"] > div.flex.items-center > span.flex.h-6.min-w-6 {
+  position: absolute !important;
+  right: 20px !important;
+  top: 48px !important;
+  margin: 0 !important;
+}
+
 /* Mobile chats page spacing and unread date stack. */
 @media (max-width: 639px) {
   div.mx-auto.max-w-\[1240px\] {
@@ -262,33 +304,6 @@ span[title="Read"]::before {
   div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] > div.flex-1.overflow-y-auto {
     padding-left: 20px !important;
     padding-right: 20px !important;
-  }
-
-  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group > div.flex.items-center {
-    position: relative !important;
-    align-items: flex-start !important;
-    padding-left: 20px !important;
-    padding-right: 20px !important;
-  }
-
-  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group > div.flex.items-center > .min-w-0.flex-1 {
-    padding-right: 76px !important;
-  }
-
-  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group > div.flex.items-center span.text-xs.shrink-0 {
-    position: absolute !important;
-    right: 20px !important;
-    top: 17px !important;
-    width: 70px !important;
-    min-width: 70px !important;
-    text-align: right !important;
-  }
-
-  div.mx-auto.max-w-\[1240px\] aside.bg-\[\#FFFAF2\] a.group > div.flex.items-center > span.flex.h-6.min-w-6 {
-    position: absolute !important;
-    right: 20px !important;
-    top: 50px !important;
-    margin: 0 !important;
   }
 }
 
