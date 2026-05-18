@@ -17,6 +17,7 @@ const fieldClass = `w-full rounded-2xl border border-stone-200 bg-white px-4 py-
 const labelClass = 'mb-1.5 block text-sm font-bold text-stone-950';
 
 type CreateStep = 1 | 2 | 3;
+type DragState = { startX: number; startY: number; cropX: number; cropY: number } | null;
 
 const listingTypes = [
   { value: 'swap', label: 'Swap', icon: 'las la-sync', desc: 'Trade for another book' },
@@ -36,6 +37,8 @@ const formatBytes = (bytes: number) => {
   const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
   return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 };
+
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
 const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
   const image = new Image();
@@ -119,6 +122,7 @@ const CreateListing: React.FC = () => {
   const [cropZoom, setCropZoom] = useState(1);
   const [cropX, setCropX] = useState(0);
   const [cropY, setCropY] = useState(0);
+  const [dragState, setDragState] = useState<DragState>(null);
   const [uploadProgress, setUploadProgress] = useState({ active: false, done: false, phase: '', fileName: '', currentFile: 0, totalFiles: 0, bytesTransferred: 0, totalBytes: 0, percent: 0 });
 
   const activeListingType = useMemo(() => listingTypes.find((item) => item.value === type), [type]);
@@ -144,6 +148,7 @@ const CreateListing: React.FC = () => {
       setCropZoom(1);
       setCropX(0);
       setCropY(0);
+      setDragState(null);
     };
     reader.readAsDataURL(file);
   };
@@ -155,6 +160,7 @@ const CreateListing: React.FC = () => {
     setCropZoom(1);
     setCropX(0);
     setCropY(0);
+    setDragState(null);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,6 +206,21 @@ const CreateListing: React.FC = () => {
       return current.filter((_, i) => i !== index);
     });
   };
+
+  const handleCropPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragState({ startX: event.clientX, startY: event.clientY, cropX, cropY });
+  };
+
+  const handleCropPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragState) return;
+    const nextX = dragState.cropX + (event.clientX - dragState.startX) / 2.4;
+    const nextY = dragState.cropY + (event.clientY - dragState.startY) / 2.4;
+    setCropX(clamp(nextX, -100, 100));
+    setCropY(clamp(nextY, -100, 100));
+  };
+
+  const stopCropDrag = () => setDragState(null);
 
   const uploadSingleFile = async (listingId: string, file: File, index: number, totalFiles: number): Promise<string> => {
     if (!currentUser) throw new Error('You must be logged in to upload images.');
@@ -329,11 +350,7 @@ const CreateListing: React.FC = () => {
         <h2 className="text-xl font-bold text-stone-950 sm:text-2xl">Live Preview</h2>
         <p className="mt-1 text-sm text-stone-500">See how it looks before you publish.</p>
         <div className="mt-4 aspect-[4/3] overflow-hidden rounded-2xl bg-stone-100">
-          {previews[0] ? (
-            <img src={previews[0]} alt="Book cover preview" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-stone-100 text-center text-sm font-semibold text-stone-400">Cover image will appear here</div>
-          )}
+          {previews[0] ? <img src={previews[0]} alt="Book cover preview" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center bg-stone-100 text-center text-sm font-semibold text-stone-400">Cover image will appear here</div>}
         </div>
         <h3 className="mt-4 text-xl font-bold leading-tight text-stone-950">{previewTitle}</h3>
         <p className="mt-1 text-sm text-stone-500">by {previewAuthor}</p>
@@ -347,9 +364,7 @@ const CreateListing: React.FC = () => {
           <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-stone-200 px-4 py-2 text-sm font-bold text-stone-950"><i className={`${activeListingType?.icon || 'las la-tag'} text-primary-600`} />{activeListingType?.label || 'Listing'}</span>
           <p className="mt-3 text-sm font-bold text-stone-950">{previewPrice}</p>
         </div>
-        <div className="mt-5 rounded-2xl bg-green-50 p-4 text-sm leading-6 text-green-800">
-          <i className="las la-info-circle mr-1 text-lg text-green-700" />Your listing will be active for {listingDays} {listingDays === 1 ? 'day' : 'days'} after publishing.
-        </div>
+        <div className="mt-5 rounded-2xl bg-green-50 p-4 text-sm leading-6 text-green-800"><i className="las la-info-circle mr-1 text-lg text-green-700" />Your listing will be active for {listingDays} {listingDays === 1 ? 'day' : 'days'} after publishing.</div>
       </div>
     </aside>
   );
@@ -370,114 +385,76 @@ const CreateListing: React.FC = () => {
             <div className="grid grid-cols-3 gap-3 bg-white p-3 sm:p-4">
               {steps.map((item) => {
                 const active = step === item.id;
-                return (
-                  <button key={item.id} type="button" onClick={() => goToStep(item.id)} disabled={loading} className={`flex min-w-0 cursor-pointer items-center gap-2 rounded-xl px-3 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 sm:gap-3 sm:px-4 ${active ? 'bg-stone-50' : 'hover:bg-stone-50'}`}>
-                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${active ? 'bg-primary-600 text-white' : 'border border-stone-300 bg-stone-100 text-stone-600'}`}>{item.id}</span>
-                    <span className={`truncate text-sm font-bold ${active ? 'text-stone-950' : 'text-stone-500'}`}>{item.label}</span>
-                  </button>
-                );
+                return <button key={item.id} type="button" onClick={() => goToStep(item.id)} disabled={loading} className={`flex min-w-0 cursor-pointer items-center gap-2 rounded-xl px-3 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 sm:gap-3 sm:px-4 ${active ? 'bg-stone-50' : 'hover:bg-stone-50'}`}><span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${active ? 'bg-primary-600 text-white' : 'border border-stone-300 bg-stone-100 text-stone-600'}`}>{item.id}</span><span className={`truncate text-sm font-bold ${active ? 'text-stone-950' : 'text-stone-500'}`}>{item.label}</span></button>;
               })}
             </div>
 
             {error && <div className="mx-4 mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-            {uploadProgress.active && (
-              <div className="mx-4 mb-4 rounded-xl border border-green-200 bg-green-50 p-4">
-                <div className="flex items-center justify-between gap-3 text-sm"><p className="font-semibold text-green-700 truncate">{uploadProgress.phase}{uploadProgress.fileName ? `: ${uploadProgress.fileName}` : ''}</p><span className="font-bold text-green-700">{uploadProgress.percent}%</span></div>
-                {!uploadProgress.done && <p className="text-green-600 mt-1 text-sm">File {uploadProgress.currentFile} of {uploadProgress.totalFiles} · {formatBytes(uploadProgress.bytesTransferred)} / {formatBytes(uploadProgress.totalBytes)}</p>}
-                <div className="mt-3 h-2 rounded-full bg-white overflow-hidden"><div className="h-full rounded-full bg-green-600 transition-all duration-200" style={{ width: `${uploadProgress.percent}%` }} /></div>
-              </div>
-            )}
+            {uploadProgress.active && <div className="mx-4 mb-4 rounded-xl border border-green-200 bg-green-50 p-4"><div className="flex items-center justify-between gap-3 text-sm"><p className="font-semibold text-green-700 truncate">{uploadProgress.phase}{uploadProgress.fileName ? `: ${uploadProgress.fileName}` : ''}</p><span className="font-bold text-green-700">{uploadProgress.percent}%</span></div>{!uploadProgress.done && <p className="text-green-600 mt-1 text-sm">File {uploadProgress.currentFile} of {uploadProgress.totalFiles} · {formatBytes(uploadProgress.bytesTransferred)} / {formatBytes(uploadProgress.totalBytes)}</p>}<div className="mt-3 h-2 rounded-full bg-white overflow-hidden"><div className="h-full rounded-full bg-green-600 transition-all duration-200" style={{ width: `${uploadProgress.percent}%` }} /></div></div>}
 
             <div className="p-4 sm:p-6 lg:p-8">
-              {step === 1 && (
-                <div>
-                  <h2 className="text-2xl font-bold text-stone-950">Photos</h2>
-                  <p className="mt-1 text-sm leading-6 text-stone-500">Add up to 4 photos. The first photo becomes the cover.</p>
-                  <div className="mt-6 grid gap-3 sm:grid-cols-[240px_1fr]">
-                    <label className={`flex min-h-[210px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-200 bg-white text-center transition hover:border-primary-600 hover:bg-primary-50/40 ${loading || previews.length >= MAX_IMAGES ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
-                      <i className="las la-plus text-6xl text-primary-600" />
-                      <span className="mt-2 text-base font-bold text-stone-950">Drag photos here</span>
-                      <span className="mt-1 text-sm text-stone-500">or click to upload</span>
-                      <input type="file" accept="image/*" multiple onChange={handleImageChange} disabled={loading || previews.length >= MAX_IMAGES} className="hidden" />
-                    </label>
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      {previews.map((preview, i) => (
-                        <div key={i} className="group relative aspect-square overflow-hidden rounded-2xl border border-stone-200 bg-stone-100">
-                          <img src={preview} alt="" className="h-full w-full object-cover" />
-                          <button type="button" onClick={() => removeImage(i)} disabled={loading} className="absolute right-2 top-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white opacity-0 transition group-hover:opacity-100 disabled:opacity-40">×</button>
-                        </div>
-                      ))}
-                      {Array.from({ length: Math.max(0, MAX_IMAGES - previews.length) }).map((_, i) => <div key={`empty-${i}`} className="aspect-square rounded-2xl border border-stone-200 bg-white" />)}
-                    </div>
-                  </div>
-                  <p className="mt-3 text-xs leading-5 text-stone-500">Upload JPG, PNG, or WebP images up to 5MB each.</p>
+              {step === 1 && <div><h2 className="text-2xl font-bold text-stone-950">Photos</h2><p className="mt-1 text-sm leading-6 text-stone-500">Add up to 4 photos. The first photo becomes the cover.</p><div className="mt-6 grid gap-3 sm:grid-cols-[240px_1fr]"><label className={`flex min-h-[210px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-200 bg-white text-center transition hover:border-primary-600 hover:bg-primary-50/40 ${loading || previews.length >= MAX_IMAGES ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}><i className="las la-plus text-6xl text-primary-600" /><span className="mt-2 text-base font-bold text-stone-950">Drag photos here</span><span className="mt-1 text-sm text-stone-500">or click to upload</span><input type="file" accept="image/*" multiple onChange={handleImageChange} disabled={loading || previews.length >= MAX_IMAGES} className="hidden" /></label><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{previews.map((preview, i) => <div key={i} className="group relative aspect-square overflow-hidden rounded-2xl border border-stone-200 bg-stone-100"><img src={preview} alt="" className="h-full w-full object-cover" /><button type="button" onClick={() => removeImage(i)} disabled={loading} className="absolute right-2 top-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white opacity-0 transition group-hover:opacity-100 disabled:opacity-40">×</button></div>)}{Array.from({ length: Math.max(0, MAX_IMAGES - previews.length) }).map((_, i) => <div key={`empty-${i}`} className="aspect-square rounded-2xl border border-stone-200 bg-white" />)}</div></div><p className="mt-3 text-xs leading-5 text-stone-500">Upload JPG, PNG, or WebP images up to 5MB each.</p><h2 className="mt-8 text-2xl font-bold text-stone-950">Listing Type</h2><div className="mt-5 grid gap-3 sm:grid-cols-3">{listingTypes.map((item) => <button key={item.value} type="button" disabled={loading} onClick={() => setType(item.value)} className={`cursor-pointer rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${type === item.value ? 'border-primary-600 bg-primary-50/60 ring-1 ring-primary-600/10' : 'border-stone-200 bg-white hover:border-primary-600'}`}><i className={`${item.icon} text-3xl text-stone-950`} /><div className="mt-3 text-sm font-bold text-stone-950">{item.label}</div><div className="mt-1 text-xs leading-5 text-stone-500">{item.desc}</div></button>)}</div><div className="mt-6 flex flex-wrap gap-3"><button type="button" onClick={handleNextStep} disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">Next Step</button></div></div>}
 
-                  <h2 className="mt-8 text-2xl font-bold text-stone-950">Listing Type</h2>
-                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                    {listingTypes.map((item) => (
-                      <button key={item.value} type="button" disabled={loading} onClick={() => setType(item.value)} className={`cursor-pointer rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${type === item.value ? 'border-primary-600 bg-primary-50/60 ring-1 ring-primary-600/10' : 'border-stone-200 bg-white hover:border-primary-600'}`}>
-                        <i className={`${item.icon} text-3xl text-stone-950`} />
-                        <div className="mt-3 text-sm font-bold text-stone-950">{item.label}</div>
-                        <div className="mt-1 text-xs leading-5 text-stone-500">{item.desc}</div>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <button type="button" onClick={handleNextStep} disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">Next Step</button>
-                  </div>
-                </div>
-              )}
+              {step === 2 && <div><h2 className="text-2xl font-bold text-stone-950">Book Details</h2><div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2"><div><label className={labelClass}>Book Title *</label><input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. Things Fall Apart" /></div><div><label className={labelClass}>Author *</label><input type="text" required value={author} onChange={(e) => setAuthor(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. Chinua Achebe" /></div><div className="sm:col-span-2"><label className={labelClass}>Description</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={loading} rows={4} className={`${fieldClass} resize-none`} placeholder="Tell us about the book condition, edition, and notes." /></div><div><label className={labelClass}>Condition *</label><select value={condition} onChange={(e) => setCondition(e.target.value as Listing['condition'])} disabled={loading} className={`${fieldClass} pr-10`}>{CONDITIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><div><label className={labelClass}>Category *</label><select value={category} onChange={(e) => setCategory(e.target.value)} disabled={loading} className={`${fieldClass} pr-10`}>{CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><div><label className={labelClass}>Location *</label><select value={location} onChange={(e) => setLocation(e.target.value)} disabled={loading} className={`${fieldClass} pr-10`}>{KENYAN_CITIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>{type === 'sell' && <div><label className={labelClass}>Price (KSh) *</label><input type="number" required min="0" value={price} onChange={(e) => setPrice(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. 500" /></div>}{!userProfile?.location && <p className="sm:col-span-2 text-xs leading-5 text-stone-500"><i className="las la-info-circle mr-1.5 align-[-2px] text-base text-stone-400" /><span>You can change your default location in <Link to="/profile#settings" className="font-semibold text-[#1665CC] underline underline-offset-2 hover:text-[#1254a9]">profile settings</Link>.</span></p>}</div><div className="mt-6 flex flex-wrap gap-3"><button type="button" onClick={() => goToStep(1)} disabled={loading} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Back</button><button type="button" onClick={handleNextStep} disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">Next Step</button></div></div>}
 
-              {step === 2 && (
-                <div>
-                  <h2 className="text-2xl font-bold text-stone-950">Book Details</h2>
-                  <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    <div><label className={labelClass}>Book Title *</label><input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. Things Fall Apart" /></div>
-                    <div><label className={labelClass}>Author *</label><input type="text" required value={author} onChange={(e) => setAuthor(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. Chinua Achebe" /></div>
-                    <div className="sm:col-span-2"><label className={labelClass}>Description</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={loading} rows={4} className={`${fieldClass} resize-none`} placeholder="Tell us about the book condition, edition, and notes." /></div>
-                    <div><label className={labelClass}>Condition *</label><select value={condition} onChange={(e) => setCondition(e.target.value as Listing['condition'])} disabled={loading} className={`${fieldClass} pr-10`}>{CONDITIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
-                    <div><label className={labelClass}>Category *</label><select value={category} onChange={(e) => setCategory(e.target.value)} disabled={loading} className={`${fieldClass} pr-10`}>{CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
-                    <div><label className={labelClass}>Location *</label><select value={location} onChange={(e) => setLocation(e.target.value)} disabled={loading} className={`${fieldClass} pr-10`}>{KENYAN_CITIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
-                    {type === 'sell' && <div><label className={labelClass}>Price (KSh) *</label><input type="number" required min="0" value={price} onChange={(e) => setPrice(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. 500" /></div>}
-                    {!userProfile?.location && <p className="sm:col-span-2 text-xs leading-5 text-stone-500"><i className="las la-info-circle mr-1.5 align-[-2px] text-base text-stone-400" /><span>You can change your default location in <Link to="/profile#settings" className="font-semibold text-[#1665CC] underline underline-offset-2 hover:text-[#1254a9]">profile settings</Link>.</span></p>}
-                  </div>
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <button type="button" onClick={() => goToStep(1)} disabled={loading} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Back</button>
-                    <button type="button" onClick={handleNextStep} disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">Next Step</button>
-                  </div>
-                </div>
-              )}
-
-              {step === 3 && (
-                <div>
-                  <h2 className="text-2xl font-bold text-stone-950">Preview</h2>
-                  <p className="mt-1 text-sm leading-6 text-stone-500">Review your listing before publishing.</p>
-                  <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5 text-sm leading-6 text-green-800">
-                    <p className="font-bold text-green-900">Your listing will be active after publishing.</p>
-                    <p className="mt-1">It will be visible on your account page, visible publicly in browse results, and active for {listingDays} {listingDays === 1 ? 'day' : 'days'}.</p>
-                  </div>
-                  <div className="mt-6 rounded-2xl border border-stone-200 bg-stone-50 p-5">
-                    <div className="grid gap-4 text-sm sm:grid-cols-2">
-                      <div><span className="font-bold text-stone-500">Title</span><p className="mt-1 font-bold text-stone-950">{previewTitle}</p></div>
-                      <div><span className="font-bold text-stone-500">Author</span><p className="mt-1 text-stone-700">{previewAuthor}</p></div>
-                      <div><span className="font-bold text-stone-500">Listing</span><p className="mt-1 text-stone-700">{activeListingType?.label}</p></div>
-                      <div><span className="font-bold text-stone-500">Value</span><p className="mt-1 text-stone-700">{previewPrice}</p></div>
-                    </div>
-                  </div>
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <button type="button" onClick={() => goToStep(2)} disabled={loading} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Back</button>
-                    <button type="submit" disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Publishing...' : 'Publish Listing'}</button>
-                  </div>
-                </div>
-              )}
+              {step === 3 && <div><h2 className="text-2xl font-bold text-stone-950">Preview</h2><p className="mt-1 text-sm leading-6 text-stone-500">Review your listing before publishing.</p><div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5 text-sm leading-6 text-green-800"><p className="font-bold text-green-900">Your listing will be active after publishing.</p><p className="mt-1">It will be visible on your account page, visible publicly in browse results, and active for {listingDays} {listingDays === 1 ? 'day' : 'days'}.</p></div><div className="mt-6 rounded-2xl border border-stone-200 bg-stone-50 p-5"><div className="grid gap-4 text-sm sm:grid-cols-2"><div><span className="font-bold text-stone-500">Title</span><p className="mt-1 font-bold text-stone-950">{previewTitle}</p></div><div><span className="font-bold text-stone-500">Author</span><p className="mt-1 text-stone-700">{previewAuthor}</p></div><div><span className="font-bold text-stone-500">Listing</span><p className="mt-1 text-stone-700">{activeListingType?.label}</p></div><div><span className="font-bold text-stone-500">Value</span><p className="mt-1 text-stone-700">{previewPrice}</p></div></div></div><div className="mt-6 flex flex-wrap gap-3"><button type="button" onClick={() => goToStep(2)} disabled={loading} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Back</button><button type="submit" disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Publishing...' : 'Publish Listing'}</button></div></div>}
             </div>
           </div>
-
           {livePreview}
         </form>
       </div>
 
-      {cropFile && cropSrc && <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"><div className="bg-white rounded-2xl w-full max-w-md p-5 shadow-xl"><div className="flex items-start justify-between gap-4 mb-4"><div><h2 className="text-lg font-bold text-stone-900">Crop Photo</h2><p className="text-sm text-stone-500">The full image is shown first. Zoom in only if you want to crop.</p></div><button type="button" onClick={skipCurrentCrop} className="cursor-pointer text-stone-400 hover:text-stone-700 text-xl">×</button></div><div className="aspect-square rounded-xl overflow-hidden bg-stone-100 border border-stone-200 relative"><img src={cropSrc} alt="Crop preview" className="w-full h-full object-contain select-none" style={{ transform: `translate(${cropX * 0.6}px, ${cropY * 0.6}px) scale(${cropZoom})`, transformOrigin: 'center' }} /><div className="absolute inset-0 border-4 border-white/70 pointer-events-none rounded-xl" /></div><div className="space-y-4 mt-5"><div><label className="text-sm font-medium text-stone-700">Zoom</label><input type="range" min="1" max="3" step="0.05" value={cropZoom} onChange={(e) => setCropZoom(parseFloat(e.target.value))} className="w-full accent-primary-600 cursor-pointer" /></div><div><label className="text-sm font-medium text-stone-700">Move left / right</label><input type="range" min="-100" max="100" value={cropX} onChange={(e) => setCropX(parseInt(e.target.value))} className="w-full accent-primary-600 cursor-pointer" /></div><div><label className="text-sm font-medium text-stone-700">Move up / down</label><input type="range" min="-100" max="100" value={cropY} onChange={(e) => setCropY(parseInt(e.target.value))} className="w-full accent-primary-600 cursor-pointer" /></div></div><div className="grid grid-cols-2 gap-3 mt-5"><button type="button" onClick={skipCurrentCrop} className="cursor-pointer py-2.5 border border-stone-200 rounded-xl text-sm font-semibold text-stone-600 hover:bg-stone-50">Skip</button><button type="button" onClick={addCroppedImage} className="cursor-pointer py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700">Use Photo</button></div></div></div>}
+      {cropFile && cropSrc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 p-3 backdrop-blur-sm sm:p-6">
+          <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-black/10">
+            <div className="flex items-center justify-between gap-4 border-b border-stone-200 px-5 py-4 sm:px-6">
+              <div>
+                <h2 className="text-lg font-bold text-stone-950 sm:text-xl">Edit photo</h2>
+                <p className="text-sm text-stone-500">Drag to reposition, then use the slider to zoom.</p>
+              </div>
+              <button type="button" onClick={skipCurrentCrop} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100 hover:text-stone-900" aria-label="Close crop editor"><i className="las la-times text-2xl" /></button>
+            </div>
+
+            <div className="grid min-h-0 flex-1 gap-0 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="flex min-h-[430px] items-center justify-center bg-[#111827] p-4 sm:p-8">
+                <div onPointerDown={handleCropPointerDown} onPointerMove={handleCropPointerMove} onPointerUp={stopCropDrag} onPointerCancel={stopCropDrag} className={`relative aspect-square w-full max-w-[560px] touch-none overflow-hidden rounded-[24px] bg-stone-900 ${dragState ? 'cursor-grabbing' : 'cursor-grab'}`}>
+                  <img src={cropSrc} alt="Crop preview" draggable={false} className="h-full w-full select-none object-contain opacity-95 transition-transform duration-75" style={{ transform: `translate(${cropX * 0.6}px, ${cropY * 0.6}px) scale(${cropZoom})`, transformOrigin: 'center' }} />
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_63%,rgba(0,0,0,0.48)_64%)]" />
+                  <div className="pointer-events-none absolute inset-6 rounded-[22px] border-2 border-white shadow-[0_0_0_999px_rgba(0,0,0,0.22)]" />
+                  <div className="pointer-events-none absolute inset-6 grid grid-cols-3 grid-rows-3 rounded-[22px] overflow-hidden opacity-45">
+                    {Array.from({ length: 9 }).map((_, index) => <span key={index} className="border border-white/45" />)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col border-t border-stone-200 bg-white p-5 lg:border-l lg:border-t-0 sm:p-6">
+                <div className="rounded-2xl bg-stone-50 p-4">
+                  <p className="text-sm font-bold text-stone-950">Photo preview</p>
+                  <div className="mt-3 aspect-square overflow-hidden rounded-2xl bg-stone-200">
+                    <img src={cropSrc} alt="Small crop preview" className="h-full w-full object-contain" style={{ transform: `translate(${cropX * 0.36}px, ${cropY * 0.36}px) scale(${cropZoom})`, transformOrigin: 'center' }} />
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-4">
+                  <div>
+                    <div className="mb-2 flex items-center justify-between text-sm"><span className="font-bold text-stone-800">Zoom</span><span className="text-stone-500">{Math.round(cropZoom * 100)}%</span></div>
+                    <input type="range" min="1" max="3" step="0.05" value={cropZoom} onChange={(e) => setCropZoom(parseFloat(e.target.value))} className="w-full accent-primary-600 cursor-pointer" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button type="button" onClick={() => { setCropZoom(1); setCropX(0); setCropY(0); }} className="cursor-pointer rounded-xl border border-stone-200 px-4 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-50">Reset</button>
+                    <button type="button" onClick={skipCurrentCrop} className="cursor-pointer rounded-xl border border-stone-200 px-4 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-50">Skip</button>
+                  </div>
+                </div>
+
+                <div className="mt-auto pt-5">
+                  <button type="button" onClick={addCroppedImage} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary-600 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-primary-700"><i className="las la-check text-xl" />Use Photo</button>
+                  <p className="mt-3 text-center text-xs leading-5 text-stone-500">This will be used as the image shown on your listing.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
