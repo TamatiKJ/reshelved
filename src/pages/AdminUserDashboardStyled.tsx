@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { addDoc, collection, getDocs } from 'firebase/firestore';
-import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import AdminUserDashboard from './AdminUserDashboard';
@@ -11,7 +10,7 @@ const AdminUserDashboardStyled: React.FC = () => {
   const { userProfile, logout } = useAuth() as any;
   const [sending, setSending] = useState(false);
 
-  const sendUpdate = async () => {
+  const sendUpdate = useCallback(async () => {
     if (!userProfile?.isAdmin || sending) return;
 
     const subject = window.prompt('Notification subject');
@@ -43,38 +42,59 @@ const AdminUserDashboardStyled: React.FC = () => {
     } finally {
       setSending(false);
     }
-  };
+  }, [sending, userProfile?.isAdmin]);
+
+  useEffect(() => {
+    if (!userProfile?.isAdmin) return undefined;
+
+    const sidebarSelector = '.admin-tiktok-shell aside.hidden.border-r.border-stone-200.bg-white';
+    const sidebars = Array.from(document.querySelectorAll<HTMLElement>(sidebarSelector));
+    const cleanups: Array<() => void> = [];
+
+    sidebars.forEach((sidebar) => {
+      sidebar.querySelector('.admin-extra-actions')?.remove();
+
+      const wrap = document.createElement('div');
+      wrap.className = 'admin-extra-actions';
+
+      const sendButton = document.createElement('button');
+      sendButton.type = 'button';
+      sendButton.className = 'admin-extra-action admin-extra-action-primary';
+      sendButton.innerHTML = `<i class="las la-paper-plane"></i><span>${sending ? 'Sending...' : 'Send Update'}</span>`;
+      sendButton.disabled = sending;
+
+      const viewLink = document.createElement('a');
+      viewLink.href = '/';
+      viewLink.className = 'admin-extra-action';
+      viewLink.innerHTML = '<i class="las la-globe"></i><span>View Site</span>';
+
+      const logoutButton = document.createElement('button');
+      logoutButton.type = 'button';
+      logoutButton.className = 'admin-extra-action';
+      logoutButton.innerHTML = '<i class="las la-sign-out-alt"></i><span>Logout</span>';
+
+      const handleSend = () => sendUpdate();
+      const handleLogout = () => logout?.();
+
+      sendButton.addEventListener('click', handleSend);
+      logoutButton.addEventListener('click', handleLogout);
+
+      wrap.append(sendButton, viewLink, logoutButton);
+      sidebar.appendChild(wrap);
+
+      cleanups.push(() => {
+        sendButton.removeEventListener('click', handleSend);
+        logoutButton.removeEventListener('click', handleLogout);
+        wrap.remove();
+      });
+    });
+
+    return () => cleanups.forEach((cleanup) => cleanup());
+  }, [logout, sendUpdate, sending, userProfile?.isAdmin]);
 
   return (
     <div className="admin-tiktok-shell">
       <AdminUserDashboard />
-
-      {userProfile?.isAdmin && (
-        <>
-          <div className="admin-left-primary-action hidden lg:block">
-            <button
-              type="button"
-              onClick={sendUpdate}
-              disabled={sending}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#D54215] text-[16px] font-semibold text-white transition hover:bg-[#B53811] disabled:opacity-60"
-            >
-              <i className="las la-paper-plane text-xl" />
-              {sending ? 'Sending...' : 'Send Update'}
-            </button>
-          </div>
-
-          <div className="admin-left-bottom-actions hidden lg:block">
-            <Link to="/" className="admin-tiktok-side-link">
-              <i className="las la-globe" />
-              <span>View Site</span>
-            </Link>
-            <button type="button" onClick={() => logout?.()} className="admin-tiktok-side-link w-full">
-              <i className="las la-sign-out-alt" />
-              <span>Logout</span>
-            </button>
-          </div>
-        </>
-      )}
     </div>
   );
 };
