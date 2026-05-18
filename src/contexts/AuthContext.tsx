@@ -43,6 +43,11 @@ const getIsAdminFromClaims = async (user: User | null, forceRefresh = false) => 
   }
 };
 
+const getAuthCreatedAt = (user: User) => {
+  const createdAt = user.metadata?.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
+  return Number.isFinite(createdAt) && createdAt > 0 ? createdAt : Date.now();
+};
+
 const buildUserProfile = (user: User, displayName?: string, location = '', isAdmin = false): UserProfile => ({
   uid: user.uid,
   displayName: displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
@@ -54,7 +59,7 @@ const buildUserProfile = (user: User, displayName?: string, location = '', isAdm
   isAdmin,
   flagged: false,
   flagCount: 0,
-  createdAt: Date.now(),
+  createdAt: getAuthCreatedAt(user),
   online: true,
   lastSeen: Date.now(),
   deactivated: false
@@ -80,6 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       displayName: profile.displayName || 'Reshelved User',
       photoURL: profile.photoURL || '',
       location: profile.location || '',
+      createdAt: profile.createdAt || Date.now(),
       ratingAverage,
       ratingCount,
       updatedAt: Date.now()
@@ -106,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const userRef = doc(db, 'users', user.uid);
     const snap = await getDoc(userRef);
     const adminStatus = await getIsAdminFromClaims(user, true);
+    const authCreatedAt = getAuthCreatedAt(user);
 
     if (snap.exists()) {
       const existingProfile = snap.data() as UserProfile;
@@ -116,6 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: user.email || existingProfile.email || '',
         photoURL: existingProfile.photoURL || user.photoURL || '',
         location: existingProfile.location || location || '',
+        createdAt: existingProfile.createdAt || authCreatedAt,
         isAdmin: adminStatus,
         online: true,
         lastSeen: Date.now(),
@@ -134,6 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: normalizedProfile.email,
         photoURL: normalizedProfile.photoURL,
         location: normalizedProfile.location,
+        createdAt: normalizedProfile.createdAt,
         isAdmin: normalizedProfile.isAdmin,
         online: true,
         lastSeen: normalizedProfile.lastSeen,
@@ -157,10 +166,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (snap.exists()) {
         const profile = snap.data() as UserProfile;
         const adminStatus = await getIsAdminFromClaims(auth.currentUser, true);
+        const authCreatedAt = auth.currentUser?.uid === uid ? getAuthCreatedAt(auth.currentUser) : 0;
         const normalizedProfile = {
           ...profile,
           email: auth.currentUser?.email || profile.email || '',
           location: profile.location || '',
+          createdAt: profile.createdAt || authCreatedAt || Date.now(),
           isAdmin: adminStatus
         };
         setUserProfile(normalizedProfile);
@@ -169,6 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await setDoc(doc(db, 'users', uid), {
           email: normalizedProfile.email,
           location: normalizedProfile.location,
+          createdAt: normalizedProfile.createdAt,
           isAdmin: normalizedProfile.isAdmin,
           online: true,
           lastSeen: Date.now()
@@ -216,7 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAdmin: adminStatus,
       flagged: false,
       flagCount: 0,
-      createdAt: Date.now(),
+      createdAt: getAuthCreatedAt(cred.user),
       online: true,
       lastSeen: Date.now(),
       deactivated: false
