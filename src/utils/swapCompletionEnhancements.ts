@@ -29,7 +29,7 @@ const showSwapToast = (message: string) => {
 
   toast.querySelector('button')?.addEventListener('click', () => toast.remove());
   document.body.appendChild(toast);
-  window.setTimeout(() => toast.remove(), 4200);
+  window.setTimeout(() => toast.remove(), 2500);
 };
 
 const showSwapCompletionModal = (button: HTMLButtonElement) => {
@@ -46,7 +46,7 @@ const showSwapCompletionModal = (button: HTMLButtonElement) => {
         <i class="las la-exchange-alt text-3xl"></i>
       </div>
       <h3 class="mt-5 text-xl font-extrabold tracking-tight text-stone-950">Mark this swap as complete?</h3>
-      <p class="mt-2 text-sm leading-6 text-stone-600">This confirms that the swap was completed. You cannot undo this action after confirmation, and rating will be unlocked when the swap is fully complete.</p>
+      <p class="mt-2 text-sm leading-6 text-stone-600">This confirms that the swap was completed. You cannot undo this action after confirmation. Once the swap is complete, remember to review the other reader.</p>
       <div class="mt-6 grid grid-cols-2 gap-3">
         <button type="button" data-cancel class="cursor-pointer rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-50">Cancel</button>
         <button type="button" data-confirm class="cursor-pointer rounded-xl bg-primary-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-primary-700">Confirm</button>
@@ -94,7 +94,7 @@ const bindSwapCompletionConfirm = () => {
 const observeSwapCompletionSuccess = () => {
   const text = document.body.textContent || '';
   if (text.includes('Rating is now unlocked for this swap.') || text.includes('Swap completed. Rating is now unlocked.')) {
-    showSwapToast('Rating is now unlocked for this swap.');
+    showSwapToast('Don’t forget to review the other reader.');
   }
 };
 
