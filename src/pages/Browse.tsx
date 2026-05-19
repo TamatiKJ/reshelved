@@ -6,6 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 import BookCard from '../components/BookCard';
 import type { Listing } from '../types';
 import { CATEGORIES, KENYAN_CITIES, CONDITIONS } from '../types';
+import { mapSnapshot } from '../utils/firestoreMappers';
+import { safeLower } from '../utils/stringGuards';
 
 const PAGE_SIZE = 12;
 const focusFieldClass = 'focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10 outline-none';
@@ -49,9 +51,7 @@ const Browse: React.FC = () => {
     try {
       setLoading(true);
       const snap = await getDocs(collection(db, 'listings'));
-      const items: Listing[] = [];
-      snap.forEach((doc) => items.push({ id: doc.id, ...doc.data() } as Listing));
-      items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      const items = mapSnapshot<Listing>(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       setListings(items);
     } catch (err) {
       console.error('Error fetching listings:', err);
@@ -68,9 +68,9 @@ const Browse: React.FC = () => {
     if (filterLocation !== 'all' && l.location !== filterLocation) return false;
     if (filterCondition !== 'all' && l.condition !== filterCondition) return false;
     if (search.trim()) {
-      const s = search.toLowerCase();
-      const title = l.title.toLowerCase();
-      const author = l.author.toLowerCase();
+      const s = safeLower(search);
+      const title = safeLower(l.title);
+      const author = safeLower(l.author);
 
       if (searchScope === 'book') {
         return title.includes(s) || author.includes(s);
@@ -79,11 +79,11 @@ const Browse: React.FC = () => {
       return (
         title.includes(s) ||
         author.includes(s) ||
-        l.description.toLowerCase().includes(s) ||
-        l.category.toLowerCase().includes(s) ||
-        l.condition.toLowerCase().includes(s) ||
-        l.location.toLowerCase().includes(s) ||
-        l.type.toLowerCase().includes(s)
+        safeLower(l.description).includes(s) ||
+        safeLower(l.category).includes(s) ||
+        safeLower(l.condition).includes(s) ||
+        safeLower(l.location).includes(s) ||
+        safeLower(l.type).includes(s)
       );
     }
     return true;
