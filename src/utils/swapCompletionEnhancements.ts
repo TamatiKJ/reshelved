@@ -1,14 +1,41 @@
 const SWAP_CONFIRM_BYPASS = 'swapConfirmBypass';
 const SWAP_TOAST_ID = 'swap-completion-toast';
 const SWAP_MODAL_ID = 'swap-completion-confirm-modal';
+const SWAP_REVIEW_REMINDER_PREFIX = 'reshelved_swap_review_reminder_seen';
 let lastToastAt = 0;
 
 const removeElement = (id: string) => document.getElementById(id)?.remove();
 
+const getCurrentConversationId = () => {
+  const match = window.location.pathname.match(/\/messages\/([^/]+)/);
+  return match?.[1] || 'unknown-conversation';
+};
+
+const getReminderStorageKey = () => `${SWAP_REVIEW_REMINDER_PREFIX}:${getCurrentConversationId()}`;
+
+const hasSeenSwapReviewReminder = () => {
+  try {
+    return window.localStorage.getItem(getReminderStorageKey()) === 'true';
+  } catch {
+    return false;
+  }
+};
+
+const markSwapReviewReminderSeen = () => {
+  try {
+    window.localStorage.setItem(getReminderStorageKey(), 'true');
+  } catch {
+    // Ignore storage failures. The toast throttle still prevents rapid duplicates.
+  }
+};
+
 const showSwapToast = (message: string) => {
+  if (hasSeenSwapReviewReminder()) return;
+
   const now = Date.now();
   if (now - lastToastAt < 1200) return;
   lastToastAt = now;
+  markSwapReviewReminderSeen();
 
   removeElement(SWAP_TOAST_ID);
 
@@ -46,7 +73,7 @@ const showSwapCompletionModal = (button: HTMLButtonElement) => {
         <i class="las la-exchange-alt text-3xl"></i>
       </div>
       <h3 class="mt-5 text-xl font-extrabold tracking-tight text-stone-950">Mark this swap as complete?</h3>
-      <p class="mt-2 text-sm leading-6 text-stone-600">This confirms that the swap was completed. You cannot undo this action after confirmation. Once the swap is complete, remember to review the other reader.</p>
+      <p class="mt-2 text-sm leading-6 text-stone-600">This confirms that the swap was completed. You cannot undo this action after confirmation. Once the swap is complete, remember to rate the exchange.</p>
       <div class="mt-6 grid grid-cols-2 gap-3">
         <button type="button" data-cancel class="cursor-pointer rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-50">Cancel</button>
         <button type="button" data-confirm class="cursor-pointer rounded-xl bg-primary-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-primary-700">Confirm</button>
@@ -92,9 +119,11 @@ const bindSwapCompletionConfirm = () => {
 };
 
 const observeSwapCompletionSuccess = () => {
+  if (hasSeenSwapReviewReminder()) return;
+
   const text = document.body.textContent || '';
   if (text.includes('Rating is now unlocked for this swap.') || text.includes('Swap completed. Rating is now unlocked.')) {
-    showSwapToast('Don’t forget to review the other reader.');
+    showSwapToast("Don't forget to rate the exchange");
   }
 };
 
