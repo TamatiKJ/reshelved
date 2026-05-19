@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
+import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { CATEGORIES, CONDITIONS, KENYAN_CITIES } from '../types';
@@ -10,6 +10,7 @@ import ListingPreviewCard from '../components/listing-form/ListingPreviewCard';
 import ListingStepper, { type ListingFormStep } from '../components/listing-form/ListingStepper';
 import ListingImageCropModal from '../components/listing-form/ListingImageCropModal';
 import { parseListingDoc, validateListingWrite } from '../services/listingValidation';
+import { deleteRemovedListingImages, normalizeListingImageUrls } from '../services/listingImages';
 
 const MAX_IMAGES = 4;
 const IMAGE_SIZE = 1400;
@@ -29,14 +30,6 @@ const listingTypes = [
 
 const steps: Array<{ id: ListingFormStep; label: string }> = [{ id: 1, label: 'Photos' }, { id: 2, label: 'Details' }, { id: 3, label: 'Preview' }];
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-const normalizeImages = (images?: unknown) => Array.isArray(images) ? images.filter((image): image is string => typeof image === 'string' && image.trim().length > 0) : [];
-const isStorageUrl = (url: string) => url.startsWith('gs://') || url.includes('firebasestorage.googleapis.com') || url.includes('storage.googleapis.com');
-
-const deleteRemovedListingImages = async (oldImages: string[], nextImages: string[]) => {
-  const nextImageSet = new Set(nextImages);
-  const removedImages = oldImages.filter((url) => url && !nextImageSet.has(url) && isStorageUrl(url));
-  await Promise.allSettled(removedImages.map((url) => deleteObject(ref(storage, url))));
-};
 
 const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
   const image = new Image();
@@ -90,7 +83,7 @@ const EditListing: React.FC = () => {
   const canEditListing = (item: Listing) => Boolean(currentUser && (item.userId === currentUser.uid || userProfile?.isAdmin));
   const canAddMoreImages = editableImages.length < MAX_IMAGES;
   const filesToUpload = useMemo(() => editableImages.filter((image) => image.file), [editableImages]);
-  const previewImage = editableImages[0]?.url || normalizeImages(listing?.images)[0] || '';
+  const previewImage = editableImages[0]?.url || normalizeListingImageUrls(listing?.images)[0] || '';
   const previewTitle = title.trim() || listing?.title || 'Untitled book';
   const previewAuthor = author.trim() || listing?.author || 'Unknown author';
   const previewPrice = type === 'sell' ? `KSh ${price || listing?.price || 0}` : type === 'donate' ? 'Free' : 'Swap';
@@ -122,7 +115,7 @@ const EditListing: React.FC = () => {
         setListing(data);
         setTitle(data.title || ''); setAuthor(data.author || ''); setDescription(data.description || ''); setCondition(data.condition || 'Good');
         setCategory(data.category || CATEGORIES[0]); setType(data.type || 'swap'); setPrice(data.price ? String(data.price) : ''); setLocation(data.location || 'Lavington');
-        setEditableImages(normalizeImages(data.images).map((url) => ({ id: url, url })));
+        setEditableImages(normalizeListingImageUrls(data.images).map((url) => ({ id: url, url })));
       } catch (err: any) { setError(err?.message || 'Could not load this listing.'); setListing(null); }
       finally { setLoading(false); }
     };
@@ -221,7 +214,7 @@ const EditListing: React.FC = () => {
     if (!canEditListing(listing)) { setError('You can only edit your own listings. Only admins can edit all listings.'); return; }
     setSaving(true); setError('');
     try {
-      const originalImageUrls = normalizeImages(listing.images);
+      const originalImageUrls = normalizeListingImageUrls(listing.images);
       const imageUrls = await uploadEditedImages(listing.id);
       const mergedPayload = validateListingWrite({ ...listing, title: title.trim(), author: author.trim(), description: description.trim(), condition, category, type, price: type === 'sell' ? parseFloat(price) || 0 : 0, location, images: imageUrls, updatedAt: Date.now() });
       await updateDoc(doc(db, 'listings', listing.id), { title: mergedPayload.title, author: mergedPayload.author, description: mergedPayload.description, condition: mergedPayload.condition, category: mergedPayload.category, type: mergedPayload.type, price: mergedPayload.price || 0, location: mergedPayload.location, images: mergedPayload.images, updatedAt: Date.now() });
