@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
+import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { CATEGORIES, CONDITIONS, KENYAN_CITIES } from '../types';
@@ -30,6 +30,13 @@ const listingTypes = [
 const steps: Array<{ id: ListingFormStep; label: string }> = [{ id: 1, label: 'Photos' }, { id: 2, label: 'Details' }, { id: 3, label: 'Preview' }];
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const normalizeImages = (images?: unknown) => Array.isArray(images) ? images.filter((image): image is string => typeof image === 'string' && image.trim().length > 0) : [];
+const isStorageUrl = (url: string) => url.startsWith('gs://') || url.includes('firebasestorage.googleapis.com') || url.includes('storage.googleapis.com');
+
+const deleteRemovedListingImages = async (oldImages: string[], nextImages: string[]) => {
+  const nextImageSet = new Set(nextImages);
+  const removedImages = oldImages.filter((url) => url && !nextImageSet.has(url) && isStorageUrl(url));
+  await Promise.allSettled(removedImages.map((url) => deleteObject(ref(storage, url))));
+};
 
 const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
   const image = new Image();
@@ -214,9 +221,11 @@ const EditListing: React.FC = () => {
     if (!canEditListing(listing)) { setError('You can only edit your own listings. Only admins can edit all listings.'); return; }
     setSaving(true); setError('');
     try {
+      const originalImageUrls = normalizeImages(listing.images);
       const imageUrls = await uploadEditedImages(listing.id);
       const mergedPayload = validateListingWrite({ ...listing, title: title.trim(), author: author.trim(), description: description.trim(), condition, category, type, price: type === 'sell' ? parseFloat(price) || 0 : 0, location, images: imageUrls, updatedAt: Date.now() });
       await updateDoc(doc(db, 'listings', listing.id), { title: mergedPayload.title, author: mergedPayload.author, description: mergedPayload.description, condition: mergedPayload.condition, category: mergedPayload.category, type: mergedPayload.type, price: mergedPayload.price || 0, location: mergedPayload.location, images: mergedPayload.images, updatedAt: Date.now() });
+      await deleteRemovedListingImages(originalImageUrls, mergedPayload.images);
       navigate(`/listing/${listing.id}`);
     } catch (err: any) { setError(err?.message || 'Could not save listing. Check your Firestore rules.'); setSaving(false); setUploadProgress({ active: false, currentFile: 0, totalFiles: 0, percent: 0, fileName: '' }); }
   };
