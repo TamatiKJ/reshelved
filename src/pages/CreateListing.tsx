@@ -116,6 +116,7 @@ const CreateListing: React.FC = () => {
   const [previews, setPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cropQueue, setCropQueue] = useState<File[]>([]);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropSrc, setCropSrc] = useState('');
@@ -125,10 +126,25 @@ const CreateListing: React.FC = () => {
   const [dragState, setDragState] = useState<DragState>(null);
   const [uploadProgress, setUploadProgress] = useState({ active: false, done: false, phase: '', fileName: '', currentFile: 0, totalFiles: 0, bytesTransferred: 0, totalBytes: 0, percent: 0 });
 
+  const defaultLocation = userProfile?.location || 'Lavington';
   const activeListingType = useMemo(() => listingTypes.find((item) => item.value === type), [type]);
   const previewTitle = title.trim() || 'Book title will appear here';
   const previewAuthor = author.trim() || 'Author Name';
   const previewPrice = type === 'sell' ? `KSh ${price || '0'}` : type === 'donate' ? 'Free' : 'Swap';
+  const hasDraftChanges = useMemo(() => {
+    return Boolean(
+      title.trim() ||
+      author.trim() ||
+      description.trim() ||
+      price.trim() ||
+      previews.length > 0 ||
+      images.length > 0 ||
+      condition !== 'Good' ||
+      category !== CATEGORIES[0] ||
+      type !== 'swap' ||
+      location !== defaultLocation
+    );
+  }, [title, author, description, price, previews.length, images.length, condition, category, type, location, defaultLocation]);
 
   useEffect(() => {
     const loadListingDays = async () => {
@@ -138,6 +154,11 @@ const CreateListing: React.FC = () => {
     };
     loadListingDays();
   }, []);
+
+  useEffect(() => {
+    if (!userProfile?.location) return;
+    setLocation((current) => current || userProfile.location || 'Lavington');
+  }, [userProfile?.location]);
 
   const openCropEditor = (file: File, queue: File[]) => {
     const reader = new FileReader();
@@ -287,6 +308,23 @@ const CreateListing: React.FC = () => {
     }
   };
 
+  const handleCancelRequest = () => {
+    if (loading) return;
+    if (hasDraftChanges) {
+      setShowCancelConfirm(true);
+      return;
+    }
+    navigate('/browse');
+  };
+
+  const discardListingDraft = () => {
+    previews.forEach((preview) => {
+      if (preview.startsWith('blob:')) URL.revokeObjectURL(preview);
+    });
+    setShowCancelConfirm(false);
+    navigate('/browse');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (step !== 3) {
@@ -344,6 +382,10 @@ const CreateListing: React.FC = () => {
     }
   };
 
+  const cancelButton = (
+    <button type="button" onClick={handleCancelRequest} disabled={loading} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>
+  );
+
   const livePreview = (
     <aside className="lg:sticky lg:top-24">
       <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
@@ -393,16 +435,30 @@ const CreateListing: React.FC = () => {
             {uploadProgress.active && <div className="mx-4 mb-4 rounded-xl border border-green-200 bg-green-50 p-4"><div className="flex items-center justify-between gap-3 text-sm"><p className="font-semibold text-green-700 truncate">{uploadProgress.phase}{uploadProgress.fileName ? `: ${uploadProgress.fileName}` : ''}</p><span className="font-bold text-green-700">{uploadProgress.percent}%</span></div>{!uploadProgress.done && <p className="text-green-600 mt-1 text-sm">File {uploadProgress.currentFile} of {uploadProgress.totalFiles} · {formatBytes(uploadProgress.bytesTransferred)} / {formatBytes(uploadProgress.totalBytes)}</p>}<div className="mt-3 h-2 rounded-full bg-white overflow-hidden"><div className="h-full rounded-full bg-green-600 transition-all duration-200" style={{ width: `${uploadProgress.percent}%` }} /></div></div>}
 
             <div className="p-4 sm:p-6 lg:p-8">
-              {step === 1 && <div><h2 className="text-2xl font-bold text-stone-950">Photos</h2><p className="mt-1 text-sm leading-6 text-stone-500">Add up to 4 photos. The first photo becomes the cover.</p><div className="mt-6 grid gap-3 sm:grid-cols-[240px_1fr]"><label className={`flex min-h-[210px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-200 bg-white text-center transition hover:border-primary-600 hover:bg-primary-50/40 ${loading || previews.length >= MAX_IMAGES ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}><i className="las la-plus text-6xl text-primary-600" /><span className="mt-2 text-base font-bold text-stone-950">Drag photos here</span><span className="mt-1 text-sm text-stone-500">or click to upload</span><input type="file" accept="image/*" multiple onChange={handleImageChange} disabled={loading || previews.length >= MAX_IMAGES} className="hidden" /></label><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{previews.map((preview, i) => <div key={i} className="group relative aspect-square overflow-hidden rounded-2xl border border-stone-200 bg-stone-100"><img src={preview} alt="" className="h-full w-full object-cover" /><button type="button" onClick={() => removeImage(i)} disabled={loading} className="absolute right-2 top-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white opacity-0 transition group-hover:opacity-100 disabled:opacity-40">×</button></div>)}{Array.from({ length: Math.max(0, MAX_IMAGES - previews.length) }).map((_, i) => <div key={`empty-${i}`} className="aspect-square rounded-2xl border border-stone-200 bg-white" />)}</div></div><p className="mt-3 text-xs leading-5 text-stone-500">Upload JPG, PNG, or WebP images up to 5MB each.</p><h2 className="mt-8 text-2xl font-bold text-stone-950">Listing Type</h2><div className="mt-5 grid gap-3 sm:grid-cols-3">{listingTypes.map((item) => <button key={item.value} type="button" disabled={loading} onClick={() => setType(item.value)} className={`cursor-pointer rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${type === item.value ? 'border-primary-600 bg-primary-50/60 ring-1 ring-primary-600/10' : 'border-stone-200 bg-white hover:border-primary-600'}`}><i className={`${item.icon} text-3xl text-stone-950`} /><div className="mt-3 text-sm font-bold text-stone-950">{item.label}</div><div className="mt-1 text-xs leading-5 text-stone-500">{item.desc}</div></button>)}</div><div className="mt-6 flex flex-wrap gap-3"><button type="button" onClick={handleNextStep} disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">Next Step</button></div></div>}
+              {step === 1 && <div><h2 className="text-2xl font-bold text-stone-950">Photos</h2><p className="mt-1 text-sm leading-6 text-stone-500">Add up to 4 photos. The first photo becomes the cover.</p><div className="mt-6 grid gap-3 sm:grid-cols-[240px_1fr]"><label className={`flex min-h-[210px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-200 bg-white text-center transition hover:border-primary-600 hover:bg-primary-50/40 ${loading || previews.length >= MAX_IMAGES ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}><i className="las la-plus text-6xl text-primary-600" /><span className="mt-2 text-base font-bold text-stone-950">Drag photos here</span><span className="mt-1 text-sm text-stone-500">or click to upload</span><input type="file" accept="image/*" multiple onChange={handleImageChange} disabled={loading || previews.length >= MAX_IMAGES} className="hidden" /></label><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{previews.map((preview, i) => <div key={i} className="group relative aspect-square overflow-hidden rounded-2xl border border-stone-200 bg-stone-100"><img src={preview} alt="" className="h-full w-full object-cover" /><button type="button" onClick={() => removeImage(i)} disabled={loading} className="absolute right-2 top-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white opacity-0 transition group-hover:opacity-100 disabled:opacity-40">×</button></div>)}{Array.from({ length: Math.max(0, MAX_IMAGES - previews.length) }).map((_, i) => <div key={`empty-${i}`} className="aspect-square rounded-2xl border border-stone-200 bg-white" />)}</div></div><p className="mt-3 text-xs leading-5 text-stone-500">Upload JPG, PNG, or WebP images up to 5MB each.</p><h2 className="mt-8 text-2xl font-bold text-stone-950">Listing Type</h2><div className="mt-5 grid gap-3 sm:grid-cols-3">{listingTypes.map((item) => <button key={item.value} type="button" disabled={loading} onClick={() => setType(item.value)} className={`cursor-pointer rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${type === item.value ? 'border-primary-600 bg-primary-50/60 ring-1 ring-primary-600/10' : 'border-stone-200 bg-white hover:border-primary-600'}`}><i className={`${item.icon} text-3xl text-stone-950`} /><div className="mt-3 text-sm font-bold text-stone-950">{item.label}</div><div className="mt-1 text-xs leading-5 text-stone-500">{item.desc}</div></button>)}</div><div className="mt-6 flex flex-wrap gap-3">{cancelButton}<button type="button" onClick={handleNextStep} disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">Next Step</button></div></div>}
 
-              {step === 2 && <div><h2 className="text-2xl font-bold text-stone-950">Book Details</h2><div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2"><div><label className={labelClass}>Book Title *</label><input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. Things Fall Apart" /></div><div><label className={labelClass}>Author *</label><input type="text" required value={author} onChange={(e) => setAuthor(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. Chinua Achebe" /></div><div className="sm:col-span-2"><label className={labelClass}>Description</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={loading} rows={4} className={`${fieldClass} resize-none`} placeholder="Tell us about the book condition, edition, and notes." /></div><div><label className={labelClass}>Condition *</label><select value={condition} onChange={(e) => setCondition(e.target.value as Listing['condition'])} disabled={loading} className={`${fieldClass} pr-10`}>{CONDITIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><div><label className={labelClass}>Category *</label><select value={category} onChange={(e) => setCategory(e.target.value)} disabled={loading} className={`${fieldClass} pr-10`}>{CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><div><label className={labelClass}>Location *</label><select value={location} onChange={(e) => setLocation(e.target.value)} disabled={loading} className={`${fieldClass} pr-10`}>{KENYAN_CITIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>{type === 'sell' && <div><label className={labelClass}>Price (KSh) *</label><input type="number" required min="0" value={price} onChange={(e) => setPrice(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. 500" /></div>}{!userProfile?.location && <p className="sm:col-span-2 text-xs leading-5 text-stone-500"><i className="las la-info-circle mr-1.5 align-[-2px] text-base text-stone-400" /><span>You can change your default location in <Link to="/profile#settings" className="font-semibold text-[#1665CC] underline underline-offset-2 hover:text-[#1254a9]">profile settings</Link>.</span></p>}</div><div className="mt-6 flex flex-wrap gap-3"><button type="button" onClick={() => goToStep(1)} disabled={loading} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Back</button><button type="button" onClick={handleNextStep} disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">Next Step</button></div></div>}
+              {step === 2 && <div><h2 className="text-2xl font-bold text-stone-950">Book Details</h2><div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2"><div><label className={labelClass}>Book Title *</label><input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. Things Fall Apart" /></div><div><label className={labelClass}>Author *</label><input type="text" required value={author} onChange={(e) => setAuthor(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. Chinua Achebe" /></div><div className="sm:col-span-2"><label className={labelClass}>Description</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={loading} rows={4} className={`${fieldClass} resize-none`} placeholder="Tell us about the book condition, edition, and notes." /></div><div><label className={labelClass}>Condition *</label><select value={condition} onChange={(e) => setCondition(e.target.value as Listing['condition'])} disabled={loading} className={`${fieldClass} pr-10`}>{CONDITIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><div><label className={labelClass}>Category *</label><select value={category} onChange={(e) => setCategory(e.target.value)} disabled={loading} className={`${fieldClass} pr-10`}>{CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><div><label className={labelClass}>Location *</label><select value={location} onChange={(e) => setLocation(e.target.value)} disabled={loading} className={`${fieldClass} pr-10`}>{KENYAN_CITIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>{type === 'sell' && <div><label className={labelClass}>Price (KSh) *</label><input type="number" required min="0" value={price} onChange={(e) => setPrice(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. 500" /></div>}{!userProfile?.location && <p className="sm:col-span-2 text-xs leading-5 text-stone-500"><i className="las la-info-circle mr-1.5 align-[-2px] text-base text-stone-400" /><span>You can change your default location in <Link to="/profile#settings" className="font-semibold text-[#1665CC] underline underline-offset-2 hover:text-[#1254a9]">profile settings</Link>.</span></p>}</div><div className="mt-6 flex flex-wrap gap-3"><button type="button" onClick={() => goToStep(1)} disabled={loading} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Back</button>{cancelButton}<button type="button" onClick={handleNextStep} disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">Next Step</button></div></div>}
 
-              {step === 3 && <div><h2 className="text-2xl font-bold text-stone-950">Preview</h2><p className="mt-1 text-sm leading-6 text-stone-500">Review your listing before publishing.</p><div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5 text-sm leading-6 text-green-800"><p className="font-bold text-green-900">Your listing will be active after publishing.</p><p className="mt-1">It will be visible on your account page, visible publicly in browse results, and active for {listingDays} {listingDays === 1 ? 'day' : 'days'}.</p></div><div className="mt-6 rounded-2xl border border-stone-200 bg-stone-50 p-5"><div className="grid gap-4 text-sm sm:grid-cols-2"><div><span className="font-bold text-stone-500">Title</span><p className="mt-1 font-bold text-stone-950">{previewTitle}</p></div><div><span className="font-bold text-stone-500">Author</span><p className="mt-1 text-stone-700">{previewAuthor}</p></div><div><span className="font-bold text-stone-500">Listing</span><p className="mt-1 text-stone-700">{activeListingType?.label}</p></div><div><span className="font-bold text-stone-500">Value</span><p className="mt-1 text-stone-700">{previewPrice}</p></div></div></div><div className="mt-6 flex flex-wrap gap-3"><button type="button" onClick={() => goToStep(2)} disabled={loading} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Back</button><button type="submit" disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Publishing...' : 'Publish Listing'}</button></div></div>}
+              {step === 3 && <div><h2 className="text-2xl font-bold text-stone-950">Preview</h2><p className="mt-1 text-sm leading-6 text-stone-500">Review your listing before publishing.</p><div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5 text-sm leading-6 text-green-800"><p className="font-bold text-green-900">Your listing will be active after publishing.</p><p className="mt-1">It will be visible on your account page, visible publicly in browse results, and active for {listingDays} {listingDays === 1 ? 'day' : 'days'}.</p></div><div className="mt-6 rounded-2xl border border-stone-200 bg-stone-50 p-5"><div className="grid gap-4 text-sm sm:grid-cols-2"><div><span className="font-bold text-stone-500">Title</span><p className="mt-1 font-bold text-stone-950">{previewTitle}</p></div><div><span className="font-bold text-stone-500">Author</span><p className="mt-1 text-stone-700">{previewAuthor}</p></div><div><span className="font-bold text-stone-500">Listing</span><p className="mt-1 text-stone-700">{activeListingType?.label}</p></div><div><span className="font-bold text-stone-500">Value</span><p className="mt-1 text-stone-700">{previewPrice}</p></div></div></div><div className="mt-6 flex flex-wrap gap-3"><button type="button" onClick={() => goToStep(2)} disabled={loading} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Back</button>{cancelButton}<button type="submit" disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Publishing...' : 'Publish Listing'}</button></div></div>}
             </div>
           </div>
           {livePreview}
         </form>
       </div>
+
+      {showCancelConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/60 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl ring-1 ring-black/10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FFF4E2] text-[#D54215]"><i className="las la-exclamation-circle text-3xl" /></div>
+            <h2 className="mt-5 text-2xl font-bold tracking-tight text-stone-950">Discard listing?</h2>
+            <p className="mt-2 text-sm leading-6 text-stone-500">Your photos and details will be lost. This action cannot be undone.</p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button type="button" onClick={() => setShowCancelConfirm(false)} className="cursor-pointer rounded-xl border border-stone-200 px-5 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-50">Keep Editing</button>
+              <button type="button" onClick={discardListingDraft} className="cursor-pointer rounded-xl bg-primary-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-primary-700">Discard Listing</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {cropFile && cropSrc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 p-3 backdrop-blur-sm sm:p-6">
