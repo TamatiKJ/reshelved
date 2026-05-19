@@ -2,24 +2,29 @@ import React, { useEffect, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Listing } from '../types';
+import { mapSnapshot } from '../utils/firestoreMappers';
 import BookCard from './BookCard';
 
-const RecentListings: React.FC<{ excludeId?: string; limit?: number }> = ({ excludeId }) => {
+const RecentListings: React.FC<{ excludeId?: string; limit?: number }> = ({ excludeId, limit = 4 }) => {
   const [listings, setListings] = useState<Listing[]>([]);
 
   useEffect(() => {
     const fetchRecent = async () => {
       try {
         const snap = await getDocs(collection(db, 'listings'));
-        const items: Listing[] = [];
-        snap.forEach((item) => items.push({ id: item.id, ...item.data() } as Listing));
-        setListings(items.filter((item) => item.id !== excludeId && item.active && item.expiresAt > Date.now()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 4));
+        const items = mapSnapshot<Listing>(snap);
+        setListings(
+          items
+            .filter((item) => item.id !== excludeId && item.active && item.expiresAt > Date.now())
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+            .slice(0, limit)
+        );
       } catch (error) {
         console.error('Could not load recent listings:', error);
       }
     };
     fetchRecent();
-  }, [excludeId]);
+  }, [excludeId, limit]);
 
   if (listings.length === 0) return null;
 
