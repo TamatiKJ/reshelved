@@ -48,7 +48,7 @@ export const findOrCreateListingConversation = async ({
 
   const now = Date.now();
   const sellerName = listing.userName || 'Seller';
-  const initialMessage = `Hi! I'm interested in \"${listing.title}\"`;
+  const initialMessage = `Hi! I'm interested in "${listing.title}"`;
 
   const conversationRef = await addDoc(collection(db, 'conversations'), {
     participants: [buyerId, listing.userId],
