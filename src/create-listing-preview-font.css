@@ -1,0 +1,4 @@
+/* Create listing live preview metadata labels: Condition, Location, Category. */
+aside.lg\:sticky .mt-5.grid.grid-cols-3.gap-2.text-xs.font-bold.text-stone-600 > span {
+  font-weight: 400 !important;
+}
