@@ -1,6 +1,7 @@
 import { arrayRemove, arrayUnion, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Listing } from '../types';
+import { parseListingDoc } from './listingValidation';
 
 export const normalizeImages = (images?: unknown): string[] => {
   if (!Array.isArray(images)) return [];
@@ -13,7 +14,7 @@ export const normalizeImages = (images?: unknown): string[] => {
 export const getListingById = async (listingId: string): Promise<Listing | null> => {
   const snap = await getDoc(doc(db, 'listings', listingId));
   if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() } as Listing;
+  return parseListingDoc(snap);
 };
 
 export const getListingSellerPhoto = async (sellerId: string, fallbackPhoto = ''): Promise<string> => {
