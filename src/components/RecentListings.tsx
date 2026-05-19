@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Listing } from '../types';
-import { mapSnapshot } from '../utils/firestoreMappers';
+import { parseListingSnapshot } from '../services/listingValidation';
 import BookCard from './BookCard';
 
 const RecentListings: React.FC<{ excludeId?: string; limit?: number }> = ({ excludeId, limit = 4 }) => {
@@ -12,7 +12,7 @@ const RecentListings: React.FC<{ excludeId?: string; limit?: number }> = ({ excl
     const fetchRecent = async () => {
       try {
         const snap = await getDocs(collection(db, 'listings'));
-        const items = mapSnapshot<Listing>(snap);
+        const items = parseListingSnapshot(snap);
         setListings(
           items
             .filter((item) => item.id !== excludeId && item.active && item.expiresAt > Date.now())
