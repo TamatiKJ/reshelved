@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import BookCard from '../components/BookCard';
 import type { Listing } from '../types';
+import { mapSnapshot } from '../utils/firestoreMappers';
 
 const publisherLogos = [
   { name: 'Penguin Random House', src: '/publishers/penguin-random-house-logo.svg' },
@@ -54,9 +55,7 @@ const Home: React.FC = () => {
     try {
       setLoading(true);
       const snap = await getDocs(collection(db, 'listings'));
-      const items: Listing[] = [];
-      snap.forEach((doc) => items.push({ id: doc.id, ...doc.data() } as Listing));
-      items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      const items = mapSnapshot<Listing>(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       setAllListings(items.filter((item) => item.active && item.expiresAt > Date.now()));
     } catch (err) {
       console.error('Error fetching listings:', err);
