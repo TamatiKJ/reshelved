@@ -41,6 +41,15 @@ const Navbar: React.FC = () => {
     setHeaderSearch('');
   };
 
+  const closeProfileMenu = () => setMenuOpen(false);
+  const openProfileMenu = () => setMenuOpen(true);
+
+  const handleProfileMenuBlur = (event: React.FocusEvent<HTMLDivElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      closeProfileMenu();
+    }
+  };
+
   const CountBadge = ({ count }: { count: number }) => count > 0 ? (
     <span className={redBadgeClass}>{count > 9 ? '9+' : count}</span>
   ) : null;
@@ -79,24 +88,32 @@ const Navbar: React.FC = () => {
                   <i className="las la-bell text-2xl text-stone-600" />
                   {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold leading-none">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                 </Link>
-                <div className="relative">
-                  <button onClick={() => setMenuOpen(!menuOpen)} className="cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-stone-100 transition">
+                <div
+                  className="relative"
+                  onMouseEnter={openProfileMenu}
+                  onMouseLeave={closeProfileMenu}
+                  onFocus={openProfileMenu}
+                  onBlur={handleProfileMenuBlur}
+                >
+                  <button
+                    type="button"
+                    aria-haspopup="menu"
+                    aria-expanded={menuOpen}
+                    className="cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-stone-100 transition"
+                  >
                     {profilePhoto ? <img src={profilePhoto} alt={profileName} className="w-8 h-8 rounded-full object-cover" /> : <div className="w-8 h-8 rounded-full bg-stone-200 text-stone-500 flex items-center justify-center font-semibold text-sm">{profileName?.[0]?.toUpperCase() || 'U'}</div>}
                     <span className="text-sm font-medium text-stone-700 max-w-[100px] truncate">{profileName}</span>
                     <i className="las la-angle-down text-stone-400" />
                   </button>
                   {menuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                      <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-xl shadow-lg border border-stone-200 py-1 z-50">
-                        <Link to="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50"><i className="las la-user text-lg text-stone-500" />My Profile</Link>
-                        <Link to="/my-listings" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50"><i className="las la-book text-lg text-stone-500" />My Listings</Link>
-                        <Link to="/messages" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50"><span className="flex items-center gap-3"><i className="las la-comments text-lg text-stone-500" />Messages</span><CountBadge count={messageUnreadCount} /></Link>
-                        <Link to="/notifications" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50"><span className="flex items-center gap-3"><i className="las la-bell text-lg text-stone-500" />Notifications</span><CountBadge count={unreadCount} /></Link>
-                        <hr className="my-1 border-stone-100" />
-                        <button onClick={handleLogout} className="cursor-pointer flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50"><i className="las la-sign-out-alt text-lg" />Log Out</button>
-                      </div>
-                    </>
+                    <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-xl shadow-lg border border-stone-200 py-1 z-50" role="menu">
+                      <Link to="/profile" onClick={closeProfileMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50" role="menuitem"><i className="las la-user text-lg text-stone-500" />My Profile</Link>
+                      <Link to="/my-listings" onClick={closeProfileMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50" role="menuitem"><i className="las la-book text-lg text-stone-500" />My Listings</Link>
+                      <Link to="/messages" onClick={closeProfileMenu} className="flex items-center justify-between px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50" role="menuitem"><span className="flex items-center gap-3"><i className="las la-comments text-lg text-stone-500" />Messages</span><CountBadge count={messageUnreadCount} /></Link>
+                      <Link to="/notifications" onClick={closeProfileMenu} className="flex items-center justify-between px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50" role="menuitem"><span className="flex items-center gap-3"><i className="las la-bell text-lg text-stone-500" />Notifications</span><CountBadge count={unreadCount} /></Link>
+                      <hr className="my-1 border-stone-100" />
+                      <button onClick={handleLogout} className="cursor-pointer flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50" role="menuitem"><i className="las la-sign-out-alt text-lg" />Log Out</button>
+                    </div>
                   )}
                 </div>
               </>
