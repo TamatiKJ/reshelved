@@ -1,12 +1,11 @@
 import { addDoc, collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Rating } from '../types';
+import { mapSnapshot } from '../utils/firestoreMappers';
 
 export const getRatingsBySellerId = async (sellerId: string): Promise<Rating[]> => {
   const snap = await getDocs(query(collection(db, 'ratings'), where('toUserId', '==', sellerId)));
-  const ratings: Rating[] = [];
-  snap.forEach((ratingDoc) => ratings.push({ id: ratingDoc.id, ...ratingDoc.data() } as Rating));
-  return ratings.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  return mapSnapshot<Rating>(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 };
 
 export const createSellerRating = async ({
