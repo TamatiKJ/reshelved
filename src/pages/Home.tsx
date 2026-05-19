@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import BookCard from '../components/BookCard';
 import type { Listing } from '../types';
-import { mapSnapshot } from '../utils/firestoreMappers';
+import { parseListingSnapshot } from '../services/listingValidation';
 import { safeLower } from '../utils/stringGuards';
 
 const publisherLogos = [
@@ -56,7 +56,7 @@ const Home: React.FC = () => {
     try {
       setLoading(true);
       const snap = await getDocs(collection(db, 'listings'));
-      const items = mapSnapshot<Listing>(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      const items = parseListingSnapshot(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       setAllListings(items.filter((item) => item.active && item.expiresAt > Date.now()));
     } catch (err) {
       console.error('Error fetching listings:', err);
