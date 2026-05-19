@@ -7,7 +7,6 @@ import "./profile-airbnb.css";
 import "./create-listing-polish.css";
 import App from "./App";
 import { enforceWebpUploadCompression } from "./utils/enforceWebpUploadCompression";
-import { syncCreateListingPreviewPlaceholders } from "./create-listing-preview-dom";
 
 enforceWebpUploadCompression();
 
@@ -120,7 +119,6 @@ const runDomEnhancements = () => {
   addBlogEditorHistoryControls();
   normalizeProfileRatingLabels();
   normalizeProfileJoinDate();
-  syncCreateListingPreviewPlaceholders();
 };
 
 document.addEventListener("click", (event) => {
