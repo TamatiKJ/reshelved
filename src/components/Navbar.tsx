@@ -89,7 +89,7 @@ const Navbar: React.FC = () => {
                   {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold leading-none">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                 </Link>
                 <div
-                  className="relative"
+                  className="relative py-3 -my-3"
                   onMouseEnter={openProfileMenu}
                   onMouseLeave={closeProfileMenu}
                   onFocus={openProfileMenu}
@@ -106,7 +106,7 @@ const Navbar: React.FC = () => {
                     <i className="las la-angle-down text-stone-400" />
                   </button>
                   {menuOpen && (
-                    <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-xl shadow-lg border border-stone-200 py-1 z-50" role="menu">
+                    <div className="absolute right-0 top-[calc(100%-12px)] w-56 bg-white rounded-xl shadow-lg border border-stone-200 py-1 z-50" role="menu">
                       <Link to="/profile" onClick={closeProfileMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50" role="menuitem"><i className="las la-user text-lg text-stone-500" />My Profile</Link>
                       <Link to="/my-listings" onClick={closeProfileMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50" role="menuitem"><i className="las la-book text-lg text-stone-500" />My Listings</Link>
                       <Link to="/messages" onClick={closeProfileMenu} className="flex items-center justify-between px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50" role="menuitem"><span className="flex items-center gap-3"><i className="las la-comments text-lg text-stone-500" />Messages</span><CountBadge count={messageUnreadCount} /></Link>
