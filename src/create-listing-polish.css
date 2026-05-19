@@ -46,7 +46,7 @@ body:has(form input[type="file"][accept="image/*"]) form button.border-primary-6
   content: none !important;
 }
 
-/* Persistent live preview for steps 2 and 3: make it visually match the photo step card style. */
+/* Persistent live preview across all three steps. */
 body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky {
   display: block !important;
 }
@@ -63,9 +63,11 @@ body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky h2 {
   letter-spacing: -0.035em !important;
 }
 
-/* Live preview cover area. */
+/* Live preview cover area. Same card design for steps 1, 2 and 3, but shorter. */
 body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspect-\[4\/3\] {
-  aspect-ratio: 1 / 1 !important;
+  aspect-ratio: 4 / 3 !important;
+  min-height: 0 !important;
+  max-height: 300px !important;
   background: var(--reshelved-create-placeholder) !important;
   background-repeat: no-repeat !important;
   background-size: cover !important;
@@ -141,6 +143,6 @@ body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky span.m
   }
 
   body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspect-\[4\/3\] {
-    max-height: 380px !important;
+    max-height: 260px !important;
   }
 }
