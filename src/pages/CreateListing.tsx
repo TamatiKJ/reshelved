@@ -139,6 +139,36 @@ const CreateListing: React.FC = () => {
   const previewLocation = locationTouched ? location : 'Location';
   const previewCategory = categoryTouched ? category : 'Category';
 
+  const validateStepOne = () => {
+    if (images.length < 1) return 'Upload at least one book photo before continuing.';
+    return '';
+  };
+
+  const validateStepTwo = () => {
+    if (!title.trim()) return 'Add the book title before continuing.';
+    if (!author.trim()) return 'Add the author before continuing.';
+    if (!description.trim()) return 'Add a short description before continuing.';
+    if (!conditionTouched) return 'Choose the book condition before continuing.';
+    if (!categoryTouched) return 'Choose the book category before continuing.';
+    if (!locationTouched) return 'Choose the book location before continuing.';
+    if (type === 'sell' && (!price.trim() || Number(price) <= 0)) return 'Add a valid price before continuing.';
+    return '';
+  };
+
+  const getAccessError = (targetStep: CreateStep) => {
+    if (targetStep >= 2) {
+      const stepOneError = validateStepOne();
+      if (stepOneError) return stepOneError;
+    }
+    if (targetStep >= 3) {
+      const stepTwoError = validateStepTwo();
+      if (stepTwoError) return stepTwoError;
+    }
+    return '';
+  };
+
+  const canAccessStep = (targetStep: CreateStep) => !getAccessError(targetStep);
+
   const { showCancelConfirm, requestCancel, keepEditing, discardDraft } = useCreateListingCancel({
     title,
     author,
@@ -202,6 +232,7 @@ const CreateListing: React.FC = () => {
     const validFiles = selectedFiles.filter((file) => file.type.startsWith('image/') && file.size < 5 * 1024 * 1024);
     if (validFiles.length !== selectedFiles.length) setError('Some files were skipped. Images must be under 5MB.');
     if (validFiles.length === 0) return;
+    setError('');
     const [firstFile, ...remainingFiles] = validFiles;
     openCropEditor(firstFile, remainingFiles);
   };
@@ -213,6 +244,7 @@ const CreateListing: React.FC = () => {
       const previewUrl = URL.createObjectURL(croppedFile);
       setImages((current) => [...current, croppedFile]);
       setPreviews((current) => [...current, previewUrl]);
+      setError('');
       const [nextFile, ...remainingFiles] = cropQueue;
       if (nextFile && images.length + 1 < MAX_IMAGES) openCropEditor(nextFile, remainingFiles);
       else closeCropEditor();
@@ -296,44 +328,48 @@ const CreateListing: React.FC = () => {
   };
 
   const goToStep = (nextStep: CreateStep) => {
+    if (nextStep <= step) {
+      setError('');
+      setStep(nextStep);
+      return;
+    }
+
+    const accessError = getAccessError(nextStep);
+    if (accessError) {
+      setError(accessError);
+      return;
+    }
+
     setError('');
     setStep(nextStep);
   };
 
   const handleNextStep = () => {
-    setError('');
-    if (step === 1) return setStep(2);
-    if (step === 2) {
-      if (!title.trim() || !author.trim()) {
-        setError('Add the book title and author before previewing.');
-        return;
-      }
-      if (type === 'sell' && (!price || Number(price) <= 0)) {
-        setError('Add a valid price before previewing this sale listing.');
-        return;
-      }
-      setStep(3);
+    const nextStep = step === 1 ? 2 : 3;
+    const accessError = getAccessError(nextStep as CreateStep);
+    if (accessError) {
+      setError(accessError);
+      return;
     }
+    setError('');
+    setStep(nextStep as CreateStep);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const finalValidationError = getAccessError(3);
+    if (finalValidationError) {
+      setError(finalValidationError);
+      if (validateStepOne()) setStep(1);
+      else setStep(2);
+      return;
+    }
     if (step !== 3) {
       handleNextStep();
       return;
     }
     if (!currentUser || !userProfile) {
       setError('Please log in again before publishing.');
-      return;
-    }
-    if (!title.trim() || !author.trim()) {
-      setError('Add the book title and author before publishing.');
-      setStep(2);
-      return;
-    }
-    if (type === 'sell' && (!price || Number(price) <= 0)) {
-      setError('Add a valid price before publishing this sale listing.');
-      setStep(2);
       return;
     }
     setError('');
@@ -418,7 +454,8 @@ const CreateListing: React.FC = () => {
             <div className="grid grid-cols-3 gap-2 bg-white p-3 sm:gap-3 sm:p-4">
               {steps.map((item) => {
                 const active = step === item.id;
-                return <button key={item.id} type="button" onClick={() => goToStep(item.id)} disabled={loading} className={`flex min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-2 py-3 text-center transition disabled:cursor-not-allowed disabled:opacity-60 sm:flex-row sm:justify-start sm:gap-3 sm:px-4 sm:text-left ${active ? 'bg-stone-50' : 'hover:bg-stone-50'}`}><span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${active ? 'bg-primary-600 text-white' : 'border border-stone-300 bg-stone-100 text-stone-600'}`}>{item.id}</span><span className={`max-w-full truncate text-xs font-bold sm:text-sm ${active ? 'text-stone-950' : 'text-stone-500'}`}>{item.label}</span></button>;
+                const locked = item.id > step && !canAccessStep(item.id);
+                return <button key={item.id} type="button" onClick={() => goToStep(item.id)} disabled={loading || locked} className={`flex min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-2 py-3 text-center transition disabled:cursor-not-allowed disabled:opacity-50 sm:flex-row sm:justify-start sm:gap-3 sm:px-4 sm:text-left ${active ? 'bg-stone-50' : 'hover:bg-stone-50'}`}><span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${active ? 'bg-primary-600 text-white' : 'border border-stone-300 bg-stone-100 text-stone-600'}`}>{item.id}</span><span className={`max-w-full truncate text-xs font-bold sm:text-sm ${active ? 'text-stone-950' : 'text-stone-500'}`}>{item.label}</span></button>;
               })}
             </div>
 
@@ -428,7 +465,7 @@ const CreateListing: React.FC = () => {
             <div className="p-4 sm:p-6 lg:p-8">
               {step === 1 && <div><h2 className="text-2xl font-bold text-stone-950">Photos</h2><p className="mt-1 text-sm leading-6 text-stone-500">Add up to 4 photos. The first photo becomes the cover.</p><div className="mt-6 grid gap-3 sm:grid-cols-[240px_1fr]"><label className={`flex min-h-[210px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-200 bg-[#FAFAF9] text-center transition hover:border-primary-600 hover:bg-primary-50/40 ${loading || previews.length >= MAX_IMAGES ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}><i className="las la-plus text-6xl text-primary-600" /><span className="mt-2 text-base font-bold text-stone-950">Drag photos here</span><span className="mt-1 text-sm text-stone-500">or click to upload</span><input type="file" accept="image/*" multiple onChange={handleImageChange} disabled={loading || previews.length >= MAX_IMAGES} className="hidden" /></label><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{previews.map((preview, i) => <div key={i} className="group relative aspect-square overflow-hidden rounded-2xl border border-stone-200 bg-stone-100"><img src={preview} alt="" className="h-full w-full object-cover" /><button type="button" onClick={() => removeImage(i)} disabled={loading} className="absolute right-2 top-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white opacity-0 transition group-hover:opacity-100 disabled:opacity-40">×</button></div>)}{Array.from({ length: Math.max(0, MAX_IMAGES - previews.length) }).map((_, i) => <div key={`empty-${i}`} className="aspect-square rounded-2xl border border-stone-200 bg-white" />)}</div></div><p className="mt-3 text-xs leading-5 text-stone-500">Upload JPG, PNG, or WebP images up to 5MB each.</p><h2 className="mt-8 text-2xl font-bold text-stone-950">Listing Type</h2><div className="mt-5 grid gap-3 sm:grid-cols-3">{listingTypes.map((item) => <button key={item.value} type="button" disabled={loading} onClick={() => setType(item.value)} className={`cursor-pointer rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${type === item.value ? 'border-primary-600 bg-primary-50/60 ring-1 ring-primary-600/10' : 'border-stone-200 bg-white hover:border-primary-600'}`}><i className={`${item.icon} text-3xl text-stone-950`} /><div className="mt-3 text-sm font-bold text-stone-950">{item.label}</div><div className="mt-1 text-xs leading-5 text-stone-500">{item.desc}</div></button>)}</div><div className="mt-6 flex flex-wrap items-center gap-3"><button type="button" onClick={handleNextStep} disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">Next Step</button>{cancelButton}</div></div>}
 
-              {step === 2 && <div><h2 className="text-2xl font-bold text-stone-950">Book Details</h2><div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2"><div><label className={labelClass}>Book Title *</label><input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. Things Fall Apart" /></div><div><label className={labelClass}>Author *</label><input type="text" required value={author} onChange={(e) => setAuthor(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. Chinua Achebe" /></div><div className="sm:col-span-2"><label className={labelClass}>Description</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={loading} rows={4} className={`${fieldClass} resize-none`} placeholder="Tell us about the book condition, edition, and notes." /></div><div><label className={labelClass}>Condition *</label><select value={condition} onChange={(e) => { setCondition(e.target.value as Listing['condition']); setConditionTouched(true); }} disabled={loading} className={`${fieldClass} pr-10`}>{CONDITIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><div><label className={labelClass}>Category *</label><select value={category} onChange={(e) => { setCategory(e.target.value); setCategoryTouched(true); }} disabled={loading} className={`${fieldClass} pr-10`}>{CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><div><label className={labelClass}>Location *</label><select value={location} onChange={(e) => { setLocation(e.target.value); setLocationTouched(true); }} disabled={loading} className={`${fieldClass} pr-10`}>{KENYAN_CITIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>{type === 'sell' && <div><label className={labelClass}>Price (KSh) *</label><input type="number" required min="0" value={price} onChange={(e) => setPrice(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. 500" /></div>}{!userProfile?.location && <p className="sm:col-span-2 text-xs leading-5 text-stone-500"><i className="las la-info-circle mr-1.5 align-[-2px] text-base text-stone-400" /><span>You can change your default location in <Link to="/profile#settings" className="font-semibold text-[#1665CC] underline underline-offset-2 hover:text-[#1254a9]">profile settings</Link>.</span></p>}</div><div className="mt-6 flex flex-wrap items-center gap-3"><button type="button" onClick={() => goToStep(1)} disabled={loading} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Back</button><button type="button" onClick={handleNextStep} disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">Next Step</button>{cancelButton}</div></div>}
+              {step === 2 && <div><h2 className="text-2xl font-bold text-stone-950">Book Details</h2><div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2"><div><label className={labelClass}>Book Title *</label><input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. Things Fall Apart" /></div><div><label className={labelClass}>Author *</label><input type="text" required value={author} onChange={(e) => setAuthor(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. Chinua Achebe" /></div><div className="sm:col-span-2"><label className={labelClass}>Description *</label><textarea required value={description} onChange={(e) => setDescription(e.target.value)} disabled={loading} rows={4} className={`${fieldClass} resize-none`} placeholder="Tell us about the book condition, edition, and notes." /></div><div><label className={labelClass}>Condition *</label><select value={condition} onChange={(e) => { setCondition(e.target.value as Listing['condition']); setConditionTouched(true); }} disabled={loading} className={`${fieldClass} pr-10`}>{CONDITIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><div><label className={labelClass}>Category *</label><select value={category} onChange={(e) => { setCategory(e.target.value); setCategoryTouched(true); }} disabled={loading} className={`${fieldClass} pr-10`}>{CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div><div><label className={labelClass}>Location *</label><select value={location} onChange={(e) => { setLocation(e.target.value); setLocationTouched(true); }} disabled={loading} className={`${fieldClass} pr-10`}>{KENYAN_CITIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>{type === 'sell' && <div><label className={labelClass}>Price (KSh) *</label><input type="number" required min="1" value={price} onChange={(e) => setPrice(e.target.value)} disabled={loading} className={fieldClass} placeholder="e.g. 500" /></div>}{!userProfile?.location && <p className="sm:col-span-2 text-xs leading-5 text-stone-500"><i className="las la-info-circle mr-1.5 align-[-2px] text-base text-stone-400" /><span>You can change your default location in <Link to="/profile#settings" className="font-semibold text-[#1665CC] underline underline-offset-2 hover:text-[#1254a9]">profile settings</Link>.</span></p>}</div><div className="mt-6 flex flex-wrap items-center gap-3"><button type="button" onClick={() => goToStep(1)} disabled={loading} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Back</button><button type="button" onClick={handleNextStep} disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">Next Step</button>{cancelButton}</div></div>}
 
               {step === 3 && <div><h2 className="text-2xl font-bold text-stone-950">Preview</h2><p className="mt-1 text-sm leading-6 text-stone-500">Review your listing before publishing.</p><div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5 text-sm leading-6 text-green-800"><p className="font-bold text-green-900">Your listing will be active after publishing.</p><p className="mt-1">It will be visible on your account page, visible publicly in browse results, and active for {listingDays} {listingDays === 1 ? 'day' : 'days'}.</p></div><div className="mt-6 rounded-2xl border border-stone-200 bg-stone-50 p-5"><div className="grid gap-4 text-sm sm:grid-cols-2"><div><span className="font-bold text-stone-500">Title</span><p className="mt-1 font-bold text-stone-950">{previewTitle}</p></div><div><span className="font-bold text-stone-500">Author</span><p className="mt-1 text-stone-700">{previewAuthor}</p></div><div><span className="font-bold text-stone-500">Listing</span><p className="mt-1 text-stone-700">{activeListingType?.label}</p></div><div><span className="font-bold text-stone-500">Value</span><p className="mt-1 text-stone-700">{previewPrice}</p></div></div></div><div className="mt-6 flex flex-wrap items-center gap-3"><button type="button" onClick={() => goToStep(2)} disabled={loading} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Back</button><button type="submit" disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Publishing...' : 'Publish Listing'}</button>{cancelButton}</div></div>}
             </div>
