@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import BookCard from '../components/BookCard';
 import type { Listing } from '../types';
 import { CATEGORIES, KENYAN_CITIES, CONDITIONS } from '../types';
-import { mapSnapshot } from '../utils/firestoreMappers';
+import { parseListingSnapshot } from '../services/listingValidation';
 import { safeLower } from '../utils/stringGuards';
 
 const PAGE_SIZE = 12;
@@ -51,7 +51,7 @@ const Browse: React.FC = () => {
     try {
       setLoading(true);
       const snap = await getDocs(collection(db, 'listings'));
-      const items = mapSnapshot<Listing>(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      const items = parseListingSnapshot(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       setListings(items);
     } catch (err) {
       console.error('Error fetching listings:', err);
