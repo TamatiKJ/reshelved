@@ -13,10 +13,12 @@ const inputClass = 'w-full rounded-2xl border border-stone-200 bg-white px-4 py-
 const primaryButtonClass = 'inline-flex items-center justify-center gap-2 rounded-full bg-[#FF5F57] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#e84f48] disabled:cursor-not-allowed disabled:opacity-60';
 const dangerButtonClass = 'inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-red-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60';
 const DEFAULT_RENEW_DAYS = 10;
+const AVATAR_SIZE = 512;
 const getConversationKey = (a: string, b: string) => [a, b].sort().join('_');
 
 type ProfileTab = 'active' | 'expired' | 'bookmarks' | 'profile' | 'settings';
 type SecurityModal = 'email' | 'password' | 'delete' | null;
+type AvatarCropState = { file: File; src: string; zoom: number; x: number; y: number } | null;
 
 const PasswordField: React.FC<{ value: string; onChange: (value: string) => void; placeholder?: string; autoComplete: string }> = ({ value, onChange, placeholder, autoComplete }) => {
   const [visible, setVisible] = useState(false);
@@ -30,23 +32,38 @@ const PasswordField: React.FC<{ value: string; onChange: (value: string) => void
   );
 };
 
-const resizeProfilePhoto = (file: File): Promise<Blob> => new Promise((resolve, reject) => {
-  const img = new Image();
-  const objectUrl = URL.createObjectURL(file);
-  img.onload = () => {
-    URL.revokeObjectURL(objectUrl);
-    const canvas = document.createElement('canvas');
-    canvas.width = 400;
-    canvas.height = 400;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return reject(new Error('Image processing is not supported in this browser.'));
-    const side = Math.min(img.width, img.height);
-    ctx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 400, 400);
-    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not compress image.')), 'image/webp', 0.82);
-  };
-  img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Invalid image file.')); };
-  img.src = objectUrl;
+const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
+  const image = new Image();
+  image.onload = () => resolve(image);
+  image.onerror = () => reject(new Error('Invalid image file.'));
+  image.src = src;
 });
+
+const cropProfilePhoto = async (src: string, zoom: number, offsetX: number, offsetY: number): Promise<Blob> => {
+  const image = await loadImage(src);
+  const canvas = document.createElement('canvas');
+  canvas.width = AVATAR_SIZE;
+  canvas.height = AVATAR_SIZE;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Image processing is not supported in this browser.');
+
+  ctx.fillStyle = '#f5f5f4';
+  ctx.fillRect(0, 0, AVATAR_SIZE, AVATAR_SIZE);
+
+  const baseScale = Math.max(AVATAR_SIZE / image.naturalWidth, AVATAR_SIZE / image.naturalHeight);
+  const drawWidth = image.naturalWidth * baseScale * zoom;
+  const drawHeight = image.naturalHeight * baseScale * zoom;
+  const maxMoveX = Math.max(0, (drawWidth - AVATAR_SIZE) / 2);
+  const maxMoveY = Math.max(0, (drawHeight - AVATAR_SIZE) / 2);
+  const dx = (AVATAR_SIZE - drawWidth) / 2 + (offsetX / 100) * maxMoveX;
+  const dy = (AVATAR_SIZE - drawHeight) / 2 + (offsetY / 100) * maxMoveY;
+
+  ctx.drawImage(image, dx, dy, drawWidth, drawHeight);
+
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not crop profile photo.')), 'image/webp', 0.84);
+  });
+};
 
 const SectionHeader: React.FC<{ eyebrow?: string; title: string; subtitle?: string; action?: React.ReactNode }> = ({ eyebrow, title, subtitle, action }) => (
   <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -95,6 +112,7 @@ const Profile: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ProfileTab>('active');
   const [securityModal, setSecurityModal] = useState<SecurityModal>(null);
+  const [avatarCrop, setAvatarCrop] = useState<AvatarCropState>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [messageLoading, setMessageLoading] = useState(false);
@@ -124,6 +142,7 @@ const Profile: React.FC = () => {
   useEffect(() => { if (targetUserId) fetchData(); }, [targetUserId, currentUser?.uid, userProfile?.bookmarks?.join('|')]);
   useEffect(() => { if (!saveMessage) return; const timer = window.setTimeout(() => setSaveMessage(''), 5000); return () => window.clearTimeout(timer); }, [saveMessage]);
   useEffect(() => { setNewEmail(currentUser?.email || profile?.email || ''); }, [currentUser?.email, profile?.email]);
+  useEffect(() => () => { if (avatarCrop?.src.startsWith('blob:')) URL.revokeObjectURL(avatarCrop.src); }, [avatarCrop?.src]);
 
   const createFallbackProfile = async (): Promise<UserProfile | null> => {
     if (!currentUser || !isOwnProfile) return null;
@@ -219,11 +238,20 @@ const Profile: React.FC = () => {
     const file = event.target.files?.[0]; event.target.value = '';
     if (!file || !currentUser || !isOwnProfile) return;
     if (!file.type.startsWith('image/')) return setSaveError('Please upload an image file.');
+    if (file.size > 5 * 1024 * 1024) return setSaveError('Profile photo must be under 5MB.');
+    const src = URL.createObjectURL(file);
+    setSaveError('');
+    setSaveMessage('');
+    setAvatarCrop({ file, src, zoom: 1, x: 0, y: 0 });
+  };
+
+  const uploadCroppedProfilePhoto = async () => {
+    if (!avatarCrop || !currentUser || !isOwnProfile) return;
     setUploadingPhoto(true); setSaveError(''); setSaveMessage('');
     try {
-      const compressed = await resizeProfilePhoto(file);
+      const cropped = await cropProfilePhoto(avatarCrop.src, avatarCrop.zoom, avatarCrop.x, avatarCrop.y);
       const photoRef = ref(storage, `users/${currentUser.uid}/profile-photo.webp`);
-      await uploadBytes(photoRef, compressed, { contentType: 'image/webp' });
+      await uploadBytes(photoRef, cropped, { contentType: 'image/webp' });
       const photoURL = await getDownloadURL(photoRef);
       await setDoc(doc(db, 'users', currentUser.uid), { photoURL, lastSeen: Date.now() }, { merge: true });
       await updateProfile(currentUser, { photoURL }).catch(() => undefined);
@@ -232,6 +260,7 @@ const Profile: React.FC = () => {
       setListings(current => current.map(listing => ({ ...listing, userPhoto: photoURL })));
       setBookmarkedListings(current => current.map(listing => listing.userId === currentUser.uid ? { ...listing, userPhoto: photoURL } : listing));
       await refreshProfile();
+      setAvatarCrop(null);
       setSaveMessage('Profile photo uploaded and saved.');
     } catch (err: any) { setSaveError(err?.message || 'Profile photo failed to upload.'); }
     finally { setUploadingPhoto(false); }
@@ -325,6 +354,37 @@ const Profile: React.FC = () => {
     setSaveError('');
   };
 
+  const closeAvatarCrop = () => {
+    setAvatarCrop(null);
+    setUploadingPhoto(false);
+  };
+
+  const renderAvatarCropModal = () => {
+    if (!avatarCrop) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 p-3 backdrop-blur-sm sm:p-6">
+        <div className="w-full max-w-md rounded-[28px] bg-white p-5 shadow-2xl ring-1 ring-black/10">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-stone-950">Crop profile photo</h2>
+              <p className="text-sm text-stone-500">Zoom and move the image so your face sits well inside the avatar.</p>
+            </div>
+            <button type="button" onClick={closeAvatarCrop} disabled={uploadingPhoto} className="cursor-pointer text-2xl text-stone-400 hover:text-stone-700 disabled:cursor-not-allowed disabled:opacity-40">×</button>
+          </div>
+          <div className="mx-auto aspect-square w-full max-w-[320px] overflow-hidden rounded-full bg-stone-100 ring-1 ring-stone-200">
+            <img src={avatarCrop.src} alt="Profile crop preview" className="h-full w-full object-cover" style={{ transform: `translate(${avatarCrop.x * 0.6}px, ${avatarCrop.y * 0.6}px) scale(${avatarCrop.zoom})`, transformOrigin: 'center' }} />
+          </div>
+          <div className="mt-5 space-y-4">
+            <label className="block text-sm font-bold text-stone-700">Zoom<input type="range" min="1" max="3" step="0.05" value={avatarCrop.zoom} onChange={(event) => setAvatarCrop(current => current ? { ...current, zoom: parseFloat(event.target.value) } : current)} className="mt-2 w-full accent-[#FF5F57]" /></label>
+            <label className="block text-sm font-bold text-stone-700">Move left / right<input type="range" min="-100" max="100" value={avatarCrop.x} onChange={(event) => setAvatarCrop(current => current ? { ...current, x: Number(event.target.value) } : current)} className="mt-2 w-full accent-[#FF5F57]" /></label>
+            <label className="block text-sm font-bold text-stone-700">Move up / down<input type="range" min="-100" max="100" value={avatarCrop.y} onChange={(event) => setAvatarCrop(current => current ? { ...current, y: Number(event.target.value) } : current)} className="mt-2 w-full accent-[#FF5F57]" /></label>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3"><button type="button" onClick={closeAvatarCrop} disabled={uploadingPhoto} className="cursor-pointer rounded-xl border border-stone-200 px-4 py-3 text-sm font-bold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Cancel</button><button type="button" onClick={uploadCroppedProfilePhoto} disabled={uploadingPhoto} className="cursor-pointer rounded-xl bg-[#FF5F57] px-4 py-3 text-sm font-bold text-white hover:bg-[#e84f48] disabled:cursor-not-allowed disabled:opacity-50">{uploadingPhoto ? 'Saving...' : 'Use Photo'}</button></div>
+        </div>
+      </div>
+    );
+  };
+
   const renderSecurityModal = () => {
     if (!securityModal) return null;
     const title = securityModal === 'email' ? 'Change email' : securityModal === 'password' ? 'Change password' : 'Delete account';
@@ -356,6 +416,7 @@ const Profile: React.FC = () => {
   return (
     <div className="mx-auto max-w-[1180px] px-4 py-8 pb-10 sm:px-6 sm:pb-20">
       {renderSecurityModal()}
+      {renderAvatarCropModal()}
       <div className="mb-5">
         {cameFromListing ? (
           <button type="button" onClick={() => navigate(-1)} className="inline-flex cursor-pointer items-center text-sm font-bold text-[#1665CC] hover:text-[#1254a9]">← Back to listing</button>
@@ -371,7 +432,7 @@ const Profile: React.FC = () => {
             <div className="flex flex-col items-center text-center">
               <div className="relative">
                 {profile.photoURL ? <img src={profile.photoURL} alt={profile.displayName} className="h-28 w-28 rounded-full object-cover ring-1 ring-stone-200" /> : <div className="flex h-28 w-28 items-center justify-center rounded-full bg-stone-100 text-4xl font-bold text-stone-500 ring-1 ring-stone-200">{profile.displayName?.[0]?.toUpperCase() || 'U'}</div>}
-                {isOwnProfile && <label className="absolute -bottom-2 left-1/2 flex -translate-x-1/2 cursor-pointer items-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold text-stone-700 shadow-sm hover:bg-stone-50"><i className="las la-camera text-base" />{uploadingPhoto ? 'Uploading' : 'Photo'}<input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploadingPhoto} className="hidden" /></label>}
+                {isOwnProfile && <label className="absolute -bottom-2 left-1/2 flex -translate-x-1/2 cursor-pointer items-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold text-stone-700 shadow-sm hover:bg-stone-50"><i className="las la-camera text-base" />{uploadingPhoto ? 'Saving' : 'Photo'}<input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploadingPhoto} className="hidden" /></label>}
               </div>
               <h1 className="mt-7 text-2xl font-bold tracking-tight text-stone-950">{profile.displayName}</h1>
               <div className="mt-3 flex flex-wrap justify-center gap-2 text-xs font-semibold text-stone-600">
