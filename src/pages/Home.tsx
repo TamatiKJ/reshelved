@@ -5,6 +5,7 @@ import { db } from '../firebase';
 import BookCard from '../components/BookCard';
 import type { Listing } from '../types';
 import { mapSnapshot } from '../utils/firestoreMappers';
+import { safeLower } from '../utils/stringGuards';
 
 const publisherLogos = [
   { name: 'Penguin Random House', src: '/publishers/penguin-random-house-logo.svg' },
@@ -81,11 +82,11 @@ const Home: React.FC = () => {
   };
 
   const latestListings = allListings.slice(0, 4);
-  const liveSearchTerm = search.trim().toLowerCase();
+  const liveSearchTerm = safeLower(search.trim());
   const searchResults = useMemo(() => {
     if (!liveSearchTerm) return [];
     return allListings.filter((listing) => (
-      listing.title.toLowerCase().includes(liveSearchTerm) || listing.author.toLowerCase().includes(liveSearchTerm)
+      safeLower(listing.title).includes(liveSearchTerm) || safeLower(listing.author).includes(liveSearchTerm)
     ));
   }, [allListings, liveSearchTerm]);
 
