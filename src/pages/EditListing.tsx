@@ -6,74 +6,87 @@ import { db, storage } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { CATEGORIES, CONDITIONS, KENYAN_CITIES } from '../types';
 import type { Listing } from '../types';
+import ListingPreviewCard from '../components/listing-form/ListingPreviewCard';
+import ListingStepper, { type ListingFormStep } from '../components/listing-form/ListingStepper';
+import { parseListingDoc, validateListingWrite } from '../services/listingValidation';
 
 const MAX_IMAGES = 4;
 const MAX_LISTING_IMAGE_SIZE = 1400;
 const UPLOAD_STALL_TIMEOUT = 30000;
+const fieldClass = 'w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-950 outline-none transition placeholder:text-stone-400 disabled:bg-stone-50 focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
+const labelClass = 'mb-1.5 block text-sm font-bold text-stone-950';
+
+type EditableImage = { id: string; url: string; file?: File; isNew?: boolean };
+
+type CropState = {
+  file: File;
+  src: string;
+  queue: File[];
+  zoom: number;
+  x: number;
+  y: number;
+} | null;
 
 const listingTypes = [
-  { value: 'swap', label: 'Swap', icon: 'las la-sync' },
-  { value: 'donate', label: 'Donate', icon: 'las la-gift' },
-  { value: 'sell', label: 'Sell', icon: 'las la-tag' }
+  { value: 'swap', label: 'Swap', icon: 'las la-sync', desc: 'Trade for another book' },
+  { value: 'donate', label: 'Donate', icon: 'las la-gift', desc: 'Give away for free' },
+  { value: 'sell', label: 'Sell', icon: 'las la-tag', desc: 'Set your price' }
 ] as const;
+
+const steps: Array<{ id: ListingFormStep; label: string }> = [
+  { id: 1, label: 'Photos' },
+  { id: 2, label: 'Details' },
+  { id: 3, label: 'Preview' }
+];
 
 const normalizeImages = (images?: unknown): string[] => {
   if (!Array.isArray(images)) return [];
   return images.filter((image): image is string => typeof image === 'string' && image.trim().length > 0);
 };
 
-const loadImage = (src: string): Promise<HTMLImageElement> => {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('Could not read this image. Try a JPG, PNG, or WebP file.'));
-    image.src = src;
-  });
-};
+const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
+  const image = new Image();
+  image.onload = () => resolve(image);
+  image.onerror = () => reject(new Error('Could not read this image. Try a JPG, PNG, or WebP file.'));
+  image.src = src;
+});
 
 const cropListingImage = async (file: File, cropSrc: string, zoom: number, offsetX: number, offsetY: number): Promise<File> => {
   const image = await loadImage(cropSrc);
   const canvas = document.createElement('canvas');
   canvas.width = MAX_LISTING_IMAGE_SIZE;
   canvas.height = MAX_LISTING_IMAGE_SIZE;
-
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Image processing is not supported in this browser.');
 
-  const cropSize = Math.min(image.naturalWidth, image.naturalHeight) / zoom;
-  const maxX = Math.max(0, (image.naturalWidth - cropSize) / 2);
-  const maxY = Math.max(0, (image.naturalHeight - cropSize) / 2);
-  const sx = Math.min(Math.max(0, image.naturalWidth / 2 - cropSize / 2 + (offsetX / 100) * maxX), image.naturalWidth - cropSize);
-  const sy = Math.min(Math.max(0, image.naturalHeight / 2 - cropSize / 2 + (offsetY / 100) * maxY), image.naturalHeight - cropSize);
+  ctx.fillStyle = '#f5f5f4';
+  ctx.fillRect(0, 0, MAX_LISTING_IMAGE_SIZE, MAX_LISTING_IMAGE_SIZE);
 
-  ctx.drawImage(image, sx, sy, cropSize, cropSize, 0, 0, MAX_LISTING_IMAGE_SIZE, MAX_LISTING_IMAGE_SIZE);
+  const baseScale = Math.min(MAX_LISTING_IMAGE_SIZE / image.naturalWidth, MAX_LISTING_IMAGE_SIZE / image.naturalHeight);
+  const drawWidth = image.naturalWidth * baseScale * zoom;
+  const drawHeight = image.naturalHeight * baseScale * zoom;
+  const maxMoveX = Math.max(0, (drawWidth - MAX_LISTING_IMAGE_SIZE) / 2);
+  const maxMoveY = Math.max(0, (drawHeight - MAX_LISTING_IMAGE_SIZE) / 2);
+  const dx = (MAX_LISTING_IMAGE_SIZE - drawWidth) / 2 + (offsetX / 100) * maxMoveX;
+  const dy = (MAX_LISTING_IMAGE_SIZE - drawHeight) / 2 + (offsetY / 100) * maxMoveY;
+
+  ctx.drawImage(image, dx, dy, drawWidth, drawHeight);
 
   const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((result) => {
-      if (!result) {
-        reject(new Error('Could not convert image to WebP.'));
-        return;
-      }
-      resolve(result);
-    }, 'image/webp', 0.84);
+    canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Could not convert image.')), 'image/webp', 0.84);
   });
 
   const safeFileName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '-');
   return new File([blob], `${safeFileName}-cropped.webp`, { type: 'image/webp' });
 };
 
-interface EditableImage {
-  id: string;
-  url: string;
-  file?: File;
-  isNew?: boolean;
-}
-
 const EditListing: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { currentUser, userProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
   const [listing, setListing] = useState<Listing | null>(null);
+  const [step, setStep] = useState<ListingFormStep>(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -86,17 +99,37 @@ const EditListing: React.FC = () => {
   const [price, setPrice] = useState('');
   const [location, setLocation] = useState('Lavington');
   const [editableImages, setEditableImages] = useState<EditableImage[]>([]);
-  const [cropQueue, setCropQueue] = useState<File[]>([]);
-  const [cropFile, setCropFile] = useState<File | null>(null);
-  const [cropSrc, setCropSrc] = useState('');
-  const [cropZoom, setCropZoom] = useState(1);
-  const [cropX, setCropX] = useState(0);
-  const [cropY, setCropY] = useState(0);
+  const [cropState, setCropState] = useState<CropState>(null);
   const [uploadProgress, setUploadProgress] = useState({ active: false, currentFile: 0, totalFiles: 0, percent: 0, fileName: '' });
 
   const canEditListing = (item: Listing) => Boolean(currentUser && (item.userId === currentUser.uid || userProfile?.isAdmin));
   const canAddMoreImages = editableImages.length < MAX_IMAGES;
-  const newImages = useMemo(() => editableImages.filter((image) => image.file), [editableImages]);
+  const filesToUpload = useMemo(() => editableImages.filter((image) => image.file), [editableImages]);
+  const previewImage = editableImages[0]?.url || normalizeImages(listing?.images)[0] || '';
+  const previewTitle = title.trim() || listing?.title || 'Untitled book';
+  const previewAuthor = author.trim() || listing?.author || 'Unknown author';
+  const previewPrice = type === 'sell' ? `KSh ${price || listing?.price || 0}` : type === 'donate' ? 'Free' : 'Swap';
+
+  const validateDetails = () => {
+    if (!title.trim()) return 'Book title is required.';
+    if (!author.trim()) return 'Author is required.';
+    if (!description.trim()) return 'Description is required.';
+    if (!condition) return 'Condition is required.';
+    if (!category.trim()) return 'Category is required.';
+    if (!location.trim()) return 'Location is required.';
+    if (type === 'sell' && (!price.trim() || Number(price) <= 0)) return 'Add a valid price before saving.';
+    return '';
+  };
+
+  const validatePhotos = () => editableImages.length < 1 ? 'A listing needs at least one image.' : '';
+
+  const getStepError = (targetStep: ListingFormStep) => {
+    if (targetStep >= 2) return validatePhotos();
+    if (targetStep >= 3) return validatePhotos() || validateDetails();
+    return '';
+  };
+
+  const canAccessStep = (targetStep: ListingFormStep) => targetStep <= step || !getStepError(targetStep);
 
   useEffect(() => {
     const fetchListing = async () => {
@@ -118,7 +151,13 @@ const EditListing: React.FC = () => {
           return;
         }
 
-        const data = { id: snap.id, ...snap.data() } as Listing;
+        const data = parseListingDoc(snap);
+        if (!data) {
+          setError('This listing has invalid data and cannot be edited safely.');
+          setListing(null);
+          return;
+        }
+
         if (!canEditListing(data)) {
           setError('You can only edit your own listings. Only admins can edit all listings.');
           setListing(null);
@@ -147,16 +186,21 @@ const EditListing: React.FC = () => {
     fetchListing();
   }, [id, currentUser?.uid, userProfile?.isAdmin, authLoading]);
 
+  const goToStep = (targetStep: ListingFormStep) => {
+    const stepError = getStepError(targetStep);
+    if (targetStep > step && stepError) {
+      setError(stepError);
+      return;
+    }
+    setError('');
+    setStep(targetStep);
+  };
+
+  const handleNext = () => goToStep(step === 1 ? 2 : 3);
+
   const openCropEditor = (file: File, queue: File[]) => {
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setCropFile(file);
-      setCropQueue(queue);
-      setCropSrc(reader.result as string);
-      setCropZoom(1);
-      setCropX(0);
-      setCropY(0);
-    };
+    reader.onloadend = () => setCropState({ file, queue, src: reader.result as string, zoom: 1, x: 0, y: 0 });
     reader.readAsDataURL(file);
   };
 
@@ -178,35 +222,26 @@ const EditListing: React.FC = () => {
     openCropEditor(firstFile, remainingFiles);
   };
 
+  const skipCrop = () => {
+    if (!cropState) return;
+    const [nextFile, ...remainingFiles] = cropState.queue;
+    if (nextFile) openCropEditor(nextFile, remainingFiles);
+    else setCropState(null);
+  };
+
   const addCroppedImage = async () => {
-    if (!cropFile || !cropSrc) return;
+    if (!cropState) return;
     try {
-      const croppedFile = await cropListingImage(cropFile, cropSrc, cropZoom, cropX, cropY);
+      const croppedFile = await cropListingImage(cropState.file, cropState.src, cropState.zoom, cropState.x, cropState.y);
       const previewUrl = URL.createObjectURL(croppedFile);
       setEditableImages((current) => [...current, { id: `${Date.now()}-${croppedFile.name}`, url: previewUrl, file: croppedFile, isNew: true }]);
-
-      const [nextFile, ...remainingFiles] = cropQueue;
-      if (nextFile && editableImages.length + 1 < MAX_IMAGES) {
-        openCropEditor(nextFile, remainingFiles);
-      } else {
-        setCropFile(null);
-        setCropSrc('');
-        setCropQueue([]);
-      }
+      const [nextFile, ...remainingFiles] = cropState.queue;
+      if (nextFile && editableImages.length + 1 < MAX_IMAGES) openCropEditor(nextFile, remainingFiles);
+      else setCropState(null);
+      setError('');
     } catch (err: any) {
       setError(err?.message || 'Could not crop this image.');
     }
-  };
-
-  const skipCurrentCrop = () => {
-    const [nextFile, ...remainingFiles] = cropQueue;
-    if (nextFile) {
-      openCropEditor(nextFile, remainingFiles);
-      return;
-    }
-    setCropFile(null);
-    setCropSrc('');
-    setCropQueue([]);
   };
 
   const removeImage = (imageId: string) => {
@@ -219,11 +254,9 @@ const EditListing: React.FC = () => {
 
   const uploadImageFile = async (file: File, listingId: string, index: number, totalFiles: number) => {
     if (!currentUser) throw new Error('You must be logged in to upload images.');
-
     const safeFileName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '-');
     const storageRef = ref(storage, `listings/${currentUser.uid}/${listingId}_${Date.now()}_${safeFileName}.webp`);
     const task = uploadBytesResumable(storageRef, file, { contentType: 'image/webp' });
-
     setUploadProgress({ active: true, currentFile: index + 1, totalFiles, percent: 0, fileName: file.name });
 
     return new Promise<string>((resolve, reject) => {
@@ -244,28 +277,31 @@ const EditListing: React.FC = () => {
         reject(uploadError);
       }, async () => {
         window.clearTimeout(stallTimer);
-        const url = await getDownloadURL(task.snapshot.ref);
-        resolve(url);
+        resolve(await getDownloadURL(task.snapshot.ref));
       });
     });
   };
 
   const uploadEditedImages = async (listingId: string) => {
     const uploadedNewImages = new Map<string, string>();
-    const filesToUpload = editableImages.filter((image) => image.file);
-
     for (let i = 0; i < filesToUpload.length; i += 1) {
       const image = filesToUpload[i];
       const url = await uploadImageFile(image.file!, listingId, i, filesToUpload.length);
       uploadedNewImages.set(image.id, url);
     }
-
     return editableImages.map((image) => uploadedNewImages.get(image.id) || image.url).filter((url) => !url.startsWith('blob:'));
   };
 
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!listing || !currentUser) return;
+
+    const finalError = validatePhotos() || validateDetails();
+    if (finalError) {
+      setError(finalError);
+      setStep(validatePhotos() ? 1 : 2);
+      return;
+    }
 
     if (!canEditListing(listing)) {
       setError('You can only edit your own listings. Only admins can edit all listings.');
@@ -277,7 +313,8 @@ const EditListing: React.FC = () => {
 
     try {
       const imageUrls = await uploadEditedImages(listing.id);
-      const updates = {
+      const mergedPayload = validateListingWrite({
+        ...listing,
         title: title.trim(),
         author: author.trim(),
         description: description.trim(),
@@ -288,16 +325,21 @@ const EditListing: React.FC = () => {
         location,
         images: imageUrls,
         updatedAt: Date.now()
-      };
+      });
 
-      if (!updates.title || !updates.author) {
-        setError('Book title and author are required.');
-        setSaving(false);
-        setUploadProgress({ active: false, currentFile: 0, totalFiles: 0, percent: 0, fileName: '' });
-        return;
-      }
+      await updateDoc(doc(db, 'listings', listing.id), {
+        title: mergedPayload.title,
+        author: mergedPayload.author,
+        description: mergedPayload.description,
+        condition: mergedPayload.condition,
+        category: mergedPayload.category,
+        type: mergedPayload.type,
+        price: mergedPayload.price || 0,
+        location: mergedPayload.location,
+        images: mergedPayload.images,
+        updatedAt: Date.now()
+      });
 
-      await updateDoc(doc(db, 'listings', listing.id), updates);
       navigate(`/listing/${listing.id}`);
     } catch (err: any) {
       console.error('Error saving listing:', err);
@@ -308,162 +350,97 @@ const EditListing: React.FC = () => {
   };
 
   if (loading || authLoading) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-        <div className="bg-white rounded-2xl border border-stone-200 p-8 animate-pulse">
-          <div className="h-6 bg-stone-200 rounded w-1/2" />
-          <div className="h-12 bg-stone-100 rounded mt-6" />
-          <div className="h-12 bg-stone-100 rounded mt-4" />
-        </div>
-      </div>
-    );
+    return <div className="bg-[#F7F7F5] px-4 py-8 sm:px-6 lg:py-10"><div className="mx-auto max-w-[1180px] rounded-2xl border border-stone-200 bg-white p-8 text-stone-500">Loading listing editor...</div></div>;
   }
 
   if (error && !listing) {
     return (
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-center">
+      <div className="mx-auto max-w-2xl px-4 py-16 text-center sm:px-6">
         <h1 className="text-xl font-bold text-stone-900">{error}</h1>
         <div className="mt-4 flex items-center justify-center gap-4">
-          <Link to="/profile" className="inline-flex text-primary-600 font-semibold">Back to profile</Link>
-          <Link to="/browse" className="inline-flex text-stone-600 font-semibold">Browse books</Link>
+          <Link to="/profile" className="inline-flex font-semibold text-primary-600">Back to profile</Link>
+          <Link to="/browse" className="inline-flex font-semibold text-stone-600">Browse books</Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-      <div className="flex items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-stone-900">Edit Listing</h1>
-          <p className="text-sm text-stone-500 mt-1">Update the book details and photos buyers see.</p>
+    <div className="bg-[#F7F7F5] px-4 py-8 sm:px-6 lg:py-10">
+      <div className="mx-auto max-w-[1180px]">
+        <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-stone-950 sm:text-5xl">Edit Listing</h1>
+            <p className="mt-2 text-base leading-7 text-stone-500">Update the photos and details buyers see.</p>
+          </div>
+          {listing && <Link to={`/listing/${listing.id}`} className="text-sm font-bold text-primary-600 hover:text-primary-700">Cancel and Exit</Link>}
         </div>
-        {listing && <Link to={`/listing/${listing.id}`} className="text-sm font-semibold text-primary-600 hover:text-primary-700">Cancel</Link>}
+
+        <form onSubmit={handleSave} className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+          <div className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+            <ListingStepper steps={steps} activeStep={step} disabled={saving} canAccessStep={canAccessStep} onStepChange={goToStep} />
+
+            {error && <div className="mx-4 mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+            {uploadProgress.active && <div className="mx-4 mb-4 rounded-xl border border-green-200 bg-green-50 p-4"><div className="flex items-center justify-between gap-3 text-sm"><p className="truncate font-semibold text-green-700">Uploading image {uploadProgress.currentFile} of {uploadProgress.totalFiles}: {uploadProgress.fileName}</p><span className="font-bold text-green-700">{uploadProgress.percent}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-white"><div className="h-full rounded-full bg-green-600 transition-all duration-200" style={{ width: `${uploadProgress.percent}%` }} /></div></div>}
+
+            <div className="p-4 sm:p-6 lg:p-8">
+              {step === 1 && (
+                <div>
+                  <h2 className="text-2xl font-bold text-stone-950">Photos</h2>
+                  <p className="mt-1 text-sm leading-6 text-stone-500">Keep, remove, or add up to 4 listing photos.</p>
+                  <div className="mt-6 grid gap-3 sm:grid-cols-[240px_1fr]">
+                    {canAddMoreImages && <label className={`flex min-h-[210px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-200 bg-[#FAFAF9] text-center transition hover:border-primary-600 hover:bg-primary-50/40 ${saving ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}><i className="las la-plus text-6xl text-primary-600" /><span className="mt-2 text-base font-bold text-stone-950">Add photos</span><span className="mt-1 text-sm text-stone-500">or click to upload</span><input type="file" accept="image/*" multiple onChange={handleImageChange} disabled={saving} className="hidden" /></label>}
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      {editableImages.map((image) => <div key={image.id} className="group relative aspect-square overflow-hidden rounded-2xl border border-stone-200 bg-stone-100"><img src={image.url} alt="" className="h-full w-full object-cover" /><button type="button" onClick={() => removeImage(image.id)} disabled={saving} className="absolute right-2 top-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white opacity-0 transition group-hover:opacity-100 disabled:opacity-40">×</button>{image.isNew && <span className="absolute bottom-2 left-2 rounded-full bg-primary-600 px-2 py-0.5 text-[10px] font-bold text-white">New</span>}</div>)}
+                      {Array.from({ length: Math.max(0, MAX_IMAGES - editableImages.length) }).map((_, i) => <div key={`empty-${i}`} className="aspect-square rounded-2xl border border-stone-200 bg-white" />)}
+                    </div>
+                  </div>
+                  <div className="mt-6 flex flex-wrap items-center gap-3"><button type="button" onClick={handleNext} disabled={saving} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:opacity-50">Next Step</button></div>
+                </div>
+              )}
+
+              {step === 2 && (
+                <div>
+                  <h2 className="text-2xl font-bold text-stone-950">Book Details</h2>
+                  <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div><label className={labelClass}>Book Title *</label><input value={title} onChange={(event) => setTitle(event.target.value)} disabled={saving} className={fieldClass} /></div>
+                    <div><label className={labelClass}>Author *</label><input value={author} onChange={(event) => setAuthor(event.target.value)} disabled={saving} className={fieldClass} /></div>
+                    <div className="sm:col-span-2"><label className={labelClass}>Description *</label><textarea value={description} onChange={(event) => setDescription(event.target.value)} disabled={saving} rows={4} className={`${fieldClass} resize-none`} /></div>
+                  </div>
+                  <h2 className="mt-8 text-2xl font-bold text-stone-950">Listing Type</h2>
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3">{listingTypes.map((item) => <button key={item.value} type="button" disabled={saving} onClick={() => setType(item.value)} className={`cursor-pointer rounded-2xl border p-4 text-left transition disabled:opacity-60 ${type === item.value ? 'border-primary-600 bg-primary-50/60 ring-1 ring-primary-600/10' : 'border-stone-200 bg-white hover:border-primary-600'}`}><i className={`${item.icon} text-3xl text-stone-950`} /><div className="mt-3 text-sm font-bold text-stone-950">{item.label}</div><div className="mt-1 text-xs leading-5 text-stone-500">{item.desc}</div></button>)}</div>
+                  <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-3">
+                    <div><label className={labelClass}>Condition *</label><select value={condition} onChange={(event) => setCondition(event.target.value as Listing['condition'])} disabled={saving} className={`${fieldClass} pr-10`}>{CONDITIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+                    <div><label className={labelClass}>Category *</label><select value={category} onChange={(event) => setCategory(event.target.value)} disabled={saving} className={`${fieldClass} pr-10`}>{CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+                    <div><label className={labelClass}>Location *</label><select value={location} onChange={(event) => setLocation(event.target.value)} disabled={saving} className={`${fieldClass} pr-10`}>{KENYAN_CITIES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+                    {type === 'sell' && <div><label className={labelClass}>Price (KSh) *</label><input type="number" min="1" value={price} onChange={(event) => setPrice(event.target.value)} disabled={saving} className={fieldClass} /></div>}
+                  </div>
+                  <div className="mt-6 flex flex-wrap items-center gap-3"><button type="button" onClick={() => goToStep(1)} disabled={saving} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:opacity-50">Back</button><button type="button" onClick={handleNext} disabled={saving} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:opacity-50">Next Step</button></div>
+                </div>
+              )}
+
+              {step === 3 && (
+                <div>
+                  <h2 className="text-2xl font-bold text-stone-950">Preview & Save</h2>
+                  <p className="mt-1 text-sm leading-6 text-stone-500">Confirm the updated listing details before saving.</p>
+                  <div className="mt-6 rounded-2xl border border-stone-200 bg-stone-50 p-5"><div className="grid gap-4 text-sm sm:grid-cols-2"><div><span className="font-bold text-stone-500">Title</span><p className="mt-1 font-bold text-stone-950">{previewTitle}</p></div><div><span className="font-bold text-stone-500">Author</span><p className="mt-1 text-stone-700">{previewAuthor}</p></div><div><span className="font-bold text-stone-500">Listing</span><p className="mt-1 text-stone-700">{listingTypes.find((item) => item.value === type)?.label}</p></div><div><span className="font-bold text-stone-500">Value</span><p className="mt-1 text-stone-700">{previewPrice}</p></div></div></div>
+                  <div className="mt-6 flex flex-wrap items-center gap-3"><button type="button" onClick={() => goToStep(2)} disabled={saving} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:opacity-50">Back</button><button type="submit" disabled={saving} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:opacity-50">{saving ? 'Saving...' : 'Save Changes'}</button></div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <ListingPreviewCard title={previewTitle} author={previewAuthor} imageUrl={previewImage} condition={condition} location={location} category={category} type={type} priceLabel={previewPrice} emptyImageLabel="Current cover will appear here" />
+        </form>
       </div>
 
-      <form onSubmit={handleSave} className="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 sm:p-8 space-y-5">
-        {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{error}</div>}
-
-        {uploadProgress.active && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <p className="font-semibold text-green-700 truncate">Uploading image {uploadProgress.currentFile} of {uploadProgress.totalFiles}: {uploadProgress.fileName}</p>
-              <span className="font-bold text-green-700">{uploadProgress.percent}%</span>
-            </div>
-            <div className="mt-3 h-2 rounded-full bg-white overflow-hidden">
-              <div className="h-full rounded-full bg-green-600 transition-all duration-200" style={{ width: `${uploadProgress.percent}%` }} />
-            </div>
-          </div>
-        )}
-
-        <div>
-          <label className="block text-sm font-medium text-stone-700 mb-2">Photos (up to 4)</label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {editableImages.map((image) => (
-              <div key={image.id} className="relative aspect-square rounded-xl overflow-hidden border border-stone-200 group">
-                <img src={image.url} alt="" className="w-full h-full object-cover" />
-                <button type="button" onClick={() => removeImage(image.id)} disabled={saving} className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-xs disabled:opacity-40">×</button>
-                {image.isNew && <span className="absolute left-1.5 bottom-1.5 px-2 py-0.5 rounded-full bg-primary-600 text-white text-[10px] font-semibold">New</span>}
-              </div>
-            ))}
-            {canAddMoreImages && (
-              <label className={`aspect-square rounded-xl border-2 border-dashed border-stone-300 hover:border-primary-400 flex flex-col items-center justify-center transition hover:bg-primary-50 ${saving ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
-                <i className="las la-plus text-3xl text-stone-400" />
-                <span className="text-xs text-stone-500 mt-1">Add Photo</span>
-                <input type="file" accept="image/*" multiple onChange={handleImageChange} disabled={saving} className="hidden" />
-              </label>
-            )}
-          </div>
-          <p className="text-xs text-stone-500 mt-2">Remove old photos or add new cropped photos. The saved order is left to right.</p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Book Title *</label>
-            <input value={title} onChange={(event) => setTitle(event.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Author *</label>
-            <input value={author} onChange={(event) => setAuthor(event.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm" />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-stone-700 mb-1">Description</label>
-          <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={4} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm resize-none" />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-stone-700 mb-2">Listing Type</label>
-          <div className="grid grid-cols-3 gap-3">
-            {listingTypes.map((item) => (
-              <button key={item.value} type="button" onClick={() => setType(item.value as Listing['type'])} className={`cursor-pointer p-3 rounded-xl border-2 text-center transition ${type === item.value ? 'border-primary-500 bg-primary-50' : 'border-stone-200 hover:border-stone-300'}`}>
-                <i className={`${item.icon} text-2xl text-primary-600`} />
-                <div className="text-sm font-semibold text-stone-800 mt-1">{item.label}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {type === 'sell' && (
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Price (KSh)</label>
-            <input type="number" min="0" value={price} onChange={(event) => setPrice(event.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm" />
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Condition</label>
-            <select value={condition} onChange={(event) => setCondition(event.target.value as Listing['condition'])} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white">
-              {CONDITIONS.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Category</label>
-            <select value={category} onChange={(event) => setCategory(event.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white">
-              {CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Location</label>
-            <select value={location} onChange={(event) => setLocation(event.target.value)} className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition text-sm bg-white">
-              {KENYAN_CITIES.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <button type="submit" disabled={saving} className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:opacity-50">
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
-      </form>
-
-      {cropFile && cropSrc && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-5 shadow-xl">
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <div>
-                <h2 className="text-lg font-bold text-stone-900">Crop Photo</h2>
-                <p className="text-sm text-stone-500">Choose what part should be visible.</p>
-              </div>
-              <button type="button" onClick={skipCurrentCrop} className="cursor-pointer text-stone-400 hover:text-stone-700 text-xl">×</button>
-            </div>
-
-            <div className="aspect-square rounded-xl overflow-hidden bg-stone-100 border border-stone-200 relative">
-              <img src={cropSrc} alt="Crop preview" className="w-full h-full object-cover select-none" style={{ transform: `translate(${cropX * 0.6}px, ${cropY * 0.6}px) scale(${cropZoom})`, transformOrigin: 'center' }} />
-              <div className="absolute inset-0 border-4 border-white/70 pointer-events-none rounded-xl" />
-            </div>
-
-            <div className="space-y-4 mt-5">
-              <div><label className="text-sm font-medium text-stone-700">Zoom</label><input type="range" min="1" max="3" step="0.05" value={cropZoom} onChange={(event) => setCropZoom(parseFloat(event.target.value))} className="w-full accent-primary-600 cursor-pointer" /></div>
-              <div><label className="text-sm font-medium text-stone-700">Move left / right</label><input type="range" min="-100" max="100" value={cropX} onChange={(event) => setCropX(parseInt(event.target.value))} className="w-full accent-primary-600 cursor-pointer" /></div>
-              <div><label className="text-sm font-medium text-stone-700">Move up / down</label><input type="range" min="-100" max="100" value={cropY} onChange={(event) => setCropY(parseInt(event.target.value))} className="w-full accent-primary-600 cursor-pointer" /></div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mt-5">
-              <button type="button" onClick={skipCurrentCrop} className="cursor-pointer py-2.5 border border-stone-200 rounded-xl text-sm font-semibold text-stone-600 hover:bg-stone-50">Skip</button>
-              <button type="button" onClick={addCroppedImage} className="cursor-pointer py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700">Use Photo</button>
-            </div>
+      {cropState && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 p-3 backdrop-blur-sm sm:p-6">
+          <div className="w-full max-w-md rounded-[28px] bg-white p-5 shadow-2xl ring-1 ring-black/10">
+            <div className="mb-4 flex items-start justify-between gap-4"><div><h2 className="text-lg font-bold text-stone-950">Edit photo</h2><p className="text-sm text-stone-500">Adjust the cover crop before adding it.</p></div><button type="button" onClick={skipCrop} className="cursor-pointer text-2xl text-stone-400 hover:text-stone-700">×</button></div>
+            <div className="aspect-square overflow-hidden rounded-2xl bg-stone-100"><img src={cropState.src} alt="Crop preview" className="h-full w-full object-contain" style={{ transform: `translate(${cropState.x * 0.6}px, ${cropState.y * 0.6}px) scale(${cropState.zoom})`, transformOrigin: 'center' }} /></div>
+            <div className="mt-5 space-y-4"><label className="block text-sm font-bold text-stone-700">Zoom<input type="range" min="1" max="3" step="0.05" value={cropState.zoom} onChange={(event) => setCropState((current) => current ? { ...current, zoom: parseFloat(event.target.value) } : current)} className="mt-2 w-full accent-primary-600" /></label><label className="block text-sm font-bold text-stone-700">Move left / right<input type="range" min="-100" max="100" value={cropState.x} onChange={(event) => setCropState((current) => current ? { ...current, x: Number(event.target.value) } : current)} className="mt-2 w-full accent-primary-600" /></label><label className="block text-sm font-bold text-stone-700">Move up / down<input type="range" min="-100" max="100" value={cropState.y} onChange={(event) => setCropState((current) => current ? { ...current, y: Number(event.target.value) } : current)} className="mt-2 w-full accent-primary-600" /></label></div>
+            <div className="mt-5 grid grid-cols-2 gap-3"><button type="button" onClick={skipCrop} className="cursor-pointer rounded-xl border border-stone-200 px-4 py-3 text-sm font-bold text-stone-700 hover:bg-stone-50">Skip</button><button type="button" onClick={addCroppedImage} className="cursor-pointer rounded-xl bg-primary-600 px-4 py-3 text-sm font-bold text-white hover:bg-primary-700">Use Photo</button></div>
           </div>
         </div>
       )}
