@@ -1,7 +1,7 @@
 /* Create Listing polish: image placeholders, image fit, and live preview metadata. */
 
 body:has(a[href="/create"]),
-body:has(form input[type="file"][accept="image/*"]) {
+body:has(form aside.lg\:sticky) {
   --reshelved-create-placeholder: #FAFAF9;
 }
 
@@ -9,14 +9,14 @@ body:has(form input[type="file"][accept="image/*"]) {
 form input[type="file"][accept="image/*"]
   ~ * {}
 
-body:has(form input[type="file"][accept="image/*"]) form .grid.grid-cols-2.gap-3.sm\:grid-cols-4 > div.aspect-square {
+body:has(form aside.lg\:sticky) form .grid.grid-cols-2.gap-3.sm\:grid-cols-4 > div.aspect-square {
   background: var(--reshelved-create-placeholder) !important;
   background-repeat: no-repeat !important;
   background-size: cover !important;
   background-position: center !important;
 }
 
-body:has(form input[type="file"][accept="image/*"]) form .grid.grid-cols-2.gap-3.sm\:grid-cols-4 > div.aspect-square img {
+body:has(form aside.lg\:sticky) form .grid.grid-cols-2.gap-3.sm\:grid-cols-4 > div.aspect-square img {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
@@ -25,46 +25,46 @@ body:has(form input[type="file"][accept="image/*"]) form .grid.grid-cols-2.gap-3
 }
 
 /* Listing type cards: keep only the selected option border and a subtle blue active fill. Swap is already the default state in React. */
-body:has(form input[type="file"][accept="image/*"]) form button.border-primary-600 {
+body:has(form aside.lg\:sticky) form button.border-primary-600 {
   border-color: #1665CC !important;
   background: #EFF6FF !important;
   box-shadow: 0 0 0 1px rgba(22, 101, 204, 0.16) !important;
 }
 
-body:has(form input[type="file"][accept="image/*"]) form button.border-primary-600:hover {
+body:has(form aside.lg\:sticky) form button.border-primary-600:hover {
   border-color: #1665CC !important;
   background: #EAF3FF !important;
 }
 
-body:has(form input[type="file"][accept="image/*"]) form button.border-primary-600 i,
-body:has(form input[type="file"][accept="image/*"]) form button.border-primary-600 div:first-of-type {
+body:has(form aside.lg\:sticky) form button.border-primary-600 i,
+body:has(form aside.lg\:sticky) form button.border-primary-600 div:first-of-type {
   color: #1c1917 !important;
 }
 
-body:has(form input[type="file"][accept="image/*"]) form button.border-primary-600::after {
+body:has(form aside.lg\:sticky) form button.border-primary-600::after {
   display: none !important;
   content: none !important;
 }
 
 /* Persistent live preview across all three steps. */
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky {
+body:has(form aside.lg\:sticky) form aside.lg\:sticky {
   display: block !important;
 }
 
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky > div {
+body:has(form aside.lg\:sticky) form aside.lg\:sticky > div {
   border-radius: 24px !important;
   border-color: #e7e5e4 !important;
   background: #ffffff !important;
   box-shadow: 0 10px 30px rgba(28, 25, 23, 0.045) !important;
 }
 
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky h2 {
+body:has(form aside.lg\:sticky) form aside.lg\:sticky h2 {
   font-family: 'Work Sans', 'Source Sans 3', system-ui, sans-serif !important;
   letter-spacing: -0.035em !important;
 }
 
 /* Live preview cover area. Same card design for steps 1, 2 and 3, but shorter. */
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspect-\[4\/3\] {
+body:has(form aside.lg\:sticky) form aside.lg\:sticky .aspect-\[4\/3\] {
   aspect-ratio: 4 / 3 !important;
   min-height: 0 !important;
   max-height: 300px !important;
@@ -76,7 +76,7 @@ body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspec
   border-radius: 18px !important;
 }
 
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspect-\[4\/3\] img {
+body:has(form aside.lg\:sticky) form aside.lg\:sticky .aspect-\[4\/3\] img {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
@@ -84,16 +84,16 @@ body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspec
   background-repeat: no-repeat !important;
 }
 
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspect-\[4\/3\] > div {
+body:has(form aside.lg\:sticky) form aside.lg\:sticky .aspect-\[4\/3\] > div {
   background: var(--reshelved-create-placeholder) !important;
 }
 
 /* Live preview condition, location, and category row. */
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .grid.grid-cols-3.gap-2 {
+body:has(form aside.lg\:sticky) form aside.lg\:sticky .grid.grid-cols-3.gap-2 {
   gap: 8px !important;
 }
 
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .grid.grid-cols-3.gap-2 span {
+body:has(form aside.lg\:sticky) form aside.lg\:sticky .grid.grid-cols-3.gap-2 span {
   display: inline-flex !important;
   align-items: center !important;
   min-width: 0 !important;
@@ -103,7 +103,7 @@ body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .grid.
   font-weight: 800 !important;
 }
 
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .grid.grid-cols-3.gap-2 span i {
+body:has(form aside.lg\:sticky) form aside.lg\:sticky .grid.grid-cols-3.gap-2 span i {
   color: #1c1917 !important;
   font-size: 22px !important;
   line-height: 1 !important;
@@ -113,36 +113,36 @@ body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .grid.
 }
 
 /* Live preview listing type and price typography. */
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky p.text-sm.font-bold.text-stone-950,
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky span.mt-3.inline-flex,
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky span.mt-3.inline-flex i,
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky div.mt-5 > p.mt-3.text-sm.font-bold.text-stone-950 {
+body:has(form aside.lg\:sticky) form aside.lg\:sticky p.text-sm.font-bold.text-stone-950,
+body:has(form aside.lg\:sticky) form aside.lg\:sticky span.mt-3.inline-flex,
+body:has(form aside.lg\:sticky) form aside.lg\:sticky span.mt-3.inline-flex i,
+body:has(form aside.lg\:sticky) form aside.lg\:sticky div.mt-5 > p.mt-3.text-sm.font-bold.text-stone-950 {
   font-size: 14px !important;
   line-height: 1.35 !important;
 }
 
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky span.mt-3.inline-flex {
+body:has(form aside.lg\:sticky) form aside.lg\:sticky span.mt-3.inline-flex {
   border-radius: 999px !important;
   background: #fafaf9 !important;
 }
 
-body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky span.mt-3.inline-flex i {
+body:has(form aside.lg\:sticky) form aside.lg\:sticky span.mt-3.inline-flex i {
   color: #1c1917 !important;
   font-size: 20px !important;
   line-height: 1 !important;
 }
 
 @media (max-width: 1023px) {
-  body:has(form input[type="file"][accept="image/*"]) form {
+  body:has(form aside.lg\:sticky) form {
     grid-template-columns: 1fr !important;
   }
 
-  body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky {
+  body:has(form aside.lg\:sticky) form aside.lg\:sticky {
     position: static !important;
     order: 2 !important;
   }
 
-  body:has(form input[type="file"][accept="image/*"]) form aside.lg\:sticky .aspect-\[4\/3\] {
+  body:has(form aside.lg\:sticky) form aside.lg\:sticky .aspect-\[4\/3\] {
     max-height: 260px !important;
   }
 }
