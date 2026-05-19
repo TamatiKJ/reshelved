@@ -3,6 +3,7 @@ import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/f
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import { mapSnapshot } from '../utils/firestoreMappers';
 
 interface Notification {
   id: string;
@@ -64,9 +65,7 @@ const Notifications: React.FC = () => {
     setLoading(true);
     const q = query(collection(db, 'notifications'), where('userId', '==', currentUser.uid));
     const unsub = onSnapshot(q, (snap) => {
-      const ns: Notification[] = [];
-      snap.forEach(d => ns.push({ id: d.id, ...d.data() } as Notification));
-      ns.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      const ns = mapSnapshot<Notification>(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       setNotifications(ns.filter((item) => !item.read && item.type !== 'message'));
       setLoading(false);
     }, (err) => {
