@@ -3,7 +3,6 @@ import { addDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import AdminUserDashboardStyled from './AdminUserDashboardStyled';
-import AdminListingCategoriesPanel from '../components/AdminListingCategoriesPanel';
 import type { UserProfile } from '../types';
 import './AdminUserDashboardNotifyWrapper.css';
 
@@ -13,7 +12,6 @@ type Target = 'all' | 'specific';
 const AdminUserDashboardNotifyWrapper: React.FC = () => {
   const { userProfile } = useAuth() as any;
   const [open, setOpen] = useState(false);
-  const [listingCategoriesOpen, setListingCategoriesOpen] = useState(false);
   const [step, setStep] = useState<Step>('form');
   const [target, setTarget] = useState<Target>('all');
   const [excludeAdmins, setExcludeAdmins] = useState(true);
@@ -68,75 +66,6 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
       document.removeEventListener('mousedown', handleClick, true);
     };
   }, [openModal]);
-
-  useEffect(() => {
-    if (!userProfile?.isAdmin) return undefined;
-
-    const handleListingCategoriesClick = (event: Event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setListingCategoriesOpen(true);
-    };
-
-    const createListingCategoriesItem = () => {
-      const item = document.createElement('button');
-      item.type = 'button';
-      item.className = 'admin-listing-categories-nav mt-1 flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition text-stone-600 hover:bg-stone-50 hover:text-stone-950';
-      item.innerHTML = '<span><i class="las la-layer-group mr-2 text-lg text-stone-400"></i>Listing Categories</span>';
-      item.addEventListener('click', handleListingCategoriesClick);
-      return item;
-    };
-
-    const placeListingCategoriesItem = () => {
-      const sidebars = Array.from(document.querySelectorAll<HTMLElement>('.admin-tiktok-shell aside'));
-      sidebars.forEach((sidebar) => {
-        const buttons = Array.from(sidebar.querySelectorAll<HTMLButtonElement>('button'));
-        const usersButton = buttons.find((button) => button.textContent?.trim().toLowerCase().startsWith('users'));
-        const activeListingsButton = buttons.find((button) => button.textContent?.trim().toLowerCase().startsWith('active listings'));
-        if (!usersButton && !activeListingsButton) return;
-
-        let item = sidebar.querySelector<HTMLButtonElement>('.admin-listing-categories-nav');
-        if (!item) item = createListingCategoriesItem();
-
-        if (usersButton) {
-          usersButton.insertAdjacentElement('beforebegin', item);
-          return;
-        }
-
-        activeListingsButton?.insertAdjacentElement('afterend', item);
-      });
-    };
-
-    const closeFromOtherAdminNav = (event: Event) => {
-      const target = event.target as HTMLElement | null;
-      const button = target?.closest?.('.admin-tiktok-shell aside button') as HTMLButtonElement | null;
-      if (!button || button.classList.contains('admin-listing-categories-nav')) return;
-      if (button.textContent?.toLowerCase().includes('send update')) return;
-      setListingCategoriesOpen(false);
-    };
-
-    placeListingCategoriesItem();
-    const observer = new MutationObserver(placeListingCategoriesItem);
-    observer.observe(document.body, { childList: true, subtree: true });
-    document.addEventListener('click', closeFromOtherAdminNav, true);
-
-    return () => {
-      observer.disconnect();
-      document.removeEventListener('click', closeFromOtherAdminNav, true);
-      document.querySelectorAll<HTMLButtonElement>('.admin-listing-categories-nav').forEach((item) => {
-        item.removeEventListener('click', handleListingCategoriesClick);
-        item.remove();
-      });
-    };
-  }, [userProfile?.isAdmin]);
-
-  useEffect(() => {
-    document.querySelectorAll<HTMLElement>('.admin-listing-categories-nav').forEach((item) => {
-      item.classList.toggle('bg-stone-100', listingCategoriesOpen);
-      item.classList.toggle('text-stone-950', listingCategoriesOpen);
-      item.classList.toggle('text-stone-600', !listingCategoriesOpen);
-    });
-  }, [listingCategoriesOpen]);
 
   useEffect(() => {
     const applyListingFilterOrder = () => {
@@ -223,14 +152,6 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
   return (
     <>
       <AdminUserDashboardStyled />
-      {listingCategoriesOpen && (
-        <div className="fixed inset-x-0 bottom-0 top-[73px] z-30 overflow-y-auto bg-stone-50 p-4 lg:left-[270px] lg:p-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <button type="button" onClick={() => setListingCategoriesOpen(false)} className="cursor-pointer rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-bold text-stone-700 hover:bg-stone-50">← Back to dashboard</button>
-          </div>
-          <AdminListingCategoriesPanel />
-        </div>
-      )}
       {open && (
         <div className="send-update-backdrop" onClick={() => !sending && setOpen(false)}>
           <section className="send-update-card" onClick={(event) => event.stopPropagation()}>
