@@ -15,6 +15,7 @@ import ListingDetail from './pages/ListingDetail';
 import Messages from './pages/Messages';
 import Profile from './pages/Profile';
 import Admin from './pages/AdminUserDashboardNotifyWrapper';
+import AdminListingCategories from './pages/AdminListingCategories';
 import Notifications from './pages/Notifications';
 import LegalPage from './pages/LegalPage';
 import type { Listing } from './types';
@@ -360,7 +361,7 @@ const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
 const AppContent: React.FC = () => {
   const { loading, userProfile } = useAuth();
   const location = useLocation();
-  const isAdminRoute = location.pathname === '/admin';
+  const isAdminRoute = location.pathname.startsWith('/admin');
   const isAdminEnabled = isAdminRoute && Boolean(userProfile?.isAdmin);
   const isMessagesRoute = location.pathname.startsWith('/messages');
   const isOpenChatRoute = /^\/messages\/[^/]+/.test(location.pathname);
@@ -417,6 +418,7 @@ const AppContent: React.FC = () => {
                   <Route path="/terms" element={<LegalPage slug="terms" />} />
                   <Route path="/cookies" element={<LegalPage slug="cookies" />} />
                   <Route path="/contact" element={<LegalPage slug="contact" />} />
+                  <Route path="/admin/listing-categories" element={<ProtectedRoute><AdminListingCategories /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
                 </Routes>
               </main>
