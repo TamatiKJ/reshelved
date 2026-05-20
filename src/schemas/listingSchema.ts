@@ -21,6 +21,8 @@ export const listingSchema = z.object({
   description: z.string().trim().catch(''),
   condition: z.enum(['New', 'Like New', 'Good', 'Fair', 'Poor']).catch('Good'),
   category: z.string().trim().min(1).catch('Other'),
+  categoryId: z.string().trim().optional().catch(undefined),
+  categoryName: z.string().trim().optional().catch(undefined),
   type: z.enum(['swap', 'donate', 'sell']).catch('swap'),
   price: optionalNumberFromUnknown,
   images: z.array(z.string().url()).catch([]),
