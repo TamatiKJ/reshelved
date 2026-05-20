@@ -48,6 +48,13 @@ export const sendChatMessage = async ({
     readBy: [senderId],
     deliveredTo: [senderId],
     deliveredAt: { [senderId]: now },
+    status: 'sent',
+    messageStatus: 'sent',
+    attachments: [],
+    editedAt: null,
+    deletedAt: null,
+    deletedBy: '',
+    deletedFor: [],
     createdAt: now,
     ...payload
   });
@@ -55,8 +62,11 @@ export const sendChatMessage = async ({
   const conversationUpdate: Record<string, unknown> = {
     lastMessage,
     lastMessageAt: now,
+    lastMessageBy: senderId,
     updatedAt: now,
     hiddenFor: [],
+    deletedFor: [],
+    blockedUsers: (conversation as any).blockedUsers || [],
     conversationKey: (conversation as any).conversationKey || (primaryRecipientId ? getConversationKey(senderId, primaryRecipientId) : '')
   };
 
@@ -65,6 +75,7 @@ export const sendChatMessage = async ({
   });
 
   conversationUpdate[`unreadCount.${senderId}`] = 0;
+  conversationUpdate[`lastReadAt.${senderId}`] = now;
 
   batch.update(conversationRef, conversationUpdate);
   await batch.commit();
@@ -86,10 +97,8 @@ export const markConversationMessagesRead = async ({
     if (message.senderId === userId || data.deleted) return false;
     const deliveredTo = Array.isArray(data.deliveredTo) ? data.deliveredTo : [];
     const readBy = Array.isArray(data.readBy) ? data.readBy : [];
-    return !deliveredTo.includes(userId) || !readBy.includes(userId);
+    return !deliveredTo.includes(userId) || !readBy.includes(userId) || data.status !== 'read' || data.messageStatus !== 'read';
   });
-
-  if (incomingToUpdate.length === 0) return;
 
   const now = Date.now();
   const batch = writeBatch(db);
@@ -100,14 +109,19 @@ export const markConversationMessagesRead = async ({
     const readBy = Array.isArray(data.readBy) ? data.readBy : [];
     const update: Record<string, unknown> = {
       deliveredTo: Array.from(new Set([...deliveredTo, userId])),
-      readBy: Array.from(new Set([...readBy, userId]))
+      readBy: Array.from(new Set([...readBy, userId])),
+      status: 'read',
+      messageStatus: 'read'
     };
 
     if (!deliveredTo.includes(userId)) update[`deliveredAt.${userId}`] = now;
     batch.update(doc(db, 'messages', message.id), update);
   });
 
-  batch.update(doc(db, 'conversations', conversationId), { [`unreadCount.${userId}`]: 0 });
+  batch.update(doc(db, 'conversations', conversationId), {
+    [`unreadCount.${userId}`]: 0,
+    [`lastReadAt.${userId}`]: now
+  });
   await batch.commit();
 };
 
@@ -120,9 +134,14 @@ export const hideConversationForUser = async ({
   conversation: Conversation;
   userId: string;
 }) => {
+  const deletedFor = Array.from(new Set([...(conversation as any).deletedFor || [], userId]));
+  const hiddenFor = Array.from(new Set([...(conversation as any).hiddenFor || [], userId]));
+
   await updateDoc(doc(db, 'conversations', conversationId), {
-    hiddenFor: Array.from(new Set([...(conversation as any).hiddenFor || [], userId])),
-    [`unreadCount.${userId}`]: 0
+    deletedFor,
+    hiddenFor,
+    [`unreadCount.${userId}`]: 0,
+    [`lastReadAt.${userId}`]: Date.now()
   });
 };
 
