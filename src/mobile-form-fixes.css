@@ -9,4 +9,16 @@
     font-size: 16px !important;
     line-height: 20px !important;
   }
+
+  #root > div.min-h-screen.flex.items-center.justify-center.bg-stone-50:has(> div img[src="/reshelved-logo.svg"]) {
+    position: fixed !important;
+    inset: 0 !important;
+    min-height: 100dvh !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important;
+    overflow: hidden !important;
+  }
 }
