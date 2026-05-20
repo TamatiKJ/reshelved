@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { getActiveListingCategoriesWithFallback, type ListingCategory, fallbackListingCategories } from '../services/listingCategories';
+import { getListingCategories, type ListingCategory } from '../services/listingCategories';
 
 export const useListingCategories = () => {
-  const [categories, setCategories] = useState<ListingCategory[]>(fallbackListingCategories);
+  const [categories, setCategories] = useState<ListingCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -10,10 +10,17 @@ export const useListingCategories = () => {
 
     const loadCategories = async () => {
       setLoading(true);
-      const items = await getActiveListingCategoriesWithFallback();
-      if (!mounted) return;
-      setCategories(items);
-      setLoading(false);
+      try {
+        const items = await getListingCategories({ includeInactive: false });
+        if (!mounted) return;
+        setCategories(items);
+      } catch (error) {
+        console.error('Could not load listing categories:', error);
+        if (!mounted) return;
+        setCategories([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
     };
 
     loadCategories();
