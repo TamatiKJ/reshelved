@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CATEGORIES } from '../types';
 import type { Listing } from '../types';
 
 const CREATE_LISTING_CANCEL_REDIRECT = '/browse';
@@ -45,7 +44,7 @@ export const useCreateListingCancel = ({
     previews.length > 0 ||
     imagesCount > 0 ||
     condition !== 'Good' ||
-    category !== CATEGORIES[0] ||
+    category.trim() !== '' ||
     type !== 'swap' ||
     location !== defaultLocation
   ), [title, author, description, price, previews.length, imagesCount, condition, category, type, location, defaultLocation]);
