@@ -1,0 +1,137 @@
+@media (max-width: 767px) {
+  html:has(body main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])),
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    position: fixed !important;
+    inset: 0 !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) #root {
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) main {
+    height: calc(100dvh - 64px) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) main > div:has(input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) {
+    position: fixed !important;
+    inset: 64px 0 74px 0 !important;
+    z-index: 40 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) main > div:has(input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) > div {
+    height: 100% !important;
+    min-height: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) {
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 35 !important;
+    min-height: 50px !important;
+    padding: 6px 10px !important;
+    background: #ffffff !important;
+    box-shadow: 0 1px 0 rgba(231, 229, 228, 0.9) !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > header > div {
+    gap: 8px !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > header a[href="/messages"] {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > header img,
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > header .h-12.w-12,
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > header .h-14.w-14 {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > header h3 {
+    font-size: 14px !important;
+    line-height: 18px !important;
+    font-weight: 800 !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > header p {
+    font-size: 11px !important;
+    line-height: 14px !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > header button[aria-label="Conversation actions"] {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > header button[aria-label="Conversation actions"]::before {
+    font-size: 28px !important;
+    transform: translateY(-2px) !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > div.flex-1.overflow-y-auto {
+    min-height: 0 !important;
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 14px 12px 16px !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > form {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 36 !important;
+    flex-shrink: 0 !important;
+    padding: 8px 10px !important;
+    background: #ffffff !important;
+    box-shadow: 0 -8px 20px rgba(28, 25, 23, 0.06) !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > form > div {
+    border-radius: 9999px !important;
+    gap: 8px !important;
+    padding: 7px !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > form button {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+  }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > form input[type="text"] {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    font-size: 14px !important;
+  }
+}
