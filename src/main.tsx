@@ -6,6 +6,7 @@ import "./mobile-logo-fixes.css";
 import "./profile-airbnb.css";
 import "./create-listing-polish.css";
 import "./create-listing-preview-font.css";
+import "./mobile-chat-native.css";
 import App from "./App";
 import { enforceWebpUploadCompression } from "./utils/enforceWebpUploadCompression";
 import { enableSwapCompletionEnhancements } from "./utils/swapCompletionEnhancements";
