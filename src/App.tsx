@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { db } from './firebase';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import MobileBottomNav from './components/MobileBottomNav';
 import Home from './pages/Home';
 import Browse from './pages/Browse';
 import { Login, Register, ForgotPassword } from './pages/Auth';
@@ -361,6 +362,8 @@ const AppContent: React.FC = () => {
   const location = useLocation();
   const isAdminRoute = location.pathname === '/admin';
   const isAdminEnabled = isAdminRoute && Boolean(userProfile?.isAdmin);
+  const isMessagesRoute = location.pathname.startsWith('/messages');
+  const hideMobileBottomNav = isAdminRoute || location.pathname.startsWith('/listing/') && location.pathname.endsWith('/edit');
 
   if (loading) {
     return (
@@ -394,9 +397,9 @@ const AppContent: React.FC = () => {
         <Route
           path="*"
           element={
-            <div className="min-h-screen bg-stone-50 flex flex-col">
+            <div className={`min-h-screen bg-stone-50 flex flex-col ${isMessagesRoute ? 'max-md:h-[100dvh] max-md:min-h-0 max-md:overflow-hidden' : 'max-md:pb-24'}`}>
               {!isAdminRoute && <Navbar />}
-              <main className="flex-1">
+              <main className={`flex-1 ${isMessagesRoute ? 'max-md:min-h-0 max-md:overflow-hidden' : ''}`}>
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/browse" element={<Browse />} />
@@ -416,7 +419,8 @@ const AppContent: React.FC = () => {
                   <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
                 </Routes>
               </main>
-              {!isAdminRoute && <Footer />}
+              {!isAdminRoute && !isMessagesRoute && <Footer />}
+              {!hideMobileBottomNav && <MobileBottomNav />}
             </div>
           }
         />
