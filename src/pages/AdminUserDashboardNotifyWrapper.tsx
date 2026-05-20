@@ -77,8 +77,9 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
       sidebars.forEach((sidebar) => {
         if (sidebar.querySelector('.admin-listing-categories-nav')) return;
         const buttons = Array.from(sidebar.querySelectorAll<HTMLButtonElement>('button'));
-        const activeListingsButton = buttons.find((button) => button.textContent?.toLowerCase().includes('active listings'));
-        if (!activeListingsButton) return;
+        const usersButton = buttons.find((button) => button.textContent?.trim().toLowerCase().startsWith('users'));
+        const activeListingsButton = buttons.find((button) => button.textContent?.trim().toLowerCase().startsWith('active listings'));
+        if (!usersButton && !activeListingsButton) return;
 
         const item = document.createElement('button');
         item.type = 'button';
@@ -89,7 +90,9 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
           event.stopPropagation();
           setListingCategoriesOpen(true);
         });
-        activeListingsButton.insertAdjacentElement('afterend', item);
+
+        if (usersButton) usersButton.insertAdjacentElement('beforebegin', item);
+        else activeListingsButton?.insertAdjacentElement('afterend', item);
       });
     };
 
