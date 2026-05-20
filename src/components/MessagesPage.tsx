@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, increment, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { uploadChatImage } from '../utils/chatMedia';
+import { createMessageDocumentId, hideConversationForUser, markConversationMessagesRead, markConversationNotificationsRead, sendChatMessage } from '../services/messagesService';
 import type { Conversation, Message, Rating, UserProfile } from '../types';
 
 type ParticipantMeta = { photoURL: string; location: string; avgRating: number; reviewCount: number; blockedUsers: string[]; online?: boolean };
@@ -12,7 +13,6 @@ type ChatFilter = 'all' | 'swapping' | 'unread';
 const DELETE_EVERYONE_WINDOW_MS = 30 * 60 * 1000;
 const AUTO_CONFIRM_SWAP_MS = 7 * 24 * 60 * 60 * 1000;
 const UNAVAILABLE_MESSAGE = "You can't message this user at this time.";
-const getConversationKey = (a: string, b: string) => [a, b].sort().join('_');
 const isSameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString();
 const formatDayLabel = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -109,33 +109,17 @@ const MessagesPage: React.FC = () => {
   }, [currentUser, conversationId]);
 
   useEffect(() => {
+    if (!conversationId || !currentUser || loading) return;
+    const exists = conversations.some((conversation) => conversation.id === conversationId);
+    if (!exists) navigate('/messages', { replace: true });
+  }, [conversationId, conversations, currentUser?.uid, loading, navigate]);
+
+  useEffect(() => {
     if (!conversationId || !currentUser) {
       setMessages([]);
       return;
     }
 
-    const markLegacyMessageNotificationsRead = async () => {
-      try {
-        const nq = query(collection(db, 'notifications'), where('userId', '==', currentUser.uid), where('conversationId', '==', conversationId), where('read', '==', false));
-        const snap = await getDocs(nq);
-        await Promise.all(snap.docs.map((item) => updateDoc(doc(db, 'notifications', item.id), { read: true })));
-      } catch (err) {
-        console.error('Could not mark legacy message notifications as read:', err);
-      }
-    };
-
-    const markMessagesDeliveredAndRead = async (items: Message[]) => {
-      const now = Date.now();
-      const incoming = items.filter((msg) => msg.senderId !== currentUser.uid && !(msg as any).deleted);
-      await Promise.all(incoming.map((msg) => updateDoc(doc(db, 'messages', msg.id), {
-        deliveredTo: Array.from(new Set([...(msg as any).deliveredTo || [], currentUser.uid])),
-        readBy: Array.from(new Set([...(msg as any).readBy || [], currentUser.uid])),
-        [`deliveredAt.${currentUser.uid}`]: now
-      }).catch(() => null)));
-      if (incoming.length > 0) await updateDoc(doc(db, 'conversations', conversationId), { [`unreadCount.${currentUser.uid}`]: 0 }).catch(() => null);
-    };
-
-    markLegacyMessageNotificationsRead();
     const q = query(collection(db, 'messages'), where('conversationId', '==', conversationId));
     const unsub = onSnapshot(q, (snap) => {
       const items: Message[] = [];
@@ -143,14 +127,14 @@ const MessagesPage: React.FC = () => {
       items.sort((a, b) => ((a as any).createdAt || 0) - ((b as any).createdAt || 0));
       setMessages(items);
       requestAnimationFrame(() => messagesPaneRef.current?.scrollTo({ top: messagesPaneRef.current.scrollHeight, behavior: 'auto' }));
-      markLegacyMessageNotificationsRead();
-      markMessagesDeliveredAndRead(items);
+      markConversationNotificationsRead(conversationId, currentUser.uid).catch((err) => console.error('Could not mark message notifications as read:', err));
+      markConversationMessagesRead({ conversationId, userId: currentUser.uid, messages: items }).catch((err) => console.error('Could not mark messages as read:', err));
     }, (err) => {
       console.error('Error loading messages:', err);
       setError('Could not load messages. Check your Firestore rules.');
     });
     return unsub;
-  }, [conversationId, currentUser]);
+  }, [conversationId, currentUser?.uid]);
 
   useEffect(() => {
     setSelectedConv(conversationId ? conversations.find((conv) => conv.id === conversationId) || null : null);
@@ -173,7 +157,7 @@ const MessagesPage: React.FC = () => {
       'swapCompletion.completedBy': 'auto-confirmed',
       'swapCompletion.ratingUnlocked': true,
       'swapCompletion.status': 'completed'
-    }).catch(() => undefined);
+    }).catch((err) => console.error('Auto confirm failed:', err));
   }, [selectedConv?.id, conversationId, firstMarkedAt, autoConfirmAt, swapState.completedAt]);
 
   useEffect(() => {
@@ -261,25 +245,23 @@ const MessagesPage: React.FC = () => {
     longPressTimerRef.current = null;
   };
 
-  const buildConversationDeliveryUpdate = (recipientIds: string[], now: number) => {
-    const updates: Record<string, unknown> = { lastMessageAt: now, updatedAt: now, hiddenFor: [] };
-    if (currentUser) updates[`deliveredAt.${currentUser.uid}`] = now;
-    recipientIds.forEach((id) => { updates[`unreadCount.${id}`] = increment(1); });
-    return updates;
-  };
-
   const sendTextOrMapMessage = async (payload: Record<string, unknown> & { text: string; type: 'text' | 'map' }) => {
     if (!currentUser || !conversationId || !selectedConv || !ensureCanMessage()) return;
-    const now = Date.now();
-    const recipientIds = selectedConv.participants.filter((id) => id !== currentUser.uid);
     setSending(true);
     setError('');
     try {
-      await addDoc(collection(db, 'messages'), { conversationId, senderId: currentUser.uid, senderName: userProfile?.displayName || currentUser.displayName || 'User', recipientId: recipientIds[0] || '', readBy: [currentUser.uid], deliveredTo: [currentUser.uid], deliveredAt: { [currentUser.uid]: now }, createdAt: now, ...payload });
-      await updateDoc(doc(db, 'conversations', conversationId), { ...buildConversationDeliveryUpdate(recipientIds, now), lastMessage: payload.type === 'map' ? 'Location pin' : payload.text, conversationKey: (selectedConv as any).conversationKey || (recipientIds[0] ? getConversationKey(currentUser.uid, recipientIds[0]) : '') });
+      await sendChatMessage({
+        conversationId,
+        conversation: selectedConv,
+        senderId: currentUser.uid,
+        senderName: userProfile?.displayName || currentUser.displayName || 'User',
+        payload,
+        lastMessage: payload.type === 'map' ? 'Location pin' : payload.text
+      });
     } catch (err) {
       console.error('Error sending message:', err);
       setError('Message failed to send. Check your Firestore rules.');
+      throw err;
     } finally {
       setSending(false);
     }
@@ -308,7 +290,8 @@ const MessagesPage: React.FC = () => {
       if (hasMarkedComplete) setError('Completion mark removed.');
       else if (nextMarkedBy.length === 1) setError('Marked complete. If the other user does not respond within 7 days, the swap will auto-confirm.');
       else if (nextMarkedBy.length >= selectedConv.participants.length) setError('Swap completed. Rating is now unlocked.');
-    } catch {
+    } catch (err) {
+      console.error('Could not update swap completion:', err);
       setError('Could not update swap completion. Check your Firestore rules.');
     } finally {
       setCompletionUpdating(false);
@@ -324,7 +307,8 @@ const MessagesPage: React.FC = () => {
       setHasRatedSwap(true);
       setRatingReview('');
       setError('Rating submitted.');
-    } catch {
+    } catch (err) {
+      console.error('Could not submit rating:', err);
       setError('Could not submit rating. Check your Firestore rules.');
     } finally {
       setRatingSubmitting(false);
@@ -333,9 +317,14 @@ const MessagesPage: React.FC = () => {
 
   const handleSend = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!newMessage.trim()) return;
-    await sendTextOrMapMessage({ text: newMessage.trim(), type: 'text' });
-    setNewMessage('');
+    const text = newMessage.trim();
+    if (!text || sending) return;
+    try {
+      await sendTextOrMapMessage({ text, type: 'text' });
+      setNewMessage('');
+    } catch {
+      // Keep text in the composer if sending fails.
+    }
   };
 
   const handleImageSend = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -343,16 +332,21 @@ const MessagesPage: React.FC = () => {
     event.target.value = '';
     if (!file || !file.type.startsWith('image/')) return;
     if (!currentUser || !conversationId || !selectedConv || !ensureCanMessage()) return;
-    const now = Date.now();
-    const recipientIds = selectedConv.participants.filter((id) => id !== currentUser.uid);
     setSending(true);
     setAttachMenuOpen(false);
     setError('');
     try {
-      const messageRef = doc(collection(db, 'messages'));
-      const uploaded = await uploadChatImage(conversationId, messageRef.id, file);
-      await setDoc(messageRef, { conversationId, senderId: currentUser.uid, senderName: userProfile?.displayName || currentUser.displayName || 'User', recipientId: recipientIds[0] || '', readBy: [currentUser.uid], deliveredTo: [currentUser.uid], deliveredAt: { [currentUser.uid]: now }, createdAt: now, type: 'image', text: 'Image', ...uploaded });
-      await updateDoc(doc(db, 'conversations', conversationId), { ...buildConversationDeliveryUpdate(recipientIds, now), lastMessage: 'Image', conversationKey: (selectedConv as any).conversationKey || (recipientIds[0] ? getConversationKey(currentUser.uid, recipientIds[0]) : '') });
+      const messageId = createMessageDocumentId();
+      const uploaded = await uploadChatImage(conversationId, messageId, file);
+      await sendChatMessage({
+        conversationId,
+        conversation: selectedConv,
+        senderId: currentUser.uid,
+        senderName: userProfile?.displayName || currentUser.displayName || 'User',
+        messageId,
+        payload: { type: 'image', text: 'Image', ...uploaded },
+        lastMessage: 'Image'
+      });
     } catch (err: any) {
       console.error('Could not send image:', err);
       setError(err?.message || 'Could not send image. Check your Firestore rules.');
@@ -396,12 +390,11 @@ const MessagesPage: React.FC = () => {
     setThreadMenuOpen(false);
     setError('');
     try {
-      await updateDoc(doc(db, 'conversations', conversationId), { hiddenFor: Array.from(new Set([...(selectedConv as any).hiddenFor || [], currentUser.uid])), [`unreadCount.${currentUser.uid}`]: 0 });
+      await hideConversationForUser({ conversationId, conversation: selectedConv, userId: currentUser.uid });
       const messageSnap = await getDocs(query(collection(db, 'messages'), where('conversationId', '==', conversationId)));
       await Promise.all(messageSnap.docs.map((item) => updateDoc(doc(db, 'messages', item.id), { deletedFor: Array.from(new Set([...(item.data() as any).deletedFor || [], currentUser.uid])) })));
-      const notificationSnap = await getDocs(query(collection(db, 'notifications'), where('userId', '==', currentUser.uid), where('conversationId', '==', conversationId)));
-      await Promise.all(notificationSnap.docs.map((item) => updateDoc(doc(db, 'notifications', item.id), { read: true }).catch(() => null)));
-      navigate('/messages');
+      await markConversationNotificationsRead(conversationId, currentUser.uid);
+      navigate('/messages', { replace: true });
     } catch (err) {
       console.error('Error deleting conversation:', err);
       setError('Could not delete this chat. Check your Firestore rules.');
@@ -418,7 +411,8 @@ const MessagesPage: React.FC = () => {
       setReportReason('');
       setReportDetails('');
       setError('Report submitted.');
-    } catch {
+    } catch (err) {
+      console.error('Could not submit report:', err);
       setError('Could not submit report.');
     }
   };
