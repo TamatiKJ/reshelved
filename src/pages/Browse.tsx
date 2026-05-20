@@ -5,9 +5,10 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import BookCard from '../components/BookCard';
 import type { Listing } from '../types';
-import { CATEGORIES, KENYAN_CITIES, CONDITIONS } from '../types';
+import { KENYAN_CITIES, CONDITIONS } from '../types';
 import { parseListingSnapshot } from '../services/listingValidation';
 import { safeLower } from '../utils/stringGuards';
+import { useListingCategories } from '../hooks/useListingCategories';
 
 const PAGE_SIZE = 12;
 const focusFieldClass = 'focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10 outline-none';
@@ -16,6 +17,7 @@ const selectClass = `pl-3 pr-10 py-2.5 rounded-lg border border-stone-200 text-s
 const Browse: React.FC = () => {
   const { currentUser } = useAuth();
   const [searchParams] = useSearchParams();
+  const { categories: listingCategories } = useListingCategories();
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -34,16 +36,19 @@ const Browse: React.FC = () => {
     const searchFromUrl = searchParams.get('search');
     const scopeFromUrl = searchParams.get('scope');
 
-    if (categoryFromUrl && CATEGORIES.includes(categoryFromUrl)) {
-      setFilterCategory(categoryFromUrl);
-      setShowFilters(true);
+    if (categoryFromUrl) {
+      const categoryMatch = listingCategories.find((item) => item.name === categoryFromUrl || item.slug === categoryFromUrl || item.id === categoryFromUrl);
+      if (categoryMatch) {
+        setFilterCategory(categoryMatch.name);
+        setShowFilters(true);
+      }
     }
 
     if (searchFromUrl) {
       setSearch(searchFromUrl);
       setSearchScope(scopeFromUrl === 'book' ? 'book' : 'all');
     }
-  }, [searchParams]);
+  }, [searchParams, listingCategories]);
 
   useEffect(() => { setCurrentPage(1); }, [search, filterType, filterCategory, filterLocation, filterCondition]);
 
@@ -64,7 +69,7 @@ const Browse: React.FC = () => {
     const now = Date.now();
     if (!l.active || l.expiresAt < now) return false;
     if (filterType !== 'all' && l.type !== filterType) return false;
-    if (filterCategory !== 'all' && l.category !== filterCategory) return false;
+    if (filterCategory !== 'all' && (l.categoryName || l.category) !== filterCategory && l.categoryId !== filterCategory) return false;
     if (filterLocation !== 'all' && l.location !== filterLocation) return false;
     if (filterCondition !== 'all' && l.condition !== filterCondition) return false;
     if (search.trim()) {
@@ -80,7 +85,7 @@ const Browse: React.FC = () => {
         title.includes(s) ||
         author.includes(s) ||
         safeLower(l.description).includes(s) ||
-        safeLower(l.category).includes(s) ||
+        safeLower(l.categoryName || l.category).includes(s) ||
         safeLower(l.condition).includes(s) ||
         safeLower(l.location).includes(s) ||
         safeLower(l.type).includes(s)
@@ -133,7 +138,7 @@ const Browse: React.FC = () => {
           {showFilters && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-stone-100">
               <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={selectClass}><option value="all">All Types</option><option value="swap">Swap</option><option value="donate">Donate</option><option value="sell">Sell</option></select>
-              <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={selectClass}><option value="all">All Categories</option>{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+              <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={selectClass}><option value="all">All Categories</option>{listingCategories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}</select>
               <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} className={selectClass}><option value="all">All Locations</option>{KENYAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
               <select value={filterCondition} onChange={(e) => setFilterCondition(e.target.value)} className={selectClass}><option value="all">All Conditions</option>{CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}</select>
             </div>
