@@ -134,22 +134,6 @@ export interface Contact {
   reviewed: boolean;
 }
 
-export const CATEGORIES = [
-  'Academic',
-  'Fiction',
-  'Fantasy',
-  'Non-Fiction',
-  'Children',
-  'Science & Technology',
-  'Business & Economics',
-  'Arts & Culture',
-  'Self-Help',
-  'Religion & Spirituality',
-  'History',
-  'Biography',
-  'Other'
-];
-
 export const KENYAN_CITIES = [
   'Lavington',
   'Kileleshwa',
