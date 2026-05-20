@@ -24,6 +24,8 @@ export interface Listing {
   description: string;
   condition: 'New' | 'Like New' | 'Good' | 'Fair' | 'Poor';
   category: string;
+  categoryId?: string;
+  categoryName?: string;
   type: 'swap' | 'donate' | 'sell';
   price?: number;
   images: string[];
@@ -56,8 +58,12 @@ export interface Conversation {
   sellerId?: string;
   conversationKey?: string;
   hiddenFor?: string[];
+  deletedFor?: string[];
+  blockedUsers?: string[];
   unreadCount?: Record<string, number>;
+  lastReadAt?: Record<string, number>;
   deliveredAt?: Record<string, number>;
+  lastMessageBy?: string;
 }
 
 export interface Message {
@@ -77,13 +83,17 @@ export interface Message {
   lat?: number;
   lng?: number;
   mapUrl?: string;
+  attachments?: unknown[];
+  status?: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+  messageStatus?: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
   readBy?: string[];
   deliveredTo?: string[];
   deliveredAt?: Record<string, number>;
   deletedFor?: string[];
   deleted?: boolean;
-  deletedAt?: number;
+  deletedAt?: number | null;
   deletedBy?: string;
+  editedAt?: number | null;
 }
 
 export interface Rating {
