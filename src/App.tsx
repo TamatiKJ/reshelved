@@ -363,7 +363,8 @@ const AppContent: React.FC = () => {
   const isAdminRoute = location.pathname === '/admin';
   const isAdminEnabled = isAdminRoute && Boolean(userProfile?.isAdmin);
   const isMessagesRoute = location.pathname.startsWith('/messages');
-  const hideMobileBottomNav = isAdminRoute || location.pathname.startsWith('/listing/') && location.pathname.endsWith('/edit');
+  const isOpenChatRoute = /^\/messages\/[^/]+/.test(location.pathname);
+  const hideMobileBottomNav = isAdminRoute || isOpenChatRoute || (location.pathname.startsWith('/listing/') && location.pathname.endsWith('/edit'));
 
   if (loading) {
     return (
