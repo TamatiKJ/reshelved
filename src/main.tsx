@@ -11,9 +11,11 @@ import "./mobile-form-fixes.css";
 import App from "./App";
 import { enforceWebpUploadCompression } from "./utils/enforceWebpUploadCompression";
 import { enableSwapCompletionEnhancements } from "./utils/swapCompletionEnhancements";
+import { enableMobileErrorAutoScroll } from "./utils/mobileErrorAutoScroll";
 
 enforceWebpUploadCompression();
 enableSwapCompletionEnhancements();
+enableMobileErrorAutoScroll();
 
 const openImageZoom = (src: string, alt: string) => {
   const existing = document.getElementById("listing-image-zoom-modal");
