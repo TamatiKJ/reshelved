@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { collection, doc, getDocs, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -103,95 +103,6 @@ const ReviewAuthorNameSync: React.FC = () => {
   return null;
 };
 
-type AdminFieldFocus = {
-  tagName: string;
-  type: string;
-  placeholder: string;
-  maxLength: string;
-  label: string;
-  selectionStart: number | null;
-  selectionEnd: number | null;
-};
-
-const normalizeAdminLabel = (value: string) => value
-  .replace(/\d+\s*\/\s*\d+/g, '')
-  .replace(/Square SVG or PNG and at least 512 by 512 pixels\./g, '')
-  .replace(/days/g, '')
-  .replace(/\s+/g, ' ')
-  .trim();
-
-const getAdminFieldFocus = (element: Element | null): AdminFieldFocus | null => {
-  if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) return null;
-  const label = normalizeAdminLabel(element.closest('label')?.textContent || '');
-  return {
-    tagName: element.tagName,
-    type: element instanceof HTMLInputElement ? element.type : 'textarea',
-    placeholder: element.getAttribute('placeholder') || '',
-    maxLength: String(element.getAttribute('maxlength') || ''),
-    label,
-    selectionStart: element.selectionStart,
-    selectionEnd: element.selectionEnd
-  };
-};
-
-const AdminFormFocusKeeper: React.FC<{ enabled: boolean }> = ({ enabled }) => {
-  const lastFocusRef = useRef<AdminFieldFocus | null>(null);
-
-  useEffect(() => {
-    if (!enabled) return undefined;
-
-    const rememberFocus = () => {
-      lastFocusRef.current = getAdminFieldFocus(document.activeElement);
-    };
-
-    const restoreFocus = () => {
-      const saved = lastFocusRef.current;
-      if (!saved) return;
-      window.requestAnimationFrame(() => {
-        const active = document.activeElement;
-        if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
-        const fields = Array.from(document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'));
-        const target = fields.find((field) => {
-          const current = getAdminFieldFocus(field);
-          return current &&
-            current.tagName === saved.tagName &&
-            current.type === saved.type &&
-            current.placeholder === saved.placeholder &&
-            current.maxLength === saved.maxLength &&
-            current.label === saved.label;
-        });
-        if (!target) return;
-        target.focus({ preventScroll: true });
-        if (saved.selectionStart !== null && saved.selectionEnd !== null) {
-          const nextPosition = Math.min(saved.selectionStart + 1, target.value.length);
-          try { target.setSelectionRange(nextPosition, nextPosition); } catch { /* ignore unsupported inputs */ }
-        }
-      });
-    };
-
-    const keepSpaceInField = (event: KeyboardEvent) => {
-      const target = event.target;
-      if ((target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) && event.code === 'Space') {
-        event.stopPropagation();
-      }
-    };
-
-    document.addEventListener('focusin', rememberFocus, true);
-    document.addEventListener('keydown', keepSpaceInField, true);
-    document.addEventListener('input', () => { rememberFocus(); restoreFocus(); }, true);
-    document.addEventListener('keyup', restoreFocus, true);
-
-    return () => {
-      document.removeEventListener('focusin', rememberFocus, true);
-      document.removeEventListener('keydown', keepSpaceInField, true);
-      document.removeEventListener('input', () => { rememberFocus(); restoreFocus(); }, true);
-      document.removeEventListener('keyup', restoreFocus, true);
-    };
-  }, [enabled]);
-
-  return null;
-};
-
 const PlatformListingDurationSync: React.FC<{ enabled: boolean }> = ({ enabled }) => {
   const previousListingDaysRef = useRef<number | null>(null);
   const syncingRef = useRef(false);
@@ -245,91 +156,6 @@ const PlatformListingDurationSync: React.FC<{ enabled: boolean }> = ({ enabled }
   }, [enabled]);
 
   return null;
-};
-
-const RangeInputStyleSync: React.FC<{ enabled: boolean }> = ({ enabled }) => {
-  useEffect(() => {
-    if (!enabled) return undefined;
-
-    const paintRange = (range: HTMLInputElement) => {
-      const min = Number(range.min || 0);
-      const max = Number(range.max || 100);
-      const value = Number(range.value || min);
-      const percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
-      range.style.background = `linear-gradient(90deg, #1665CC 0%, #1665CC ${percent}%, #e7e5e4 ${percent}%, #e7e5e4 100%)`;
-    };
-
-    const paintAllRanges = () => {
-      document.querySelectorAll<HTMLInputElement>('input[type="range"]').forEach(paintRange);
-    };
-
-    const handleInput = (event: Event) => {
-      const target = event.target;
-      if (target instanceof HTMLInputElement && target.type === 'range') paintRange(target);
-    };
-
-    paintAllRanges();
-    const observer = new MutationObserver(() => paintAllRanges());
-    observer.observe(document.body, { childList: true, subtree: true });
-    document.addEventListener('input', handleInput, true);
-    document.addEventListener('change', handleInput, true);
-
-    return () => {
-      observer.disconnect();
-      document.removeEventListener('input', handleInput, true);
-      document.removeEventListener('change', handleInput, true);
-    };
-  }, [enabled]);
-
-  return null;
-};
-
-const SettingsSavedModal: React.FC<{ enabled: boolean }> = ({ enabled }) => {
-  const [visible, setVisible] = useState(false);
-  const timeoutRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!enabled) return undefined;
-
-    const showModal = () => {
-      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-      setVisible(true);
-      timeoutRef.current = window.setTimeout(() => setVisible(false), 1500);
-    };
-
-    const checkToastText = () => {
-      const bodyText = document.body.innerText || '';
-      if (bodyText.includes('Platform settings saved.')) showModal();
-    };
-
-    const observer = new MutationObserver(checkToastText);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-
-    return () => {
-      observer.disconnect();
-      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-    };
-  }, [enabled]);
-
-  if (!visible) return null;
-
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 px-4">
-      <div className="w-full max-w-sm rounded-[28px] bg-white p-6 text-center shadow-2xl ring-1 ring-black/5">
-        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[28px] bg-[#FFF4E2] ring-1 ring-[#F7AF31]/30">
-          <svg viewBox="0 0 96 96" className="h-20 w-20" role="img" aria-label="Settings saved illustration">
-            <circle cx="48" cy="48" r="34" fill="#ffffff" stroke="#1665CC" strokeWidth="4" />
-            <path d="M31 49.5L42.5 61L66.5 36.5" fill="none" stroke="#FF5F57" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="25" cy="27" r="4" fill="#F7AF31" />
-            <circle cx="73" cy="69" r="5" fill="#F7AF31" />
-            <path d="M70 23l6 3-6 3-3 6-3-6-6-3 6-3 3-6 3 6z" fill="#1665CC" opacity="0.9" />
-          </svg>
-        </div>
-        <h3 className="mt-4 text-xl font-bold text-stone-950">Settings saved</h3>
-        <p className="mt-2 text-sm leading-6 text-stone-500">Your platform settings have been updated successfully.</p>
-      </div>
-    </div>
-  );
 };
 
 const LoadingScreen: React.FC = () => (
@@ -388,10 +214,7 @@ const AppContent: React.FC = () => {
     <>
       <ScrollToTop />
       <ReviewAuthorNameSync />
-      <AdminFormFocusKeeper enabled={isAdminEnabled} />
       <PlatformListingDurationSync enabled={isAdminEnabled} />
-      <RangeInputStyleSync enabled={isAdminEnabled} />
-      <SettingsSavedModal enabled={isAdminEnabled} />
       <Routes>
         <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
         <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
