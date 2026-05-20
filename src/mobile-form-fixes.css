@@ -9,11 +9,4 @@
     font-size: 16px !important;
     line-height: 20px !important;
   }
-
-  body:has(img[src="/reshelved-logo.svg"]) #root > div.min-h-screen {
-    min-height: 100dvh !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
 }
