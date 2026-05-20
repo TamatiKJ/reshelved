@@ -6,6 +6,8 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import BookCard from '../components/BookCard';
+import ListingImageCropModal from '../components/listing-form/ListingImageCropModal';
+import { deleteOldProfilePhoto } from '../services/profileImages';
 import type { UserProfile, Listing, Rating } from '../types';
 import { KENYAN_CITIES } from '../types';
 
@@ -15,10 +17,12 @@ const dangerButtonClass = 'inline-flex w-full cursor-pointer items-center justif
 const DEFAULT_RENEW_DAYS = 10;
 const AVATAR_SIZE = 512;
 const getConversationKey = (a: string, b: string) => [a, b].sort().join('_');
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
 type ProfileTab = 'active' | 'expired' | 'bookmarks' | 'profile' | 'settings';
 type SecurityModal = 'email' | 'password' | 'delete' | null;
 type AvatarCropState = { file: File; src: string; zoom: number; x: number; y: number } | null;
+type DragState = { startX: number; startY: number; cropX: number; cropY: number } | null;
 
 const PasswordField: React.FC<{ value: string; onChange: (value: string) => void; placeholder?: string; autoComplete: string }> = ({ value, onChange, placeholder, autoComplete }) => {
   const [visible, setVisible] = useState(false);
@@ -46,20 +50,16 @@ const cropProfilePhoto = async (src: string, zoom: number, offsetX: number, offs
   canvas.height = AVATAR_SIZE;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Image processing is not supported in this browser.');
-
   ctx.fillStyle = '#f5f5f4';
   ctx.fillRect(0, 0, AVATAR_SIZE, AVATAR_SIZE);
-
-  const baseScale = Math.max(AVATAR_SIZE / image.naturalWidth, AVATAR_SIZE / image.naturalHeight);
+  const baseScale = Math.min(AVATAR_SIZE / image.naturalWidth, AVATAR_SIZE / image.naturalHeight);
   const drawWidth = image.naturalWidth * baseScale * zoom;
   const drawHeight = image.naturalHeight * baseScale * zoom;
   const maxMoveX = Math.max(0, (drawWidth - AVATAR_SIZE) / 2);
   const maxMoveY = Math.max(0, (drawHeight - AVATAR_SIZE) / 2);
   const dx = (AVATAR_SIZE - drawWidth) / 2 + (offsetX / 100) * maxMoveX;
   const dy = (AVATAR_SIZE - drawHeight) / 2 + (offsetY / 100) * maxMoveY;
-
   ctx.drawImage(image, dx, dy, drawWidth, drawHeight);
-
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not crop profile photo.')), 'image/webp', 0.84);
   });
@@ -113,6 +113,7 @@ const Profile: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ProfileTab>('active');
   const [securityModal, setSecurityModal] = useState<SecurityModal>(null);
   const [avatarCrop, setAvatarCrop] = useState<AvatarCropState>(null);
+  const [avatarDragState, setAvatarDragState] = useState<DragState>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [messageLoading, setMessageLoading] = useState(false);
@@ -243,14 +244,31 @@ const Profile: React.FC = () => {
     setSaveError('');
     setSaveMessage('');
     setAvatarCrop({ file, src, zoom: 1, x: 0, y: 0 });
+    setAvatarDragState(null);
   };
+
+  const handleAvatarPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!avatarCrop) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setAvatarDragState({ startX: event.clientX, startY: event.clientY, cropX: avatarCrop.x, cropY: avatarCrop.y });
+  };
+
+  const handleAvatarPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!avatarDragState) return;
+    const nextX = avatarDragState.cropX + (event.clientX - avatarDragState.startX) / 2.4;
+    const nextY = avatarDragState.cropY + (event.clientY - avatarDragState.startY) / 2.4;
+    setAvatarCrop(current => current ? { ...current, x: clamp(nextX, -100, 100), y: clamp(nextY, -100, 100) } : current);
+  };
+
+  const resetAvatarCrop = () => setAvatarCrop(current => current ? { ...current, zoom: 1, x: 0, y: 0 } : current);
 
   const uploadCroppedProfilePhoto = async () => {
     if (!avatarCrop || !currentUser || !isOwnProfile) return;
     setUploadingPhoto(true); setSaveError(''); setSaveMessage('');
+    const previousPhotoURL = profile?.photoURL || userProfile?.photoURL || currentUser.photoURL || '';
     try {
       const cropped = await cropProfilePhoto(avatarCrop.src, avatarCrop.zoom, avatarCrop.x, avatarCrop.y);
-      const photoRef = ref(storage, `users/${currentUser.uid}/profile-photo.webp`);
+      const photoRef = ref(storage, `users/${currentUser.uid}/profile-photo-${Date.now()}.webp`);
       await uploadBytes(photoRef, cropped, { contentType: 'image/webp' });
       const photoURL = await getDownloadURL(photoRef);
       await setDoc(doc(db, 'users', currentUser.uid), { photoURL, lastSeen: Date.now() }, { merge: true });
@@ -260,7 +278,9 @@ const Profile: React.FC = () => {
       setListings(current => current.map(listing => ({ ...listing, userPhoto: photoURL })));
       setBookmarkedListings(current => current.map(listing => listing.userId === currentUser.uid ? { ...listing, userPhoto: photoURL } : listing));
       await refreshProfile();
+      await deleteOldProfilePhoto(previousPhotoURL, photoURL);
       setAvatarCrop(null);
+      setAvatarDragState(null);
       setSaveMessage('Profile photo uploaded and saved.');
     } catch (err: any) { setSaveError(err?.message || 'Profile photo failed to upload.'); }
     finally { setUploadingPhoto(false); }
@@ -356,33 +376,13 @@ const Profile: React.FC = () => {
 
   const closeAvatarCrop = () => {
     setAvatarCrop(null);
+    setAvatarDragState(null);
     setUploadingPhoto(false);
   };
 
   const renderAvatarCropModal = () => {
     if (!avatarCrop) return null;
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 p-3 backdrop-blur-sm sm:p-6">
-        <div className="w-full max-w-md rounded-[28px] bg-white p-5 shadow-2xl ring-1 ring-black/10">
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold text-stone-950">Crop profile photo</h2>
-              <p className="text-sm text-stone-500">Zoom and move the image so your face sits well inside the avatar.</p>
-            </div>
-            <button type="button" onClick={closeAvatarCrop} disabled={uploadingPhoto} className="cursor-pointer text-2xl text-stone-400 hover:text-stone-700 disabled:cursor-not-allowed disabled:opacity-40">×</button>
-          </div>
-          <div className="mx-auto aspect-square w-full max-w-[320px] overflow-hidden rounded-full bg-stone-100 ring-1 ring-stone-200">
-            <img src={avatarCrop.src} alt="Profile crop preview" className="h-full w-full object-cover" style={{ transform: `translate(${avatarCrop.x * 0.6}px, ${avatarCrop.y * 0.6}px) scale(${avatarCrop.zoom})`, transformOrigin: 'center' }} />
-          </div>
-          <div className="mt-5 space-y-4">
-            <label className="block text-sm font-bold text-stone-700">Zoom<input type="range" min="1" max="3" step="0.05" value={avatarCrop.zoom} onChange={(event) => setAvatarCrop(current => current ? { ...current, zoom: parseFloat(event.target.value) } : current)} className="mt-2 w-full accent-[#FF5F57]" /></label>
-            <label className="block text-sm font-bold text-stone-700">Move left / right<input type="range" min="-100" max="100" value={avatarCrop.x} onChange={(event) => setAvatarCrop(current => current ? { ...current, x: Number(event.target.value) } : current)} className="mt-2 w-full accent-[#FF5F57]" /></label>
-            <label className="block text-sm font-bold text-stone-700">Move up / down<input type="range" min="-100" max="100" value={avatarCrop.y} onChange={(event) => setAvatarCrop(current => current ? { ...current, y: Number(event.target.value) } : current)} className="mt-2 w-full accent-[#FF5F57]" /></label>
-          </div>
-          <div className="mt-5 grid grid-cols-2 gap-3"><button type="button" onClick={closeAvatarCrop} disabled={uploadingPhoto} className="cursor-pointer rounded-xl border border-stone-200 px-4 py-3 text-sm font-bold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Cancel</button><button type="button" onClick={uploadCroppedProfilePhoto} disabled={uploadingPhoto} className="cursor-pointer rounded-xl bg-[#FF5F57] px-4 py-3 text-sm font-bold text-white hover:bg-[#e84f48] disabled:cursor-not-allowed disabled:opacity-50">{uploadingPhoto ? 'Saving...' : 'Use Photo'}</button></div>
-        </div>
-      </div>
-    );
+    return <ListingImageCropModal crop={{ src: avatarCrop.src, zoom: avatarCrop.zoom, x: avatarCrop.x, y: avatarCrop.y }} dragState={avatarDragState} onDragStart={handleAvatarPointerDown} onDragMove={handleAvatarPointerMove} onDragEnd={() => setAvatarDragState(null)} onZoomChange={(zoom) => setAvatarCrop(current => current ? { ...current, zoom } : current)} onReset={resetAvatarCrop} onSkip={closeAvatarCrop} onUsePhoto={uploadCroppedProfilePhoto} />;
   };
 
   const renderSecurityModal = () => {
