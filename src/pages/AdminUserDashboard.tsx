@@ -6,11 +6,12 @@ import { db, storage } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import AdminLegalPagesEditor from '../components/AdminLegalPagesEditor';
 import AdminListingCategoriesPanel from '../components/AdminListingCategoriesPanel';
+import AdminLocationsPanel from '../components/AdminLocationsPanel';
 import type { Listing, Report, UserProfile } from '../types';
 import { mapSnapshot } from '../utils/firestoreMappers';
 import { safeLower } from '../utils/stringGuards';
 
-type AdminView = 'overview' | 'listings' | 'listingCategories' | 'users' | 'reports' | 'posts' | 'newPost' | 'categories' | 'tags' | 'media' | 'settings' | 'legalPages';
+type AdminView = 'overview' | 'listings' | 'users' | 'listingCategories' | 'locations' | 'reports' | 'posts' | 'newPost' | 'categories' | 'tags' | 'media' | 'settings' | 'legalPages';
 type ListingStatusFilter = 'all' | 'active' | 'inactive';
 type UserStatusFilter = 'all' | 'admin';
 type BlogStatus = 'published' | 'draft' | 'pending';
@@ -282,8 +283,9 @@ const AdminUserDashboard: React.FC = () => {
     <>
       <SideItem icon="la-home" label="Overview" active={view === 'overview'} onClick={() => setView('overview')} />
       <SideItem icon="la-book" label="Active listings" count={activeListings.length} active={view === 'listings'} onClick={() => setView('listings')} />
-      <SideItem icon="la-layer-group" label="Listing Categories" active={view === 'listingCategories'} onClick={() => setView('listingCategories')} />
       <SideItem icon="la-users" label="Users" count={users.length} active={view === 'users'} onClick={() => setView('users')} />
+      <SideItem icon="la-layer-group" label="Listing Categories" active={view === 'listingCategories'} onClick={() => setView('listingCategories')} />
+      <SideItem icon="la-map-marker" label="Locations" active={view === 'locations'} onClick={() => setView('locations')} />
       <SideItem icon="la-flag" label="Reports" count={openReports.length} active={view === 'reports'} onClick={() => setView('reports')} />
       <SideItem icon="la-photo-video" label="Media" count={media.length} active={view === 'media'} onClick={() => setView('media')} />
       <SectionToggle label="Blog" open={openSections.blog} onClick={() => toggleSection('blog')} />
@@ -300,8 +302,9 @@ const AdminUserDashboard: React.FC = () => {
   function renderContent() {
     if (view === 'overview') return <><div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"><Stat label="Active listings" value={activeListings.length} icon="la-book" tone="bg-blue-50 text-[#1665CC] border-blue-100" /><Stat label="Users" value={users.length} icon="la-users" tone="bg-emerald-50 text-emerald-700 border-emerald-100" /><Stat label="Open reports" value={openReports.length} icon="la-flag" tone="bg-red-50 text-red-700 border-red-100" /><Stat label="Online users" value={onlineUsers.length} icon="la-wifi" tone="bg-amber-50 text-amber-700 border-amber-100" /></div><div className="mt-6 space-y-6"><Panel title="Recent listings"><ListingTable items={activeListings.slice(0, 8)} compact /></Panel><Panel title="Recent reports"><ReportList items={openReports.slice(0, 8)} /></Panel></div></>;
     if (view === 'listings') return <Panel title="Listings"><AdminTextFilter options={listingFilterOptions} activeValue={listingStatus} onChange={setListingStatus} /><SearchBar value={search} setValue={setSearch} placeholder="Search listings..." /><ListingTable items={filteredListings} onToggle={toggleListing} onDelete={deleteListing} /></Panel>;
-    if (view === 'listingCategories') return <AdminListingCategoriesPanel />;
     if (view === 'users') return <Panel title="Users"><AdminTextFilter options={userFilterOptions} activeValue={userFilter} onChange={setUserFilter} /><SearchBar value={search} setValue={setSearch} placeholder="Search users..." /><UserTable items={filteredUsers} currentUserId={currentUser?.uid} onUpdate={updateUser} /></Panel>;
+    if (view === 'listingCategories') return <AdminListingCategoriesPanel />;
+    if (view === 'locations') return <AdminLocationsPanel />;
     if (view === 'reports') return <Panel title="Reports"><SearchBar value={search} setValue={setSearch} placeholder="Search reports..." /><ReportList items={filteredReports} onResolve={resolveReport} /></Panel>;
     if (view === 'media') return <Panel title="Media Library"><SearchBar value={search} setValue={setSearch} placeholder="Search media..." /><MediaGrid items={filteredMedia} onDelete={deleteMedia} /></Panel>;
     if (view === 'posts') return <Panel title="Blog Posts"><AdminTextFilter options={postFilterOptions} activeValue={postFilter} onChange={setPostFilter} /><SearchBar value={search} setValue={setSearch} placeholder="Search posts..." /><PostTable items={filteredPosts} onEdit={openPostForEdit} onStatusChange={updatePostStatus} /></Panel>;
@@ -333,7 +336,7 @@ const AdminUserDashboard: React.FC = () => {
   );
 };
 
-const getViewTitle = (view: AdminView) => ({ overview: 'Overview', listings: 'Listings', listingCategories: 'Listing Categories', users: 'Users', reports: 'Reports', posts: 'All Posts', newPost: 'Add New Post', categories: 'Categories', tags: 'Tags', media: 'Media Library', settings: 'Platform settings', legalPages: 'Legal Pages' }[view]);
+const getViewTitle = (view: AdminView) => ({ overview: 'Overview', listings: 'Listings', users: 'Users', listingCategories: 'Listing Categories', locations: 'Locations', reports: 'Reports', posts: 'All Posts', newPost: 'Add New Post', categories: 'Categories', tags: 'Tags', media: 'Media Library', settings: 'Platform settings', legalPages: 'Legal Pages' }[view]);
 const AdminHeader: React.FC<{ title: string; onMenu: () => void; onRefresh: () => void }> = ({ title, onMenu, onRefresh }) => <header className="sticky top-0 z-30 w-full border-b border-stone-200 bg-white"><div className="flex min-h-[73px] w-full items-center justify-between px-4 lg:px-6"><div className="flex min-w-0 items-center gap-3"><button onClick={onMenu} className="cursor-pointer rounded-xl border border-stone-200 px-3 py-2 text-sm font-semibold text-stone-700 lg:hidden"><i className="las la-bars text-lg" /></button><Link to="/" className="mr-0 flex shrink-0 items-center gap-3 lg:mr-5"><img src="/reshelved-logo.svg" alt="Reshelved" className="h-8 max-h-[70px] w-auto lg:h-auto" onError={(event) => { event.currentTarget.style.display = 'none'; }} /><span className="hidden text-sm font-bold text-stone-500 sm:inline">Admin</span></Link><span className="hidden h-6 w-px bg-stone-200 sm:block" /><h1 className="truncate text-lg font-bold text-stone-950 sm:text-xl">{title}</h1></div><div className="hidden items-center gap-2 lg:flex"><Link to="/" className="rounded-xl border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50">View site</Link><button onClick={onRefresh} className="cursor-pointer rounded-xl border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50"><i className="las la-redo-alt mr-1" />Refresh</button></div></div></header>;
 const SectionToggle: React.FC<{ label: string; open: boolean; onClick: () => void }> = ({ label, open, onClick }) => <button type="button" onClick={onClick} className="mt-4 flex w-full cursor-pointer items-center justify-between px-3 text-[13px] font-bold uppercase tracking-[2px] text-[#1665CC]"><span>{label}</span><i className={`las ${open ? 'la-angle-down' : 'la-angle-right'} text-base`} /></button>;
 const SideItem: React.FC<{ icon: string; label: string; active: boolean; onClick: () => void; count?: number }> = ({ icon, label, active, onClick, count }) => <button onClick={onClick} className={`mt-1 flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${active ? 'bg-stone-100 text-stone-950' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-950'}`}><span><i className={`las ${icon} mr-2 text-lg text-stone-400`} />{label}</span>{count !== undefined && <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">{count}</span>}</button>;
