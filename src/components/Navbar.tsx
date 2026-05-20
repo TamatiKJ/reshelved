@@ -8,6 +8,7 @@ const mobileMainLinkClass = 'flex items-center justify-between border-b border-[
 const mobileSubLinkClass = 'flex items-center gap-3 py-2.5 text-[16px] leading-tight text-stone-800 font-[Inter]';
 const redBadgeClass = 'flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold leading-none text-white';
 const primaryHeaderButtonClass = 'cursor-pointer px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition shadow-sm';
+const secondaryHeaderButtonClass = 'cursor-pointer px-4 py-2 text-sm font-semibold text-stone-700 border border-[#D6D8DA] rounded-lg hover:bg-stone-50 transition';
 
 const Navbar: React.FC = () => {
   const { currentUser, userProfile, logout } = useAuth();
@@ -83,8 +84,8 @@ const Navbar: React.FC = () => {
             </form>
             {currentUser ? (
               <>
-                <Link to="/create" className={primaryHeaderButtonClass}>List a Book</Link>
-                {isAdmin && <Link to="/admin" className="cursor-pointer px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition">Admin</Link>}
+                <Link to="/create" className={isAdmin ? secondaryHeaderButtonClass : primaryHeaderButtonClass}>List a Book</Link>
+                {isAdmin && <Link to="/admin" className={primaryHeaderButtonClass}>Admin</Link>}
                 <Link to="/notifications" className="relative p-2 rounded-lg hover:bg-stone-100 transition">
                   <i className="las la-bell text-2xl text-stone-600" />
                   {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold leading-none">{unreadCount > 9 ? '9+' : unreadCount}</span>}
@@ -120,8 +121,8 @@ const Navbar: React.FC = () => {
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <Link to="/create" className="cursor-pointer px-4 py-2 text-sm font-semibold text-stone-700 border border-[#D6D8DA] rounded-lg hover:bg-stone-50 transition">List a Book</Link>
-                <Link to="/register" className="px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition">Join Free</Link>
+                <Link to="/create" className={secondaryHeaderButtonClass}>List a Book</Link>
+                <Link to="/register" className={primaryHeaderButtonClass}>Join Free</Link>
               </div>
             )}
           </div>
@@ -158,7 +159,7 @@ const Navbar: React.FC = () => {
             <div className="mt-[30px] space-y-3">
               {currentUser ? (
                 <>
-                  <Link to="/create" onClick={closeMobile} className="block w-full rounded-xl bg-primary-600 px-5 py-3 text-center text-[16px] font-semibold text-white transition hover:bg-primary-700">List a Book</Link>
+                  <Link to="/create" onClick={closeMobile} className={isAdmin ? 'block w-full rounded-xl border border-stone-950 px-5 py-2.5 text-center text-[16px] font-semibold text-stone-950 transition hover:bg-stone-50' : 'block w-full rounded-xl bg-primary-600 px-5 py-3 text-center text-[16px] font-semibold text-white transition hover:bg-primary-700'}>List a Book</Link>
                   <Link to="/browse" onClick={closeMobile} className="block w-full rounded-xl border border-stone-950 px-5 py-2.5 text-center text-[16px] font-semibold text-stone-950 transition hover:bg-stone-50">Find Books</Link>
                 </>
               ) : (
