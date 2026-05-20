@@ -72,27 +72,38 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
   useEffect(() => {
     if (!userProfile?.isAdmin) return undefined;
 
-    const addListingCategoriesItem = () => {
+    const handleListingCategoriesClick = (event: Event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setListingCategoriesOpen(true);
+    };
+
+    const createListingCategoriesItem = () => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'admin-listing-categories-nav mt-1 flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition text-stone-600 hover:bg-stone-50 hover:text-stone-950';
+      item.innerHTML = '<span><i class="las la-layer-group mr-2 text-lg text-stone-400"></i>Listing Categories</span>';
+      item.addEventListener('click', handleListingCategoriesClick);
+      return item;
+    };
+
+    const placeListingCategoriesItem = () => {
       const sidebars = Array.from(document.querySelectorAll<HTMLElement>('.admin-tiktok-shell aside'));
       sidebars.forEach((sidebar) => {
-        if (sidebar.querySelector('.admin-listing-categories-nav')) return;
         const buttons = Array.from(sidebar.querySelectorAll<HTMLButtonElement>('button'));
         const usersButton = buttons.find((button) => button.textContent?.trim().toLowerCase().startsWith('users'));
         const activeListingsButton = buttons.find((button) => button.textContent?.trim().toLowerCase().startsWith('active listings'));
         if (!usersButton && !activeListingsButton) return;
 
-        const item = document.createElement('button');
-        item.type = 'button';
-        item.className = 'admin-listing-categories-nav mt-1 flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition text-stone-600 hover:bg-stone-50 hover:text-stone-950';
-        item.innerHTML = '<span><i class="las la-layer-group mr-2 text-lg text-stone-400"></i>Listing Categories</span>';
-        item.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          setListingCategoriesOpen(true);
-        });
+        let item = sidebar.querySelector<HTMLButtonElement>('.admin-listing-categories-nav');
+        if (!item) item = createListingCategoriesItem();
 
-        if (usersButton) usersButton.insertAdjacentElement('beforebegin', item);
-        else activeListingsButton?.insertAdjacentElement('afterend', item);
+        if (usersButton) {
+          usersButton.insertAdjacentElement('beforebegin', item);
+          return;
+        }
+
+        activeListingsButton?.insertAdjacentElement('afterend', item);
       });
     };
 
@@ -104,15 +115,18 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
       setListingCategoriesOpen(false);
     };
 
-    addListingCategoriesItem();
-    const observer = new MutationObserver(addListingCategoriesItem);
+    placeListingCategoriesItem();
+    const observer = new MutationObserver(placeListingCategoriesItem);
     observer.observe(document.body, { childList: true, subtree: true });
     document.addEventListener('click', closeFromOtherAdminNav, true);
 
     return () => {
       observer.disconnect();
       document.removeEventListener('click', closeFromOtherAdminNav, true);
-      document.querySelectorAll('.admin-listing-categories-nav').forEach((item) => item.remove());
+      document.querySelectorAll<HTMLButtonElement>('.admin-listing-categories-nav').forEach((item) => {
+        item.removeEventListener('click', handleListingCategoriesClick);
+        item.remove();
+      });
     };
   }, [userProfile?.isAdmin]);
 
