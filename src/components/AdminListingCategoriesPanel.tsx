@@ -3,7 +3,6 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   createListingCategory,
   getListingCategories,
-  seedDefaultListingCategories,
   updateListingCategory,
   type ListingCategory
 } from '../services/listingCategories';
@@ -94,29 +93,11 @@ const AdminListingCategoriesPanel: React.FC = () => {
     }
   };
 
-  const seedDefaults = async () => {
-    if (!currentUser) return;
-    setSavingId('seed');
-    try {
-      const count = await seedDefaultListingCategories(currentUser.uid);
-      await loadCategories();
-      showMessage(count > 0 ? `${count} default categories added.` : 'Default categories already exist.');
-    } catch (error) {
-      console.error('Could not seed default categories:', error);
-      showMessage('Default categories could not be added. Check Firestore rules.');
-    } finally {
-      setSavingId(null);
-    }
-  };
-
   return (
     <section className="rounded-2xl border border-stone-200 bg-white p-5">
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h3 className="text-[15px] font-bold text-stone-950">Listing Categories</h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">Manage the categories used on Create Listing, Edit Listing, and Browse filters. Deactivate categories instead of deleting them so old listings remain stable.</p>
-        </div>
-        <button type="button" onClick={seedDefaults} disabled={savingId === 'seed'} className="w-fit cursor-pointer rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm font-bold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">{savingId === 'seed' ? 'Adding...' : 'Seed defaults'}</button>
+      <div className="mb-5">
+        <h3 className="text-[15px] font-bold text-stone-950">Listing Categories</h3>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">Manage the categories used on Create Listing, Edit Listing, and Browse filters. Deactivate categories instead of deleting them so old listings remain stable.</p>
       </div>
 
       {message && <div className="mb-5 rounded-2xl border border-[#1665CC]/20 bg-[#1665CC]/5 px-4 py-3 text-sm font-bold text-[#1665CC]">{message}</div>}
@@ -136,7 +117,7 @@ const AdminListingCategoriesPanel: React.FC = () => {
         <div className="border-b border-stone-100 bg-white px-5 py-4">
           <h4 className="text-sm font-bold text-stone-950">Current categories</h4>
         </div>
-        {loading ? <div className="p-8 text-center text-sm text-stone-500">Loading categories...</div> : categories.length === 0 ? <div className="p-8 text-center text-sm text-stone-500">No categories yet. Seed defaults or add your first category.</div> : <div className="divide-y divide-stone-100 bg-white">
+        {loading ? <div className="p-8 text-center text-sm text-stone-500">Loading categories...</div> : categories.length === 0 ? <div className="p-8 text-center text-sm text-stone-500">No categories yet. Add your first category above.</div> : <div className="divide-y divide-stone-100 bg-white">
           {categories.map((category) => (
             <div key={category.id} className="grid gap-4 p-5 lg:grid-cols-[1.2fr_1fr_0.8fr_110px_120px_110px] lg:items-end">
               <label><span className={labelClass}>Name</span><input value={category.name} onChange={(event) => updateLocalCategory(category.id, { name: event.target.value })} className={inputClass} /></label>
