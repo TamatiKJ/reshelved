@@ -4,4 +4,16 @@
   select {
     font-size: 16px !important;
   }
+
+  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > form input[type="text"] {
+    font-size: 16px !important;
+    line-height: 20px !important;
+  }
+
+  body:has(img[src="/reshelved-logo.svg"]) #root > div.min-h-screen {
+    min-height: 100dvh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
 }
