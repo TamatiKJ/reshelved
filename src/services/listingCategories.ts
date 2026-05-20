@@ -15,7 +15,7 @@ export type ListingCategory = {
   createdBy?: string;
 };
 
-export const LISTING_CATEGORIES_COLLECTION = 'listingCategories';
+export const LISTING_CATEGORIES_COLLECTION = 'categories';
 
 export const slugifyCategory = (value: string) => value
   .toLowerCase()
