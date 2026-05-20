@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { mapSnapshot } from '../utils/firestoreMappers';
 
 interface Notification {
@@ -61,6 +61,7 @@ const EmptyState: React.FC<{ icon: string; title: string; body: string; action?:
 
 const Notifications: React.FC = () => {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
@@ -154,7 +155,7 @@ const Notifications: React.FC = () => {
       )}
 
       <div className="mb-5">
-        <Link to="/profile" className="inline-flex cursor-pointer items-center text-sm font-bold text-[#1665CC] hover:text-[#1254a9]">← Back to profile</Link>
+        <button type="button" onClick={() => navigate(-1)} className="inline-flex cursor-pointer items-center text-sm font-bold text-[#1665CC] hover:text-[#1254a9]">← Back</button>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
