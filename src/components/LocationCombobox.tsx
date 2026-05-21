@@ -13,6 +13,8 @@ type LocationComboboxProps = {
   allOptionValue?: string;
 };
 
+const asSafeText = (value: unknown) => typeof value === 'string' ? value : '';
+
 const LocationCombobox: React.FC<LocationComboboxProps> = ({
   value,
   onChange,
@@ -28,10 +30,12 @@ const LocationCombobox: React.FC<LocationComboboxProps> = ({
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const selectedLabel = includeAllOption && value === allOptionValue ? allOptionLabel : value;
+  const safeValue = asSafeText(value);
+  const selectedLabel = includeAllOption && safeValue === allOptionValue ? allOptionLabel : safeValue;
+  const selectedLabelLower = selectedLabel.toLowerCase();
 
   useEffect(() => {
-    if (!open) setQuery(selectedLabel || '');
+    if (!open) setQuery(selectedLabel);
   }, [open, selectedLabel]);
 
   useEffect(() => {
@@ -43,15 +47,20 @@ const LocationCombobox: React.FC<LocationComboboxProps> = ({
   }, []);
 
   const options = useMemo(() => {
-    const locationOptions = locations.map((location) => ({ key: location.id, name: location.name }));
-    return includeAllOption ? [{ key: allOptionValue, name: allOptionLabel }, ...locationOptions] : locationOptions;
+    const locationOptions = locations
+      .map((location) => ({ key: asSafeText(location.id), name: asSafeText(location.name) }))
+      .filter((location) => location.name.trim());
+
+    return includeAllOption
+      ? [{ key: allOptionValue, name: allOptionLabel }, ...locationOptions]
+      : locationOptions;
   }, [locations, includeAllOption, allOptionValue, allOptionLabel]);
 
   const filteredOptions = useMemo(() => {
     const cleanQuery = query.trim().toLowerCase();
-    if (!cleanQuery || cleanQuery === selectedLabel.toLowerCase()) return options.slice(0, 8);
+    if (!cleanQuery || cleanQuery === selectedLabelLower) return options.slice(0, 8);
     return options.filter((option) => option.name.toLowerCase().includes(cleanQuery)).slice(0, 8);
-  }, [options, query, selectedLabel]);
+  }, [options, query, selectedLabelLower]);
 
   const chooseLocation = (name: string) => {
     const nextValue = includeAllOption && name === allOptionLabel ? allOptionValue : name;
@@ -62,9 +71,10 @@ const LocationCombobox: React.FC<LocationComboboxProps> = ({
 
   const resetInvalidText = () => {
     window.setTimeout(() => {
-      const match = options.find((option) => option.name === query.trim());
+      const cleanQuery = query.trim();
+      const match = options.find((option) => option.name === cleanQuery);
       if (match) chooseLocation(match.name);
-      else setQuery(selectedLabel || '');
+      else setQuery(selectedLabel);
     }, 120);
   };
 
@@ -96,7 +106,7 @@ const LocationCombobox: React.FC<LocationComboboxProps> = ({
         <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-40 max-h-64 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-1 shadow-xl">
           {filteredOptions.length > 0 ? filteredOptions.map((option) => (
             <button
-              key={option.key}
+              key={option.key || option.name}
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => chooseLocation(option.name)}
