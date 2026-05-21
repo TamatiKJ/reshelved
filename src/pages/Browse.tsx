@@ -5,7 +5,8 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import BookCard from '../components/BookCard';
 import type { Listing } from '../types';
-import { KENYAN_CITIES, CONDITIONS } from '../types';
+import { CONDITIONS } from '../types';
+import LocationCombobox from '../components/LocationCombobox';
 import { parseListingSnapshot } from '../services/listingValidation';
 import { safeLower } from '../utils/stringGuards';
 import { useListingCategories } from '../hooks/useListingCategories';
@@ -139,7 +140,15 @@ const Browse: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-stone-100">
               <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={selectClass}><option value="all">All Types</option><option value="swap">Swap</option><option value="donate">Donate</option><option value="sell">Sell</option></select>
               <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={selectClass}><option value="all">All Categories</option>{listingCategories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}</select>
-              <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} className={selectClass}><option value="all">All Locations</option>{KENYAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+              <LocationCombobox
+                value={filterLocation}
+                onChange={setFilterLocation}
+                includeAllOption
+                allOptionLabel="All Locations"
+                allOptionValue="all"
+                className={`${selectClass} w-full pr-11`}
+                placeholder="Search location"
+              />
               <select value={filterCondition} onChange={(e) => setFilterCondition(e.target.value)} className={selectClass}><option value="all">All Conditions</option>{CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}</select>
             </div>
           )}

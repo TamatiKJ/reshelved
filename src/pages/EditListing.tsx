@@ -4,6 +4,8 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { CONDITIONS } from '../types';
+import LocationCombobox from '../components/LocationCombobox';
 import type { Listing } from '../types';
 import ListingPreviewCard from '../components/listing-form/ListingPreviewCard';
 import ListingStepper, { type ListingFormStep } from '../components/listing-form/ListingStepper';
