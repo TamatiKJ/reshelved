@@ -410,7 +410,7 @@ const Home: React.FC = () => {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 -translate-y-1/2 mb-[-100px] sm:mb-[-120px] relative z-10">
           <div className="bg-[#FFF4E2] text-stone-950 rounded-[28px] sm:rounded-[36px] px-6 sm:px-16 py-16 sm:py-24 text-center">
             <h2 className="text-4xl sm:text-6xl font-bold leading-tight">
-              Give your books a second Life
+              Give your books a second life instead of gathering dust
             </h2>
             <p className="mt-5 sm:mt-8 text-stone-700">Someone needs what you already have.</p>
             <div className="mt-5 sm:mt-6 flex flex-wrap justify-center gap-3">
