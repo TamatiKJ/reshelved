@@ -1,0 +1,28 @@
+/* Site navigation responsive logo treatment. */
+@media (max-width: 767px) {
+  nav.bg-white.shadow-sm.border-b.border-stone-200 > .max-w-7xl > .flex.items-center.justify-between > div:first-child {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  nav.bg-white.shadow-sm.border-b.border-stone-200 > .max-w-7xl > .flex.items-center.justify-between > div:first-child > a[aria-label="Reshelved home"] {
+    width: 40vw !important;
+    max-width: 180px !important;
+    min-width: 96px !important;
+  }
+
+  nav.bg-white.shadow-sm.border-b.border-stone-200 > .max-w-7xl > .flex.items-center.justify-between > div:first-child > a[aria-label="Reshelved home"] img,
+  nav.bg-white.shadow-sm.border-b.border-stone-200 .fixed.inset-0.bg-white a[aria-label="Reshelved home"] img {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: 48px !important;
+    object-fit: contain !important;
+  }
+
+  nav.bg-white.shadow-sm.border-b.border-stone-200 .fixed.inset-0.bg-white a[aria-label="Reshelved home"] {
+    width: 40% !important;
+    max-width: 180px !important;
+  }
+}
