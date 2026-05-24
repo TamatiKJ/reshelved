@@ -1,166 +1,20 @@
-/* Final mobile header logo sizing: match the open menu logo. */
-@media (max-width: 767px) {
-  nav.bg-white.shadow-sm.border-b.border-stone-200 > .max-w-7xl > .flex.items-center.justify-between > div:first-child {
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-  }
-
-  nav.bg-white.shadow-sm.border-b.border-stone-200 > .max-w-7xl > .flex.items-center.justify-between > div:first-child > a[aria-label="Reshelved home"] {
-    width: 40vw !important;
-    max-width: 180px !important;
-    min-width: 96px !important;
-  }
-
-  nav.bg-white.shadow-sm.border-b.border-stone-200 > .max-w-7xl > .flex.items-center.justify-between > div:first-child > a[aria-label="Reshelved home"] img {
-    display: block !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    height: auto !important;
-    max-height: 48px !important;
-    object-fit: contain !important;
-  }
-
-  nav.bg-white.shadow-sm.border-b.border-stone-200 .fixed.inset-0.bg-white a[aria-label="Reshelved home"] {
-    width: 40% !important;
-    max-width: 180px !important;
-  }
-
-  nav.bg-white.shadow-sm.border-b.border-stone-200 .fixed.inset-0.bg-white a[aria-label="Reshelved home"] img {
-    display: block !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    height: auto !important;
-    max-height: 48px !important;
-    object-fit: contain !important;
-  }
-}
-
-/* Single listing metadata icon row: content-fit items aligned left on mobile. */
-@media (max-width: 639px) {
-  main .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 {
-    flex-wrap: nowrap !important;
-    width: fit-content !important;
-    max-width: 100% !important;
-    overflow: hidden !important;
-    justify-content: flex-start !important;
-    align-items: center !important;
-    font-size: 12px !important;
-  }
-
-  main .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 > div.flex.items-center.gap-2 {
-    padding: 10px !important;
-    gap: 4px !important;
-    min-width: 0 !important;
-    flex: 0 0 auto !important;
-    width: auto !important;
-  }
-
-  main .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 > div.flex.items-center.gap-2 span {
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    max-width: 90px !important;
-  }
-
-  main .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 > div.flex.items-center.gap-2 i {
-    flex-shrink: 0 !important;
-    font-size: 15px !important;
-  }
-}
-
-/* Admin sidebar: tighten the real first nav gap caused by the Manage label margin. */
-aside.hidden.min-h-screen nav.mt-4,
-aside.hidden.min-h-screen nav.mt-9 {
-  margin-top: 12px !important;
-}
-
-aside.hidden.min-h-screen nav > div:first-child {
-  margin-top: 0 !important;
-  margin-bottom: 8px !important;
-}
-
-aside.hidden.min-h-screen nav > div:first-child + div {
-  margin-top: 0 !important;
-}
-
-/* Admin listings table: fit inside the panel without sideways scrolling. */
-main table.min-w-\[1120px\] {
-  min-width: 0 !important;
-  width: 100% !important;
-  table-layout: fixed !important;
-}
-
-main table.min-w-\[1120px\] th,
-main table.min-w-\[1120px\] td {
-  padding-left: 8px !important;
-  padding-right: 8px !important;
-  vertical-align: middle !important;
-}
-
-main table.min-w-\[1120px\] th:nth-child(1),
-main table.min-w-\[1120px\] td:nth-child(1) { width: 19% !important; }
-main table.min-w-\[1120px\] th:nth-child(2),
-main table.min-w-\[1120px\] td:nth-child(2) { width: 13% !important; }
-main table.min-w-\[1120px\] th:nth-child(3),
-main table.min-w-\[1120px\] td:nth-child(3) { width: 10% !important; }
-main table.min-w-\[1120px\] th:nth-child(4),
-main table.min-w-\[1120px\] td:nth-child(4) { width: 7% !important; }
-main table.min-w-\[1120px\] th:nth-child(5),
-main table.min-w-\[1120px\] td:nth-child(5) { width: 12% !important; }
-main table.min-w-\[1120px\] th:nth-child(6),
-main table.min-w-\[1120px\] td:nth-child(6) { width: 10% !important; }
-main table.min-w-\[1120px\] th:nth-child(7),
-main table.min-w-\[1120px\] td:nth-child(7) { width: 10% !important; }
-main table.min-w-\[1120px\] th:nth-child(8),
-main table.min-w-\[1120px\] td:nth-child(8) { width: 8% !important; }
-main table.min-w-\[1120px\] th:nth-child(9),
-main table.min-w-\[1120px\] td:nth-child(9) { width: 11% !important; }
-
-main table.min-w-\[1120px\] td,
-main table.min-w-\[1120px\] td a {
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-}
-
-main table.min-w-\[1120px\] tbody td {
-  font-size: 13px !important;
-  line-height: 1.35 !important;
-}
-
-main table.min-w-\[1120px\] tbody td:nth-child(1),
-main table.min-w-\[1120px\] tbody td:nth-child(1) a,
-main table.min-w-\[1120px\] tbody td:nth-child(2) {
-  font-size: 14px !important;
-  line-height: 1.35 !important;
-}
-
-main table.min-w-\[1120px\] img {
-  height: 34px !important;
-  width: 34px !important;
-}
-
-main table.min-w-\[1120px\] tbody td:last-child > div {
-  gap: 8px !important;
-}
-
-/* Admin listings table: replace Delete text with a trash icon. */
-main table.min-w-\[1120px\] tbody td:last-child button.text-red-600 {
+/* Compatibility rule for the existing admin listings delete action. */
+.page-admin table.min-w-\[1120px\] tbody td:last-child button.text-red-600 {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   width: 32px !important;
   height: 32px !important;
   flex: 0 0 auto !important;
-  border-radius: 9999px !important;
+  border-radius: var(--rs-radius-pill) !important;
   border: 1px solid #fecaca !important;
-  background: #fff !important;
+  background: var(--rs-color-surface) !important;
   color: transparent !important;
   font-size: 0 !important;
   line-height: 1 !important;
 }
 
-main table.min-w-\[1120px\] tbody td:last-child button.text-red-600::before {
+.page-admin table.min-w-\[1120px\] tbody td:last-child button.text-red-600::before {
   content: "\f2ed" !important;
   font-family: "Line Awesome Free" !important;
   font-weight: 900 !important;
@@ -168,50 +22,7 @@ main table.min-w-\[1120px\] tbody td:last-child button.text-red-600::before {
   color: #dc2626 !important;
 }
 
-main table.min-w-\[1120px\] tbody td:last-child button.text-red-600:hover {
+.page-admin table.min-w-\[1120px\] tbody td:last-child button.text-red-600:hover {
   background: #fef2f2 !important;
   border-color: #fca5a5 !important;
-}
-
-/* Media library: compact WordPress-style grid cards. */
-main section:has(input[placeholder="Search media..."]) .grid.grid-cols-1.gap-4.sm\:grid-cols-2.xl\:grid-cols-4 {
-  display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)) !important;
-  gap: 12px !important;
-}
-
-main section:has(input[placeholder="Search media..."]) article.overflow-hidden.rounded-2xl.border.border-stone-200.bg-white {
-  border-radius: 8px !important;
-  box-shadow: none !important;
-  background: #fff !important;
-}
-
-main section:has(input[placeholder="Search media..."]) article .aspect-square {
-  aspect-ratio: 1 / 1 !important;
-}
-
-main section:has(input[placeholder="Search media..."]) article .space-y-1.p-4 {
-  padding: 8px !important;
-  line-height: 1.2 !important;
-}
-
-main section:has(input[placeholder="Search media..."]) article p.truncate.font-bold.text-stone-950 {
-  font-size: 12px !important;
-  font-weight: 600 !important;
-}
-
-main section:has(input[placeholder="Search media..."]) article p.text-stone-500 {
-  font-size: 11px !important;
-}
-
-main section:has(input[placeholder="Search media..."]) article button.text-red-600 {
-  margin-top: 4px !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-}
-
-@media (min-width: 1280px) {
-  main section:has(input[placeholder="Search media..."]) .grid.grid-cols-1.gap-4.sm\:grid-cols-2.xl\:grid-cols-4 {
-    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)) !important;
-  }
 }
