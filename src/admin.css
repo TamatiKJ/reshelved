@@ -1,0 +1,41 @@
+/* Administrative dashboard layout, tables, and media library. */
+.page-admin aside.hidden.min-h-screen nav.mt-4,
+.page-admin aside.hidden.min-h-screen nav.mt-9 { margin-top: 12px !important; }
+.page-admin aside.hidden.min-h-screen nav > div:first-child { margin-top: 0 !important; margin-bottom: 8px !important; }
+.page-admin aside.hidden.min-h-screen nav > div:first-child + div { margin-top: 0 !important; }
+
+.page-admin table.min-w-\[1120px\] { min-width: 0 !important; width: 100% !important; table-layout: fixed !important; }
+.page-admin table.min-w-\[1120px\] th,
+.page-admin table.min-w-\[1120px\] td { padding-left: 8px !important; padding-right: 8px !important; vertical-align: middle !important; }
+.page-admin table.min-w-\[1120px\] th:nth-child(1), .page-admin table.min-w-\[1120px\] td:nth-child(1) { width: 19% !important; }
+.page-admin table.min-w-\[1120px\] th:nth-child(2), .page-admin table.min-w-\[1120px\] td:nth-child(2) { width: 13% !important; }
+.page-admin table.min-w-\[1120px\] th:nth-child(3), .page-admin table.min-w-\[1120px\] td:nth-child(3) { width: 10% !important; }
+.page-admin table.min-w-\[1120px\] th:nth-child(4), .page-admin table.min-w-\[1120px\] td:nth-child(4) { width: 7% !important; }
+.page-admin table.min-w-\[1120px\] th:nth-child(5), .page-admin table.min-w-\[1120px\] td:nth-child(5) { width: 12% !important; }
+.page-admin table.min-w-\[1120px\] th:nth-child(6), .page-admin table.min-w-\[1120px\] td:nth-child(6) { width: 10% !important; }
+.page-admin table.min-w-\[1120px\] th:nth-child(7), .page-admin table.min-w-\[1120px\] td:nth-child(7) { width: 10% !important; }
+.page-admin table.min-w-\[1120px\] th:nth-child(8), .page-admin table.min-w-\[1120px\] td:nth-child(8) { width: 8% !important; }
+.page-admin table.min-w-\[1120px\] th:nth-child(9), .page-admin table.min-w-\[1120px\] td:nth-child(9) { width: 11% !important; }
+.page-admin table.min-w-\[1120px\] td,
+.page-admin table.min-w-\[1120px\] td a { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+.page-admin table.min-w-\[1120px\] tbody td { font-size: 13px !important; line-height: 1.35 !important; }
+.page-admin table.min-w-\[1120px\] tbody td:nth-child(1),
+.page-admin table.min-w-\[1120px\] tbody td:nth-child(1) a,
+.page-admin table.min-w-\[1120px\] tbody td:nth-child(2) { font-size: 14px !important; line-height: 1.35 !important; }
+.page-admin table.min-w-\[1120px\] img { height: 34px !important; width: 34px !important; }
+.page-admin table.min-w-\[1120px\] tbody td:last-child > div { gap: 8px !important; }
+
+.page-admin section:has(input[placeholder="Search media..."]) .grid.grid-cols-1.gap-4.sm\:grid-cols-2.xl\:grid-cols-4 {
+  display: grid !important; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)) !important; gap: 12px !important;
+}
+.page-admin section:has(input[placeholder="Search media..."]) article.overflow-hidden.rounded-2xl.border.border-stone-200.bg-white {
+  border-radius: 8px !important; box-shadow: none !important; background: var(--rs-color-surface) !important;
+}
+.page-admin section:has(input[placeholder="Search media..."]) article .aspect-square { aspect-ratio: 1 / 1 !important; }
+.page-admin section:has(input[placeholder="Search media..."]) article .space-y-1.p-4 { padding: 8px !important; line-height: 1.2 !important; }
+.page-admin section:has(input[placeholder="Search media..."]) article p.truncate.font-bold.text-stone-950 { font-size: 12px !important; font-weight: 600 !important; }
+.page-admin section:has(input[placeholder="Search media..."]) article p.text-stone-500 { font-size: 11px !important; }
+.page-admin section:has(input[placeholder="Search media..."]) article button.text-red-600 { margin-top: 4px !important; font-size: 11px !important; font-weight: 600 !important; }
+@media (min-width: 1280px) {
+  .page-admin section:has(input[placeholder="Search media..."]) .grid.grid-cols-1.gap-4.sm\:grid-cols-2.xl\:grid-cols-4 { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)) !important; }
+}
