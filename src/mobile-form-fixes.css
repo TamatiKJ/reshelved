@@ -1,13 +1,9 @@
+/* Global mobile form behaviour and app loading presentation. */
 @media (max-width: 767px) {
   input,
   textarea,
   select {
     font-size: 16px !important;
-  }
-
-  body:has(main input:is([placeholder="Type a message..."], [placeholder="Messaging disabled"])) section:has(button[aria-label="Conversation actions"]) > form input[type="text"] {
-    font-size: 16px !important;
-    line-height: 20px !important;
   }
 
   #root > div.min-h-screen.flex.items-center.justify-center.bg-stone-50:has(> div img[src="/reshelved-logo.svg"]) {
