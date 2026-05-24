@@ -1,4 +1,4 @@
-/* Messaging page responsive layout and chat controls. */
+/* Messages page layout, surface treatment, and responsive chat controls. */
 .page-messages > div.mx-auto.max-w-\[1240px\] {
   max-width: 1180px !important;
   padding-top: 28px !important;
@@ -18,13 +18,160 @@
   background: var(--rs-color-surface) !important;
 }
 
+.page-messages aside.bg-\[\#FFFAF2\] {
+  border-right: 1px solid var(--rs-color-border) !important;
+}
+
 .page-messages section.flex-1 > header,
 .page-messages aside.bg-\[\#FFFAF2\] > div:first-child {
   border-bottom: 1px solid var(--rs-color-border) !important;
 }
 
+.page-messages aside.bg-\[\#FFFAF2\] > div:first-child {
+  padding-top: 28px !important;
+  padding-bottom: 18px !important;
+}
+
+.page-messages aside.bg-\[\#FFFAF2\] h1 {
+  font-family: 'Work Sans', 'Source Sans 3', system-ui, sans-serif !important;
+  font-size: 32px !important;
+  letter-spacing: -.04em !important;
+  color: #0c0a09 !important;
+}
+
+.page-messages aside.bg-\[\#FFFAF2\] input[placeholder="Search conversations..."]::placeholder {
+  color: #a8a29e !important;
+}
+
+.page-messages aside.bg-\[\#FFFAF2\] > div:first-child .rounded-2xl {
+  border-radius: var(--rs-radius-pill) !important;
+  border-color: var(--rs-color-border-strong) !important;
+  background: var(--rs-color-surface) !important;
+  box-shadow: none !important;
+}
+
+.page-messages aside.bg-\[\#FFFAF2\] > div:nth-child(2) {
+  background: var(--rs-color-surface) !important;
+  border-bottom: 1px solid var(--rs-color-border) !important;
+  padding-top: 12px !important;
+  padding-bottom: 14px !important;
+}
+
+.page-messages aside.bg-\[\#FFFAF2\] > div:nth-child(2) button {
+  border-radius: var(--rs-radius-pill) !important;
+  border-color: var(--rs-color-border-strong) !important;
+  background: var(--rs-color-surface) !important;
+  color: var(--rs-color-text-soft) !important;
+  box-shadow: none !important;
+}
+
+.page-messages aside.bg-\[\#FFFAF2\] > div:nth-child(2) button.border-primary-600 {
+  border-color: var(--rs-color-text) !important;
+  background: var(--rs-color-text) !important;
+  color: #ffffff !important;
+}
+
+.page-messages aside.bg-\[\#FFFAF2\] > .flex-1.overflow-y-auto {
+  background: var(--rs-color-surface) !important;
+  padding: 14px !important;
+}
+
+.page-messages aside.bg-\[\#FFFAF2\] a.group[href^="/messages/"] {
+  margin-bottom: 8px !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--rs-radius-card) !important;
+  background: var(--rs-color-surface) !important;
+  box-shadow: none !important;
+}
+
+.page-messages aside.bg-\[\#FFFAF2\] a.group[href^="/messages/"]:hover {
+  background: var(--rs-color-placeholder) !important;
+  border-color: var(--rs-color-border) !important;
+}
+
+.page-messages aside.bg-\[\#FFFAF2\] a.group[href^="/messages/"]:has(div.bg-white.shadow-sm),
+.page-messages aside.bg-\[\#FFFAF2\] a.group[href^="/messages/"].bg-white {
+  background: var(--rs-color-placeholder) !important;
+  border-color: var(--rs-color-border-strong) !important;
+  box-shadow: 0 8px 20px rgba(28, 25, 23, .05) !important;
+}
+
+.page-messages aside.bg-\[\#FFFAF2\] a.group[href^="/messages/"] > div.flex.items-center {
+  border-radius: var(--rs-radius-card) !important;
+  padding: 14px !important;
+}
+
+.page-messages aside.bg-\[\#FFFAF2\] a.group img,
+.page-messages aside.bg-\[\#FFFAF2\] a.group .h-\[52px\] {
+  width: 48px !important;
+  height: 48px !important;
+}
+
+.page-messages aside.bg-\[\#FFFAF2\] a.group .bg-primary-600 {
+  background: var(--rs-color-brand) !important;
+}
+
+.page-messages section.flex-1 > header {
+  padding-top: 18px !important;
+  padding-bottom: 18px !important;
+}
+
+.page-messages section.flex-1 > header h3 {
+  font-family: 'Work Sans', 'Source Sans 3', system-ui, sans-serif !important;
+  font-size: 22px !important;
+  letter-spacing: -.035em !important;
+}
+
+.page-messages button[aria-label="Conversation actions"] {
+  border-radius: var(--rs-radius-pill) !important;
+  border-color: var(--rs-color-border-strong) !important;
+  box-shadow: none !important;
+}
+
+.page-messages section.flex-1 > div.border-b.border-stone-200.bg-white {
+  background: var(--rs-color-surface) !important;
+  border-bottom: 1px solid var(--rs-color-border) !important;
+}
+
+.page-messages section.flex-1 > div.border-b.border-stone-200.bg-white .rounded-full.border.border-stone-200.bg-\[\#FFFAF2\] {
+  background: var(--rs-color-placeholder) !important;
+  border-color: var(--rs-color-border) !important;
+  border-radius: 22px !important;
+}
+
+.page-messages section.flex-1 > div.border-b.border-stone-200.bg-white .bg-primary-600 {
+  background: var(--rs-color-brand) !important;
+}
+
 .page-messages section.flex-1 > div.flex-1.overflow-y-auto {
   background: var(--rs-color-page) !important;
+  padding-top: 28px !important;
+  padding-bottom: 28px !important;
+}
+
+.page-messages section.flex-1 > div.flex-1.overflow-y-auto .h-px {
+  background: var(--rs-color-border) !important;
+}
+
+.page-messages section.flex-1 > div.flex-1.overflow-y-auto span.text-xs.font-semibold.text-stone-400 {
+  background: var(--rs-color-page) !important;
+  padding: 0 10px !important;
+}
+
+.page-messages section.flex-1 div.rounded-\[22px\] {
+  box-shadow: none !important;
+  border-radius: 22px !important;
+}
+
+.page-messages section.flex-1 div.rounded-\[22px\].bg-\[\#16A34A\] {
+  background: #d9fdd3 !important;
+  color: #111827 !important;
+  border: 1px solid #c7e9bf !important;
+}
+
+.page-messages section.flex-1 div.rounded-\[22px\].bg-\[\#F0FDF4\] {
+  background: var(--rs-color-surface) !important;
+  border-color: var(--rs-color-border) !important;
 }
 
 .page-messages section.flex-1 form.border-t.border-stone-200.bg-white {
@@ -32,9 +179,22 @@
   background: var(--rs-color-surface) !important;
 }
 
+.page-messages section.flex-1 form .rounded-full.border.border-stone-200.bg-\[\#FFFAF2\] {
+  background: var(--rs-color-surface) !important;
+  border-color: var(--rs-color-border-strong) !important;
+  box-shadow: none !important;
+}
+
+.page-messages section.flex-1 form input[type="text"] {
+  border-color: transparent !important;
+  background: var(--rs-color-placeholder) !important;
+  border-radius: var(--rs-radius-pill) !important;
+}
+
 .page-messages section.flex-1 form button.bg-primary-600,
 .page-messages section.flex-1 form button[aria-label="Send message"] {
   background: var(--rs-color-brand) !important;
+  color: #ffffff !important;
 }
 
 .page-messages section.flex-1 form button.bg-primary-600:hover,
@@ -42,10 +202,63 @@
   background: var(--rs-color-brand-hover) !important;
 }
 
-.page-messages button[aria-label="Conversation actions"] {
-  border-radius: var(--rs-radius-pill) !important;
-  border-color: var(--rs-color-border-strong) !important;
+.page-messages section.flex-1 .bg-white.text-stone-400.shadow-sm.ring-1 {
+  background: var(--rs-color-placeholder) !important;
+  border: 1px solid var(--rs-color-border) !important;
   box-shadow: none !important;
+}
+
+/* Listing exchange summary and status controls. */
+.page-messages section.flex-1 > div.border-b.border-stone-200.bg-white .inline-flex.min-w-0.items-center.gap-3.rounded-full {
+  border-radius: var(--rs-radius-pill) !important;
+  background: var(--rs-color-surface) !important;
+  border-color: var(--rs-color-border) !important;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, .04) !important;
+  padding: 8px 14px 8px 8px !important;
+}
+
+.page-messages section.flex-1 > div.border-b.border-stone-200.bg-white .inline-flex.min-w-0.items-center.gap-3.rounded-full span.bg-primary-600 {
+  background: var(--rs-color-brand) !important;
+  color: #ffffff !important;
+}
+
+.page-messages section.flex-1 > div.border-b.border-stone-200.bg-white span.bg-green-50.text-green-700 {
+  background: var(--rs-color-page) !important;
+  border: 1px solid var(--rs-color-border-strong) !important;
+  color: #44403c !important;
+  border-radius: var(--rs-radius-pill) !important;
+  font-weight: 800 !important;
+  letter-spacing: -.01em !important;
+  padding: 6px 12px !important;
+}
+
+.page-messages section.flex-1 > div.border-b.border-stone-200.bg-white span.bg-green-50.text-green-700::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: var(--rs-radius-pill);
+  background: #25d366;
+  vertical-align: 1px;
+}
+
+.page-messages section.flex-1 > div.border-b.border-stone-200.bg-white button.border-\[\#F7AF31\].bg-\[\#FFF4E2\] {
+  background: var(--rs-color-surface) !important;
+  border: 1px solid var(--rs-color-border-strong) !important;
+  color: var(--rs-color-text) !important;
+  border-radius: var(--rs-radius-pill) !important;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, .04) !important;
+  padding: 10px 18px !important;
+}
+
+.page-messages section.flex-1 > div.border-b.border-stone-200.bg-white button.border-\[\#F7AF31\].bg-\[\#FFF4E2\]:hover {
+  background: var(--rs-color-placeholder) !important;
+  border-color: #a8a29e !important;
+}
+
+.page-messages section.flex-1 > div.border-b.border-stone-200.bg-white button.border-\[\#F7AF31\].bg-\[\#FFF4E2\] i {
+  color: var(--rs-color-brand) !important;
 }
 
 @media (max-width: 767px) {
@@ -94,15 +307,8 @@
     box-shadow: 0 1px 0 rgba(231, 229, 228, 0.9) !important;
   }
 
-  .page-messages section:has(button[aria-label="Conversation actions"]) > header > div {
-    gap: 8px !important;
-  }
-
-  .page-messages section:has(button[aria-label="Conversation actions"]) > header a[href="/messages"] {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-  }
+  .page-messages section:has(button[aria-label="Conversation actions"]) > header > div { gap: 8px !important; }
+  .page-messages section:has(button[aria-label="Conversation actions"]) > header a[href="/messages"] { width: 32px !important; height: 32px !important; min-width: 32px !important; }
 
   .page-messages section:has(button[aria-label="Conversation actions"]) > header img,
   .page-messages section:has(button[aria-label="Conversation actions"]) > header .h-12.w-12,
@@ -112,16 +318,8 @@
     min-width: 36px !important;
   }
 
-  .page-messages section:has(button[aria-label="Conversation actions"]) > header h3 {
-    font-size: 14px !important;
-    line-height: 18px !important;
-    font-weight: 800 !important;
-  }
-
-  .page-messages section:has(button[aria-label="Conversation actions"]) > header p {
-    font-size: 11px !important;
-    line-height: 14px !important;
-  }
+  .page-messages section:has(button[aria-label="Conversation actions"]) > header h3 { font-size: 14px !important; line-height: 18px !important; font-weight: 800 !important; }
+  .page-messages section:has(button[aria-label="Conversation actions"]) > header p { font-size: 11px !important; line-height: 14px !important; }
 
   .page-messages button[aria-label="Conversation actions"] {
     display: flex !important;
@@ -165,18 +363,11 @@
     background: var(--rs-color-surface) !important;
   }
 
-  .page-messages section:has(button[aria-label="Conversation actions"]) > header + div:not(.flex-1) .inline-flex p:first-child {
-    font-size: 12px !important;
-    line-height: 15px !important;
-    max-width: 42vw !important;
-  }
-
+  .page-messages section:has(button[aria-label="Conversation actions"]) > header + div:not(.flex-1) .inline-flex p:first-child { font-size: 12px !important; line-height: 15px !important; max-width: 42vw !important; }
   .page-messages section:has(button[aria-label="Conversation actions"]) > header + div:not(.flex-1) .inline-flex p:last-child,
   .page-messages section:has(button[aria-label="Conversation actions"]) > header + div:not(.flex-1) .inline-flex span.ml-2,
   .page-messages section:has(button[aria-label="Conversation actions"]) > header + div:not(.flex-1) > p,
-  .page-messages section:has(button[aria-label="Conversation actions"]) > header + div:not(.flex-1) > div.mt-3 {
-    display: none !important;
-  }
+  .page-messages section:has(button[aria-label="Conversation actions"]) > header + div:not(.flex-1) > div.mt-3 { display: none !important; }
 
   .page-messages section:has(button[aria-label="Conversation actions"]) > header + div:not(.flex-1) button {
     height: 34px !important;
@@ -206,33 +397,38 @@
     box-shadow: 0 -8px 20px rgba(28, 25, 23, 0.06) !important;
   }
 
-  .page-messages section:has(button[aria-label="Conversation actions"]) > form > div {
-    border-radius: var(--rs-radius-pill) !important;
-    gap: 8px !important;
-    padding: 7px !important;
-  }
+  .page-messages section:has(button[aria-label="Conversation actions"]) > form > div { border-radius: var(--rs-radius-pill) !important; gap: 8px !important; padding: 7px !important; }
+  .page-messages section:has(button[aria-label="Conversation actions"]) > form button { width: 38px !important; height: 38px !important; min-width: 38px !important; }
+  .page-messages section:has(button[aria-label="Conversation actions"]) > form input[type="text"] { padding-top: 10px !important; padding-bottom: 10px !important; font-size: 16px !important; line-height: 20px !important; }
 
-  .page-messages section:has(button[aria-label="Conversation actions"]) > form button {
-    width: 38px !important;
-    height: 38px !important;
-    min-width: 38px !important;
-  }
-
-  .page-messages section:has(button[aria-label="Conversation actions"]) > form input[type="text"] {
-    padding-top: 10px !important;
-    padding-bottom: 10px !important;
-    font-size: 14px !important;
-  }
-
-  .page-messages > div.mx-auto.max-w-\[1240px\] {
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-  }
-
+  .page-messages > div.mx-auto.max-w-\[1240px\] { padding-top: 0 !important; padding-bottom: 0 !important; }
   .page-messages > div.mx-auto.max-w-\[1240px\] > .overflow-hidden.border.border-stone-200.bg-white {
     border-radius: 0 !important;
     border-left: 0 !important;
     border-right: 0 !important;
     min-height: calc(100dvh - 64px) !important;
+  }
+
+  .page-messages a.group[href^="/messages/"] > div.flex.items-center { position: relative !important; align-items: flex-start !important; padding-right: 20px !important; }
+  .page-messages a.group[href^="/messages/"] > div.flex.items-center > .min-w-0.flex-1 { min-width: 0 !important; padding-right: 0 !important; }
+  .page-messages a.group[href^="/messages/"] > div.flex.items-center > .min-w-0.flex-1 > div:first-child { display: block !important; padding-right: 58px !important; }
+  .page-messages a.group[href^="/messages/"] > div.flex.items-center > .min-w-0.flex-1 > div:first-child > span:first-child { display: block !important; max-width: 100% !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+  .page-messages a.group[href^="/messages/"] > div.flex.items-center > .min-w-0.flex-1 > div:first-child > span:last-child { position: absolute !important; right: 20px !important; top: 17px !important; width: auto !important; min-width: 0 !important; text-align: right !important; display: block !important; }
+  .page-messages a.group[href^="/messages/"] > div.flex.items-center > span.flex.h-6.min-w-6 { position: absolute !important; right: 20px !important; top: 48px !important; margin: 0 !important; }
+
+  .page-messages .fixed.inset-0.z-50[class*="bg-stone-950"] { top: 64px !important; bottom: 0 !important; height: calc(100dvh - 64px) !important; align-items: flex-start !important; overflow-y: auto !important; padding-top: 8px !important; padding-bottom: 14px !important; }
+  .page-messages .fixed.inset-0.z-50[class*="bg-stone-950"] > .flex { max-height: none !important; min-height: 0 !important; width: 100% !important; }
+  .page-messages .fixed.inset-0.z-50[class*="bg-stone-950"] .min-h-\[430px\] { min-height: 300px !important; padding: 14px !important; }
+  .page-messages .fixed.inset-0.z-50[class*="bg-stone-950"] .max-w-\[560px\] { max-width: min(82vw, 360px) !important; }
+  .page-messages .fixed.inset-0.z-50[class*="bg-stone-950"] .px-5.py-4 { padding-top: 12px !important; padding-bottom: 12px !important; }
+  .page-messages .fixed.inset-0.z-50[class*="bg-stone-950"] .p-5 { padding: 14px !important; }
+  .page-messages .fixed.inset-0.z-50[class*="bg-stone-950"] .grid.min-h-0.flex-1 { display: block !important; }
+  .page-messages .fixed.inset-0.z-50[class*="bg-stone-950"] .grid.min-h-0.flex-1 > .flex.flex-col { display: flex !important; }
+  .page-messages .fixed.inset-0.z-50[class*="bg-stone-950"] .grid.min-h-0.flex-1 > .flex.flex-col > div:first-child { display: none !important; }
+  .page-messages .fixed.inset-0.z-50[class*="bg-stone-950"] .grid.min-h-0.flex-1 > .flex.flex-col .mt-auto { margin-top: 14px !important; padding-top: 0 !important; }
+
+  .page-messages aside.bg-\[\#FFFAF2\] > .flex-1.overflow-y-auto {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
   }
 }
