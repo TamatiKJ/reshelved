@@ -24,6 +24,16 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const safeListingDays = (value: unknown) => Math.max(1, Math.min(45, Number(value) || 10));
 const normalizeReviewAuthorName = (name?: string, deleted?: boolean) => deleted || name === 'Deleted account' ? 'Deleted User' : (name?.trim() || 'Deleted User');
 
+const getPageScopeClass = (pathname: string) => {
+  if (pathname === '/' || pathname.startsWith('/browse')) return 'page-home';
+  if (pathname.startsWith('/create')) return 'page-create-listing';
+  if (pathname.startsWith('/messages')) return 'page-messages';
+  if (pathname.startsWith('/profile') || pathname.startsWith('/my-listings') || pathname.startsWith('/user/')) return 'page-profile';
+  if (pathname.startsWith('/admin')) return 'page-admin';
+  if (pathname.startsWith('/listing/')) return 'page-listing-detail';
+  return 'page-content';
+};
+
 const ScrollToTop: React.FC = () => {
   const { pathname, search, key } = useLocation();
 
@@ -192,6 +202,7 @@ const AppContent: React.FC = () => {
   const isMessagesRoute = location.pathname.startsWith('/messages');
   const isOpenChatRoute = /^\/messages\/[^/]+/.test(location.pathname);
   const hideMobileBottomNav = isAdminRoute || isOpenChatRoute || (location.pathname.startsWith('/listing/') && location.pathname.endsWith('/edit'));
+  const pageScopeClass = getPageScopeClass(location.pathname);
 
   if (loading) {
     return (
@@ -222,9 +233,9 @@ const AppContent: React.FC = () => {
         <Route
           path="*"
           element={
-            <div className={`min-h-screen bg-stone-50 flex flex-col ${isMessagesRoute ? 'max-md:h-[100dvh] max-md:min-h-0 max-md:overflow-hidden' : 'max-md:pb-24'}`}>
+            <div className={`app-shell min-h-screen bg-stone-50 flex flex-col ${isMessagesRoute ? 'max-md:h-[100dvh] max-md:min-h-0 max-md:overflow-hidden' : 'max-md:pb-24'}`}>
               {!isAdminRoute && <Navbar />}
-              <main className={`flex-1 ${isMessagesRoute ? 'max-md:min-h-0 max-md:overflow-hidden' : ''}`}>
+              <main className={`app-page ${pageScopeClass} flex-1 ${isMessagesRoute ? 'max-md:min-h-0 max-md:overflow-hidden' : ''}`}>
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/browse" element={<Browse />} />
