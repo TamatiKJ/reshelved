@@ -1,0 +1,22 @@
+:root {
+  --rs-color-page: #f7f7f5;
+  --rs-color-placeholder: #fafaf9;
+  --rs-color-surface: #ffffff;
+  --rs-color-border: #e7e5e4;
+  --rs-color-border-strong: #d6d3d1;
+  --rs-color-text: #1c1917;
+  --rs-color-text-soft: #57534e;
+  --rs-color-focus: #1665cc;
+  --rs-color-focus-soft: #eff6ff;
+  --rs-color-brand: #d54215;
+  --rs-color-brand-hover: #b53811;
+  --rs-color-success: #15803d;
+  --rs-color-success-soft: #ecfdf5;
+  --rs-radius-control: 18px;
+  --rs-radius-card: 24px;
+  --rs-radius-panel: 32px;
+  --rs-radius-pill: 999px;
+  --rs-shadow-card: 0 10px 30px rgba(28, 25, 23, 0.045);
+  --rs-shadow-panel: 0 18px 48px rgba(28, 25, 23, 0.07);
+  --rs-focus-ring: 0 0 0 3px rgba(22, 101, 204, 0.1);
+}
