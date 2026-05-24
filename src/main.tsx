@@ -17,11 +17,13 @@ import { enforceWebpUploadCompression } from "./utils/enforceWebpUploadCompressi
 import { enableSwapCompletionEnhancements } from "./utils/swapCompletionEnhancements";
 import { enableMobileErrorAutoScroll } from "./utils/mobileErrorAutoScroll";
 import { initializeRuntimeUiEnhancements } from "./utils/runtimeUiEnhancements";
+import { enableConversationWarmup } from "./utils/conversationWarmup";
 
 enforceWebpUploadCompression();
 enableSwapCompletionEnhancements();
 enableMobileErrorAutoScroll();
 initializeRuntimeUiEnhancements();
+enableConversationWarmup();
 
 const openImageZoom = (src: string, alt: string) => {
   const existing = document.getElementById("listing-image-zoom-modal");
