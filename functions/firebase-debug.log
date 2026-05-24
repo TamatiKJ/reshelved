@@ -1,0 +1,16 @@
+[debug] [2026-05-20T13:52:19.696Z] ----------------------------------------------------------------------
+[debug] [2026-05-20T13:52:19.699Z] Command:       T:\Program Files\Node JS\node.exe C:\Users\User\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only functions
+[debug] [2026-05-20T13:52:19.699Z] CLI Version:   15.18.0
+[debug] [2026-05-20T13:52:19.699Z] Platform:      win32
+[debug] [2026-05-20T13:52:19.699Z] Node Version:  v24.14.0
+[debug] [2026-05-20T13:52:19.699Z] Time:          Wed May 20 2026 16:52:19 GMT+0300 (East Africa Time)
+[debug] [2026-05-20T13:52:19.699Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-05-20T13:52:58.833Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-05-20T13:52:58.833Z] > authorizing via signed-in user (tamatikraido@gmail.com)
+[debug] [2026-05-20T13:52:58.833Z] [iam] checking project newapp-5178a for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-05-20T13:52:58.834Z] Checked if tokens are valid: true, expires at: 1779286959461
+[debug] [2026-05-20T13:52:58.835Z] Checked if tokens are valid: true, expires at: 1779286959461
+[debug] [2026-05-20T13:52:58.836Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/newapp-5178a:testIamPermissions [none]
+[debug] [2026-05-20T13:52:58.836Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/newapp-5178a:testIamPermissions  x-goog-user-project=newapp-5178a
+[debug] [2026-05-20T13:52:58.836Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/newapp-5178a:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}

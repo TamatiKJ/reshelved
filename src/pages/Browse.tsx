@@ -117,10 +117,24 @@ const Browse: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             <div className="max-w-2xl">
               <h1 className="text-3xl sm:text-5xl font-bold text-stone-950">Find affordable books near you</h1>
-              <p className="text-stone-600 mt-4 text-lg">Search by title, author, genre, academic field, condition, and location.</p>
+              <p className="text-stone-600 mt-4 text-lg">Search by title, author, genre, condition, and location.</p>
             </div>
-            {currentUser ? <Link to="/create" className="inline-flex cursor-pointer items-center justify-center px-5 py-3 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold transition">List a Book</Link> : <Link to="/register" className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold transition">Join Reshelved</Link>}
-          </div>
+              {currentUser ? (
+                <Link
+                  to="/create"
+                  className="inline-flex cursor-pointer items-center justify-center px-5 py-3 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold transition"
+                >
+                  List a Book
+                </Link>
+              ) : (
+                <Link
+                  to="/register"
+                  className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold transition"
+                >
+                  Join Reshelved
+                </Link>
+              )}          
+            </div>
         </div>
       </section>
 
@@ -138,8 +152,29 @@ const Browse: React.FC = () => {
 
           {showFilters && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-stone-100">
-              <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={selectClass}><option value="all">All Types</option><option value="swap">Swap</option><option value="donate">Donate</option><option value="sell">Sell</option></select>
-              <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={selectClass}><option value="all">All Categories</option>{listingCategories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}</select>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className={selectClass}
+              >
+                <option value="all">All Types</option>
+                <option value="swap">Swap</option>
+                <option value="donate">Donate</option>
+                <option value="sell">Sell</option>
+              </select>
+
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className={selectClass}
+              >
+                <option value="all">All Categories</option>
+                {listingCategories.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
               <LocationCombobox
                 value={filterLocation}
                 onChange={setFilterLocation}
@@ -166,10 +201,36 @@ const Browse: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">{paginatedListings.map((listing) => <BookCard key={listing.id} listing={listing} />)}</div>
             {totalPages > 1 && (
               <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
-                <button onClick={() => goToPage(safePage - 1)} disabled={safePage === 1} className="cursor-pointer rounded-xl border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40">Previous</button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => <button key={page} onClick={() => goToPage(page)} className={`cursor-pointer rounded-xl border px-4 py-2 text-sm font-semibold transition ${page === safePage ? 'border-primary-600 bg-primary-600 text-white' : 'border-stone-200 text-stone-700 hover:bg-stone-50'}`}>{page}</button>)}
-                <button onClick={() => goToPage(safePage + 1)} disabled={safePage === totalPages} className="cursor-pointer rounded-xl border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40">Next</button>
-              </div>
+              <button
+                onClick={() => goToPage(safePage - 1)}
+                disabled={safePage === 1}
+                className="cursor-pointer rounded-xl border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Previous
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => goToPage(page)}
+                  className={`cursor-pointer rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+                    page === safePage
+                      ? 'border-primary-600 bg-primary-600 text-white'
+                      : 'border-stone-200 text-stone-700 hover:bg-stone-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                onClick={() => goToPage(safePage + 1)}
+                disabled={safePage === totalPages}
+                className="cursor-pointer rounded-xl border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
             )}
           </>
         )}
