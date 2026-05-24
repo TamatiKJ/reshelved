@@ -2,12 +2,14 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles/tokens.css";
 import "./index.css";
+import "./global-controls.css";
 import "./reshelved-overrides.css";
 import "./navbar.css";
 import "./listing-detail.css";
 import "./profile.css";
 import "./create-listing.css";
 import "./messages.css";
+import "./messages-surface.css";
 import "./admin.css";
 import "./admin-actions.css";
 import "./mobile-form-fixes.css";
@@ -15,10 +17,12 @@ import App from "./App";
 import { enforceWebpUploadCompression } from "./utils/enforceWebpUploadCompression";
 import { enableSwapCompletionEnhancements } from "./utils/swapCompletionEnhancements";
 import { enableMobileErrorAutoScroll } from "./utils/mobileErrorAutoScroll";
+import { initializeRuntimeUiEnhancements } from "./utils/runtimeUiEnhancements";
 
 enforceWebpUploadCompression();
 enableSwapCompletionEnhancements();
 enableMobileErrorAutoScroll();
+initializeRuntimeUiEnhancements();
 
 const openImageZoom = (src: string, alt: string) => {
   const existing = document.getElementById("listing-image-zoom-modal");
