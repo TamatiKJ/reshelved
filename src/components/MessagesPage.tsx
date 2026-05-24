@@ -91,15 +91,17 @@ const MessagesPage: React.FC = () => {
     if (!currentUser) return;
     setLoading(true);
     const q = query(collection(db, 'conversations'), where('participants', 'array-contains', currentUser.uid));
-    const unsub = onSnapshot(q, async (snap) => {
+    const unsub = onSnapshot(q, (snap) => {
       const convs: Conversation[] = [];
       snap.forEach((item) => convs.push({ id: item.id, ...item.data() } as Conversation));
       const visible = convs.filter((conv) => !((conv as any).hiddenFor || []).includes(currentUser.uid));
       visible.sort((a, b) => ((b as any).lastMessageAt || 0) - ((a as any).lastMessageAt || 0));
       setConversations(visible);
       setSelectedConv(conversationId ? visible.find((conv) => conv.id === conversationId) || null : null);
-      await loadParticipantMeta(visible);
       setLoading(false);
+      void loadParticipantMeta(visible).catch((err) => {
+        console.error('Could not load participant metadata:', err);
+      });
     }, (err) => {
       console.error('Error loading conversations:', err);
       setError('Could not load conversations. Check your Firestore rules.');
