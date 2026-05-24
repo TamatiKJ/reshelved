@@ -1,0 +1,45 @@
+/* Cross-page controls that must remain independent of route layout. */
+a[aria-label="Share on X"] {
+  display: none !important;
+}
+
+input[type="range"] {
+  height: 8px;
+  border-radius: var(--rs-radius-pill);
+  background: var(--rs-color-border);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: var(--rs-radius-pill);
+  background: transparent;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -6px;
+  border-radius: var(--rs-radius-pill);
+  background: var(--rs-color-surface);
+  border: 3px solid var(--rs-color-focus);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .16);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  border-radius: var(--rs-radius-pill);
+  background: transparent;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--rs-radius-pill);
+  background: var(--rs-color-surface);
+  border: 3px solid var(--rs-color-focus);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .16);
+}
