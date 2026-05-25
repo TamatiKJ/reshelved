@@ -6,6 +6,11 @@
     font-size: 16px !important;
   }
 
+  /* Homepage hero: tighter mobile entry spacing while preserving desktop layout. */
+  .page-home section:first-of-type > .relative {
+    padding-top: 4rem !important;
+  }
+
   #root > div.min-h-screen.flex.items-center.justify-center.bg-stone-50:has(> div img[src="/reshelved-logo.svg"]) {
     position: fixed !important;
     inset: 0 !important;
