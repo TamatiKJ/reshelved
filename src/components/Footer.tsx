@@ -14,7 +14,7 @@ const Footer: React.FC = () => {
               Promoting literacy in Kenya one book at a time.
             </p>
             <p className="text-sm text-white/65 mt-6">
-              © 2026 Reshelved. All rights reserved. Built by Tamati.
+              © 2026 Reshelved. All rights reserved. Built by TK.
             </p>
           </div>
 
