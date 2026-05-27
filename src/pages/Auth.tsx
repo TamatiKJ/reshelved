@@ -64,8 +64,8 @@ const LegalAgreement: React.FC = () => (
   </p>
 );
 
-const AuthShell: React.FC<{ children: React.ReactNode; showLegal?: boolean }> = ({ children, showLegal = true }) => (
-  <div className="min-h-screen bg-stone-50 flex flex-col">
+const AuthShell: React.FC<{ children: React.ReactNode; showLegal?: boolean; pageClassName?: string }> = ({ children, showLegal = true, pageClassName = 'bg-stone-50' }) => (
+  <div className={`min-h-screen ${pageClassName} flex flex-col`}>
     <main className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:py-14">{children}{showLegal && <LegalAgreement />}</main>
     <AuthFooter />
   </div>
@@ -245,14 +245,16 @@ export const Register: React.FC = () => {
 
   if (sent) {
     return (
-      <AuthShell showLegal={false}>
+      <AuthShell showLegal={false} pageClassName="bg-white">
         <section className="w-full max-w-2xl px-4 text-center">
-          <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-3xl bg-[#FFF4E2] text-primary-600"><i className="las la-envelope-open-text text-6xl" /></div>
+          <div className="mx-auto flex h-[92px] items-center justify-center">
+            <span className="flex h-[72px] items-center justify-center text-[72px] leading-none" role="img" aria-label="Verification email sent">📩</span>
+          </div>
           <h1 className="mt-9 text-4xl font-bold leading-tight text-stone-900 sm:text-5xl">Verify your email to create your account.</h1>
           <p className="mx-auto mt-6 max-w-md text-lg font-semibold leading-snug text-stone-700">We sent a secure sign-up link to<br />{email}.</p>
           <p className="mt-7 text-base font-semibold text-stone-800">Click the link in your email to continue. Check your spam folder if it is missing.</p>
-          <button type="button" onClick={() => sendVerificationLink()} disabled={loading} className="mt-8 w-full max-w-xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-4 text-base font-semibold text-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">{loading ? 'Sending...' : 'Resend verification link'}</button>
-          <button type="button" onClick={() => setSent(false)} className="mt-4 w-full max-w-xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-4 text-base font-semibold text-stone-900 hover:bg-stone-50">Change email address</button>
+          <button type="button" onClick={() => sendVerificationLink()} disabled={loading} className="mt-8 w-full max-w-xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-4 text-base font-semibold text-stone-900 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">{loading ? 'Sending...' : 'Resend verification link'}</button>
+          <button type="button" onClick={() => setSent(false)} className="mt-4 cursor-pointer border-0 bg-transparent px-4 py-3 text-base font-semibold text-stone-700 transition hover:text-primary-600">Change email address</button>
         </section>
       </AuthShell>
     );
