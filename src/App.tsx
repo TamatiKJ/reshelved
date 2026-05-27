@@ -4,7 +4,8 @@ import {
   Routes,
   Route,
   Navigate,
-  useLocation
+  useLocation,
+  useNavigate
 } from 'react-router-dom';
 import {
   collection,
@@ -277,11 +278,12 @@ const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({
 const AppContent: React.FC = () => {
   const { currentUser, loading, userProfile } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const isDesktop = useDesktopMedia();
-  const { openFrom } = useChatDock();
+  const { isOpen, open } = useChatDock();
   const previousPageRef = useRef<typeof location | null>(null);
   const isMessagesRoute = location.pathname.startsWith('/messages');
-  const showDesktopDock = Boolean(
+  const isDesktopMessageEntry = Boolean(
     currentUser && isDesktop && isMessagesRoute
   );
 
@@ -297,12 +299,14 @@ const AppContent: React.FC = () => {
     state: null,
     key: 'desktop-chat-background'
   };
-  const dockBackground = previousPageRef.current || fallbackPage;
-  const renderedLocation = showDesktopDock ? dockBackground : location;
+  const underlyingLocation = previousPageRef.current || fallbackPage;
+  const renderedLocation = isDesktopMessageEntry
+    ? underlyingLocation
+    : location;
   const renderedPath = renderedLocation.pathname;
   const isAdminRoute = renderedPath.startsWith('/admin');
   const isAdminEnabled = isAdminRoute && Boolean(userProfile?.isAdmin);
-  const isFullPageMessages = isMessagesRoute && !showDesktopDock;
+  const isFullPageMessages = isMessagesRoute && !isDesktop;
   const isOpenChatRoute = /^\/messages\/[^/]+/.test(location.pathname);
   const hideMobileBottomNav = (
     isAdminRoute
@@ -313,12 +317,23 @@ const AppContent: React.FC = () => {
     )
   );
   const pageScopeClass = getPageScopeClass(renderedPath);
+  const showDesktopDock = Boolean(currentUser && isDesktop && isOpen);
 
   useEffect(() => {
-    if (showDesktopDock) {
-      openFrom(dockBackground);
-    }
-  }, [showDesktopDock, location.pathname, location.search]);
+    if (!isDesktopMessageEntry) return;
+    open(`${location.pathname}${location.search}`);
+    const target = `${underlyingLocation.pathname}${underlyingLocation.search}${underlyingLocation.hash}`;
+    navigate(target, { replace: true });
+  }, [
+    isDesktopMessageEntry,
+    location.pathname,
+    location.search,
+    underlyingLocation.pathname,
+    underlyingLocation.search,
+    underlyingLocation.hash,
+    open,
+    navigate
+  ]);
 
   if (loading) {
     return (
@@ -363,7 +378,7 @@ const AppContent: React.FC = () => {
 
   return (
     <>
-      <ScrollToTop disabled={showDesktopDock} />
+      <ScrollToTop disabled={isDesktopMessageEntry} />
       <ReviewAuthorNameSync />
       <PlatformListingDurationSync enabled={isAdminEnabled} />
       <Routes>
