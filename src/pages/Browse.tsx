@@ -31,7 +31,7 @@ const Browse: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterLocation, setFilterLocation] = useState<string>('all');
   const [filterCondition, setFilterCondition] = useState<string>('all');
-  const [showFilters, setShowFilters] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { void fetchListings(); }, []);
@@ -51,6 +51,20 @@ const Browse: React.FC = () => {
       setSearchScope(scopeFromUrl === 'book' ? 'book' : 'all');
     }
   }, [searchParams, listingCategories]);
+
+  useEffect(() => {
+    if (!mobileFiltersOpen) return undefined;
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileFiltersOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = oldOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [mobileFiltersOpen]);
 
   useEffect(() => {
     const sentinel = loadMoreRef.current;
@@ -107,7 +121,8 @@ const Browse: React.FC = () => {
       || safeLower(listing.type).includes(term);
   });
 
-  const hasActiveFilters = filterType !== 'all' || filterCategory !== 'all' || filterLocation !== 'all' || filterCondition !== 'all';
+  const activeFilterCount = [filterType, filterCategory, filterLocation, filterCondition].filter((value) => value !== 'all').length;
+  const hasActiveFilters = activeFilterCount > 0;
   const hasActiveQuery = Boolean(search.trim() || hasActiveFilters);
 
   const resetFilters = () => {
@@ -117,42 +132,49 @@ const Browse: React.FC = () => {
     setFilterCondition('all');
   };
 
-  const filterControls = (
-    <>
-      <div className="flex items-center justify-between border-b border-stone-100 pb-4">
-        <h2 className="text-lg font-bold text-stone-950">Filters</h2>
-        {hasActiveFilters && <button type="button" onClick={resetFilters} className="cursor-pointer text-xs font-bold text-primary-600 hover:text-primary-700">Clear all</button>}
+  const searchField = (placeholder: string) => (
+    <div className="relative">
+      <i className="las la-search absolute left-3 top-1/2 -translate-y-1/2 text-xl text-stone-400" />
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={search}
+        onChange={(event) => { setSearch(event.target.value); setSearchScope('all'); }}
+        className={`w-full rounded-xl border border-stone-200 py-3 pl-10 pr-4 text-sm transition ${focusFieldClass}`}
+      />
+    </div>
+  );
+
+  const filters = (
+    <div className="space-y-6">
+      <div>
+        <label className="mb-2 block text-sm font-bold text-stone-900">Listing type</label>
+        <select value={filterType} onChange={(event) => setFilterType(event.target.value)} className={selectClass}>
+          <option value="all">All types</option>
+          <option value="sell">For sale</option>
+          <option value="swap">Available to swap</option>
+          <option value="donate">Free / donate</option>
+        </select>
       </div>
-      <div className="mt-5 space-y-6">
-        <div>
-          <label className="mb-2 block text-sm font-bold text-stone-900">Listing type</label>
-          <select value={filterType} onChange={(event) => setFilterType(event.target.value)} className={selectClass}>
-            <option value="all">All types</option>
-            <option value="sell">For sale</option>
-            <option value="swap">Available to swap</option>
-            <option value="donate">Free / donate</option>
-          </select>
-        </div>
-        <div>
-          <label className="mb-2 block text-sm font-bold text-stone-900">Category</label>
-          <select value={filterCategory} onChange={(event) => setFilterCategory(event.target.value)} className={selectClass}>
-            <option value="all">All categories</option>
-            {listingCategories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="mb-2 block text-sm font-bold text-stone-900">Location</label>
-          <LocationCombobox value={filterLocation} onChange={setFilterLocation} includeAllOption allOptionLabel="All locations" allOptionValue="all" className={`${selectClass} pr-11`} placeholder="Search location" />
-        </div>
-        <div>
-          <label className="mb-2 block text-sm font-bold text-stone-900">Book condition</label>
-          <select value={filterCondition} onChange={(event) => setFilterCondition(event.target.value)} className={selectClass}>
-            <option value="all">All conditions</option>
-            {CONDITIONS.map((condition) => <option key={condition} value={condition}>{condition}</option>)}
-          </select>
-        </div>
+      <div>
+        <label className="mb-2 block text-sm font-bold text-stone-900">Category</label>
+        <select value={filterCategory} onChange={(event) => setFilterCategory(event.target.value)} className={selectClass}>
+          <option value="all">All categories</option>
+          {listingCategories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}
+        </select>
       </div>
-    </>
+      <div>
+        <label className="mb-2 block text-sm font-bold text-stone-900">Location</label>
+        <LocationCombobox value={filterLocation} onChange={setFilterLocation} includeAllOption allOptionLabel="All locations" allOptionValue="all" className={`${selectClass} pr-11`} placeholder="Search location" />
+      </div>
+      <div>
+        <label className="mb-2 block text-sm font-bold text-stone-900">Book condition</label>
+        <select value={filterCondition} onChange={(event) => setFilterCondition(event.target.value)} className={selectClass}>
+          <option value="all">All conditions</option>
+          {CONDITIONS.map((condition) => <option key={condition} value={condition}>{condition}</option>)}
+        </select>
+      </div>
+    </div>
   );
 
   return (
@@ -174,27 +196,26 @@ const Browse: React.FC = () => {
         </div>
       </section>
 
-      <div className="relative z-10 mx-auto -mt-5 max-w-7xl px-4 sm:px-6">
-        <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-lg sm:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <div className="relative flex-1">
-              <i className="las la-search absolute left-3 top-1/2 -translate-y-1/2 text-xl text-stone-400" />
-              <input type="text" placeholder="Search title, author, genre, condition, or location..." value={search} onChange={(event) => { setSearch(event.target.value); setSearchScope('all'); }} className={`w-full rounded-xl border border-stone-200 py-3 pl-10 pr-4 text-sm transition ${focusFieldClass}`} />
-            </div>
-            <button type="button" onClick={() => setShowFilters((current) => !current)} className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-5 py-3 text-sm font-semibold transition lg:hidden ${showFilters ? 'border-[#1665CC] bg-[#1665CC]/10 text-[#1665CC]' : 'border-stone-200 text-stone-600 hover:border-[#1665CC] hover:text-[#1665CC]'}`}>
-              <i className="las la-sliders-h text-lg" /> Filters
-            </button>
-          </div>
-          <div className={`${showFilters ? 'block' : 'hidden'} mt-4 border-t border-stone-100 pt-4 lg:hidden`}>
-            {filterControls}
-          </div>
+      <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:hidden">
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">{searchField('Search books...')}</div>
+          <button type="button" onClick={() => setMobileFiltersOpen(true)} className="relative inline-flex h-[46px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition hover:border-[#1665CC] hover:text-[#1665CC]">
+            <i className="las la-sliders-h text-lg" /> Filters
+            {activeFilterCount > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-bold text-white">{activeFilterCount}</span>}
+          </button>
         </div>
       </div>
 
       <section id="browse-results" className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start">
-          <aside className="hidden rounded-2xl border border-stone-200 bg-white p-5 lg:sticky lg:top-24 lg:block">
-            {filterControls}
+        <div className="grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
+          <aside className="hidden max-h-[calc(100vh-112px)] overflow-y-auto rounded-2xl border border-stone-200 bg-white p-5 lg:sticky lg:top-24 lg:block">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-stone-950">Filters</h2>
+              {hasActiveFilters && <button type="button" onClick={resetFilters} className="cursor-pointer text-xs font-bold text-primary-600 hover:text-primary-700">Clear all</button>}
+            </div>
+            <div className="mt-4">{searchField('Search books...')}</div>
+            <div className="my-5 border-t border-stone-100" />
+            {filters}
           </aside>
 
           <div className="min-w-0">
@@ -203,11 +224,10 @@ const Browse: React.FC = () => {
                 <h2 className="text-xl font-bold text-stone-900">{filtered.length} {filtered.length === 1 ? 'Book' : 'Books'} Found</h2>
                 {hasActiveQuery && hasMore && <p className="mt-1 text-sm text-stone-500">More matching books may appear as you scroll.</p>}
               </div>
-              {hasActiveFilters && <button type="button" onClick={resetFilters} className="hidden cursor-pointer text-sm font-bold text-primary-600 hover:text-primary-700 lg:block">Reset filters</button>}
             </div>
 
             {loading ? (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">{[...Array(9)].map((_, index) => <div key={index} className="overflow-hidden rounded-2xl border border-stone-200 bg-white animate-pulse"><div className="aspect-[4/3] bg-stone-200" /><div className="space-y-3 p-4"><div className="h-4 w-3/4 rounded bg-stone-200" /><div className="h-3 w-1/2 rounded bg-stone-100" /></div></div>)}</div>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">{[...Array(9)].map((_, index) => <div key={index} className="animate-pulse overflow-hidden rounded-2xl border border-stone-200 bg-white"><div className="aspect-[4/3] bg-stone-200" /><div className="space-y-3 p-4"><div className="h-4 w-3/4 rounded bg-stone-200" /><div className="h-3 w-1/2 rounded bg-stone-100" /></div></div>)}</div>
             ) : filtered.length === 0 && !hasMore ? (
               <div className="rounded-3xl border border-stone-200 bg-white py-16 text-center"><i className="las la-book-open text-6xl text-stone-300" /><h3 className="mt-3 text-lg font-bold text-stone-800">No books found</h3><p className="mt-1 text-stone-500">Try changing your filters or search terms.</p>{currentUser && <Link to="/create" className="mt-4 inline-block rounded-xl bg-primary-600 px-5 py-2.5 font-semibold text-white transition hover:bg-primary-700">List the first book</Link>}</div>
             ) : (
@@ -220,6 +240,30 @@ const Browse: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {mobileFiltersOpen && (
+        <div className="fixed inset-0 z-50 flex items-end lg:hidden" role="dialog" aria-modal="true" aria-label="Filter books">
+          <button type="button" aria-label="Close filters" className="absolute inset-0 cursor-pointer bg-stone-950/45" onClick={() => setMobileFiltersOpen(false)} />
+          <div className="relative flex max-h-[88dvh] w-full flex-col rounded-t-[28px] bg-white shadow-2xl">
+            <div className="flex shrink-0 flex-col items-center border-b border-stone-100 px-5 pb-4 pt-3">
+              <div className="mb-4 h-1.5 w-12 rounded-full bg-stone-300" />
+              <div className="flex w-full items-center justify-between">
+                <h2 className="text-xl font-bold text-stone-950">Filters</h2>
+                <button type="button" onClick={() => setMobileFiltersOpen(false)} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-stone-600 hover:bg-stone-100" aria-label="Close"><i className="las la-times text-2xl" /></button>
+              </div>
+            </div>
+            <div className="overflow-y-auto px-5 py-5">
+              {searchField('Search title or author...')}
+              <div className="my-5 border-t border-stone-100" />
+              {filters}
+            </div>
+            <div className="flex shrink-0 items-center gap-3 border-t border-stone-100 bg-white px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-4">
+              <button type="button" onClick={resetFilters} className="flex-1 cursor-pointer rounded-xl border border-stone-200 px-4 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-50">Clear all</button>
+              <button type="button" onClick={() => setMobileFiltersOpen(false)} className="flex-1 cursor-pointer rounded-xl bg-primary-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-primary-700">Show results</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
