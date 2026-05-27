@@ -196,8 +196,8 @@ const Browse: React.FC = () => {
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:hidden">
-        <div className="flex items-center gap-3">
+      <div className="sticky top-16 z-30 border-b border-stone-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:px-6 lg:hidden">
+        <div className="mx-auto flex max-w-7xl items-center gap-3">
           <div className="min-w-0 flex-1">{searchField('Search books...')}</div>
           <button type="button" onClick={() => setMobileFiltersOpen(true)} className="relative inline-flex h-[46px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 transition hover:border-[#1665CC] hover:text-[#1665CC]">
             <i className="las la-sliders-h text-lg" /> Filters
