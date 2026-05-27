@@ -127,10 +127,8 @@ const Browse: React.FC = () => {
               <h1 className="text-3xl sm:text-5xl font-bold text-stone-950">Find free & affordable books near you</h1>
               <p className="text-stone-600 mt-4 text-lg">Search by title, author, genre, condition, and location.</p>
             </div>
-            {currentUser ? (
+            {currentUser && (
               <Link to="/create" className="inline-flex cursor-pointer items-center justify-center px-5 py-3 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold transition">List a Book</Link>
-            ) : (
-              <Link to="/register" className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold transition">Join Reshelved</Link>
             )}
           </div>
         </div>
@@ -189,7 +187,7 @@ const Browse: React.FC = () => {
         )}
         {hasMore && (
           <div className="mt-8 flex justify-center">
-            <button type="button" onClick={() => void fetchListings(true)} disabled={loadingMore} className="rounded-xl border border-primary-200 bg-white px-6 py-3 text-sm font-semibold text-primary-700 transition hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" onClick={() => void fetchListings(true)} disabled={loadingMore} className="cursor-pointer rounded-xl border border-primary-200 bg-white px-6 py-3 text-sm font-semibold text-primary-700 transition hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50">
               {loadingMore ? 'Loading more books...' : 'Load more books'}
             </button>
           </div>
