@@ -227,16 +227,20 @@ export const Register: React.FC = () => {
 
   if (returningFromEmail) {
     return (
-      <AuthShell>
-        <section className="w-full max-w-[408px] rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
-          <div className="text-center"><AuthLogo compact /><div className="mx-auto mt-7 flex h-14 w-14 items-center justify-center rounded-full bg-[#FFF4E2] text-primary-600"><i className="las la-check text-3xl" /></div><h1 className="mt-5 text-xl font-semibold text-stone-950">Email verified</h1><p className="mt-2 text-sm leading-relaxed text-stone-500">Create your password to finish setting up your Reshelved account.</p></div>
-          {error && <p className={errorClass}>{error}</p>}
-          <form onSubmit={finishVerifiedRegistration} className="mt-7 space-y-4">
+      <AuthShell showLegal={false} pageClassName="bg-white">
+        <section className="w-full max-w-2xl px-4 text-center">
+          <div className="mx-auto flex h-[92px] items-center justify-center">
+            <span className="flex h-[72px] items-center justify-center text-[72px] leading-none" role="img" aria-label="Email verified">✅</span>
+          </div>
+          <h1 className="mt-8 text-4xl font-bold leading-tight text-stone-900 sm:text-5xl">Your email is verified.</h1>
+          <p className="mx-auto mt-4 max-w-md text-lg leading-relaxed text-stone-600">Complete your sign-up details below to start using Reshelved.</p>
+          {error && <p className={`${errorClass} mx-auto max-w-[408px] text-left`}>{error}</p>}
+          <form onSubmit={finishVerifiedRegistration} className="mx-auto mt-8 max-w-[408px] space-y-4 text-left">
             <div><label className={`mb-1 block ${labelClass}`}>Full name</label><input type="text" required value={displayName} onChange={(event) => setDisplayName(event.target.value)} className={inputClass} autoComplete="name" /></div>
             <div><label className={`mb-1 block ${labelClass}`}>Email</label><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} className={inputClass} autoComplete="email" /></div>
             <div><label className={`mb-1 block ${labelClass}`}>Password</label><PasswordField value={password} onChange={setPassword} autoComplete="new-password" /><p className="mt-1.5 text-xs text-stone-500">Password must be 8 characters minimum.</p></div>
             <div><label className={`mb-1 block ${labelClass}`}>Confirm password</label><PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" /></div>
-            <button type="submit" disabled={loading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Finishing account...' : 'Finish creating account'}</button>
+            <button type="submit" disabled={loading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Completing signup...' : 'Complete Signup'}</button>
           </form>
         </section>
       </AuthShell>
