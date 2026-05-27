@@ -128,7 +128,7 @@ const Home: React.FC = () => {
               <i className="las la-search absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-stone-500" />
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by book title or author..." className="w-full h-12 pl-12 pr-4 rounded-lg border border-stone-200 text-sm focus:outline-none focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10" />
             </div>
-            <button type="submit" className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-primary-600 text-white text-sm font-bold transition hover:bg-primary-700">
+            <button type="submit" className="cursor-pointer inline-flex items-center justify-center px-8 py-3 rounded-lg bg-primary-600 text-white text-sm font-bold transition hover:bg-primary-700">
               Search Books
             </button>
           </form>
