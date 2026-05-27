@@ -229,12 +229,7 @@ export const Register: React.FC = () => {
     return (
       <AuthShell showLegal={false} pageClassName="bg-white">
         <section className="w-full max-w-2xl px-4 text-center">
-          <div className="mx-auto flex h-[104px] w-[104px] items-center justify-center rounded-full bg-[#FFF4E2]" aria-label="Email verified">
-            <svg className="h-14 w-14 text-primary-600" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-              <circle cx="32" cy="32" r="25" fill="white" />
-              <path d="M20 32.5L28 40.5L44.5 23" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
+          <img src="/white-heavy-check-mark-svgrepo-com.svg" alt="" aria-hidden="true" className="mx-auto h-[104px] w-[104px] object-contain" />
           <h1 className="mt-8 text-4xl font-bold leading-tight text-stone-900 sm:text-5xl">Your email is verified.</h1>
           <p className="mx-auto mt-4 max-w-md text-lg leading-relaxed text-stone-600">Complete your sign-up details below to start using Reshelved.</p>
           {error && <p className={`${errorClass} mx-auto max-w-[408px] text-left`}>{error}</p>}
