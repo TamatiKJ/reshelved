@@ -1,5 +1,5 @@
 import React from 'react';
-import { Route, Routes, useNavigate } from 'react-router-dom';
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useChatDock } from '../contexts/ChatDockContext';
 import Messages from '../pages/Messages';
 
@@ -15,16 +15,15 @@ const actionClass = [
 
 const DesktopChatDock: React.FC = () => {
   const navigate = useNavigate();
-  const { backgroundLocation, isMinimized, minimize, restore, clear } =
-    useChatDock();
+  const location = useLocation();
+  const { isMinimized, chatPath, minimize, restore, close } = useChatDock();
 
   const closeDock = () => {
-    const target = backgroundLocation
-      ? `${backgroundLocation.pathname}${backgroundLocation.search}`
-      : '/browse';
-
-    clear();
-    navigate(target, { replace: true });
+    const onMessagesRoute = location.pathname.startsWith('/messages');
+    close();
+    if (onMessagesRoute) {
+      navigate('/browse', { replace: true });
+    }
   };
 
   if (isMinimized) {
@@ -32,9 +31,10 @@ const DesktopChatDock: React.FC = () => {
       <button
         type="button"
         onClick={restore}
-        className="fixed bottom-6 right-6 z-[70] hidden cursor-pointer
-          items-center gap-3 rounded-2xl border border-stone-200 bg-white
-          px-4 py-3 text-sm font-bold text-stone-900 shadow-2xl lg:flex"
+        className="fixed bottom-0 right-6 z-[70] hidden cursor-pointer
+          items-center gap-3 rounded-t-2xl border border-b-0 border-stone-200
+          bg-white px-4 py-3 text-sm font-bold text-stone-900 shadow-2xl
+          lg:flex"
         aria-label="Restore messages"
       >
         <span className={iconClass}>
@@ -48,10 +48,10 @@ const DesktopChatDock: React.FC = () => {
 
   return (
     <aside
-      className="fixed bottom-5 right-5 z-[70] hidden
-        h-[min(590px,calc(100vh-92px))] w-[min(800px,calc(100vw-40px))]
-        flex-col overflow-hidden rounded-[22px] border border-stone-200
-        bg-white shadow-2xl lg:flex"
+      className="fixed bottom-0 right-5 z-[70] hidden
+        h-[min(590px,calc(100vh-72px))] w-[min(800px,calc(100vw-40px))]
+        flex-col overflow-hidden rounded-t-[22px] border border-b-0
+        border-stone-200 bg-white shadow-2xl lg:flex"
       aria-label="Messages window"
     >
       <header className="flex shrink-0 items-center justify-between
@@ -96,7 +96,7 @@ const DesktopChatDock: React.FC = () => {
         [&_aside]:w-[265px] [&_aside]:min-w-[265px]
         [&_aside_h1]:hidden [&_aside_h1+div]:!mt-0"
       >
-        <Routes>
+        <Routes location={chatPath}>
           <Route path="/messages" element={<Messages />} />
           <Route path="/messages/:conversationId" element={<Messages />} />
         </Routes>
