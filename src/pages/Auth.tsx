@@ -228,7 +228,7 @@ export const Register: React.FC = () => {
   if (returningFromEmail) {
     return (
       <AuthShell>
-        <section className="w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
+        <section className="w-full max-w-[408px] rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
           <div className="text-center"><AuthLogo compact /><div className="mx-auto mt-7 flex h-14 w-14 items-center justify-center rounded-full bg-[#FFF4E2] text-primary-600"><i className="las la-check text-3xl" /></div><h1 className="mt-5 text-xl font-semibold text-stone-950">Email verified</h1><p className="mt-2 text-sm leading-relaxed text-stone-500">Create your password to finish setting up your Reshelved account.</p></div>
           {error && <p className={errorClass}>{error}</p>}
           <form onSubmit={finishVerifiedRegistration} className="mt-7 space-y-4">
@@ -252,7 +252,7 @@ export const Register: React.FC = () => {
           </div>
           <h1 className="mt-9 text-4xl font-bold leading-tight text-stone-900 sm:text-5xl">Verify your email to create your account.</h1>
           <p className="mx-auto mt-6 max-w-md text-lg font-semibold leading-snug text-stone-700">We sent a secure sign-up link to<br />{email}.</p>
-          <p className="mt-7 text-base font-semibold text-stone-800">Click the link in your email to continue. Check your spam folder if it is missing.</p>
+          <p className="mt-7 text-base font-semibold text-stone-800">Check your spam folder if the email is missing.</p>
           <button type="button" onClick={() => sendVerificationLink()} disabled={loading} className="mt-8 w-full max-w-xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-4 text-base font-semibold text-stone-900 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">{loading ? 'Sending...' : 'Resend verification link'}</button>
           <button type="button" onClick={() => setSent(false)} className="mt-4 cursor-pointer border-0 bg-transparent px-4 py-3 text-base font-semibold text-stone-700 transition hover:text-primary-600">Change email address</button>
         </section>
@@ -262,7 +262,7 @@ export const Register: React.FC = () => {
 
   return (
     <AuthShell>
-      <section className="w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
+      <section className="w-full max-w-[408px] rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
         <div className="text-center"><AuthLogo compact /><h1 className="mt-7 text-xl font-semibold text-stone-950">Create your Reshelved account</h1><p className="mt-2 text-sm text-stone-500">Verify your email before your account is created.</p></div>
         {error && <p className={errorClass}>{error}</p>}
         <form onSubmit={sendVerificationLink} className="mt-7 space-y-4">
