@@ -27,9 +27,9 @@ const getAuthErrorMessage = (error: any, fallback: string) => {
   }
 };
 
-const AuthLogo: React.FC = () => (
+const AuthLogo: React.FC<{ compact?: boolean }> = ({ compact = false }) => (
   <Link to="/" className="inline-flex items-center justify-center" aria-label="Reshelved home">
-    <img src="/reshelved-logo.svg" alt="Reshelved" className="h-8 w-auto" />
+    <img src="/reshelved-logo.svg" alt="Reshelved" className={`${compact ? 'h-5' : 'h-8'} w-auto`} />
   </Link>
 );
 
@@ -100,7 +100,7 @@ export const Login: React.FC = () => {
   return (
     <AuthShell>
       <section className="w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
-        <div className="text-center"><AuthLogo /><h1 className="mt-7 text-xl font-semibold text-stone-950">Log in to Reshelved</h1></div>
+        <div className="text-center"><AuthLogo compact /><h1 className="mt-7 text-xl font-semibold text-stone-950">Log in to Reshelved</h1></div>
         {error && <p className={errorClass}>{error}</p>}
         {message && <div className="mt-6 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>}
         <form onSubmit={handleSubmit} className="mt-7 space-y-4">
@@ -229,12 +229,12 @@ export const Register: React.FC = () => {
     return (
       <AuthShell>
         <section className="w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
-          <div className="text-center"><AuthLogo /><div className="mx-auto mt-7 flex h-14 w-14 items-center justify-center rounded-full bg-[#FFF4E2] text-primary-600"><i className="las la-check text-3xl" /></div><h1 className="mt-5 text-xl font-semibold text-stone-950">Email verified</h1><p className="mt-2 text-sm leading-relaxed text-stone-500">Create your password to finish setting up your Reshelved account.</p></div>
+          <div className="text-center"><AuthLogo compact /><div className="mx-auto mt-7 flex h-14 w-14 items-center justify-center rounded-full bg-[#FFF4E2] text-primary-600"><i className="las la-check text-3xl" /></div><h1 className="mt-5 text-xl font-semibold text-stone-950">Email verified</h1><p className="mt-2 text-sm leading-relaxed text-stone-500">Create your password to finish setting up your Reshelved account.</p></div>
           {error && <p className={errorClass}>{error}</p>}
           <form onSubmit={finishVerifiedRegistration} className="mt-7 space-y-4">
             <div><label className={`mb-1 block ${labelClass}`}>Full name</label><input type="text" required value={displayName} onChange={(event) => setDisplayName(event.target.value)} className={inputClass} autoComplete="name" /></div>
             <div><label className={`mb-1 block ${labelClass}`}>Email</label><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} className={inputClass} autoComplete="email" /></div>
-            <div><label className={`mb-1 block ${labelClass}`}>Password</label><PasswordField value={password} onChange={setPassword} autoComplete="new-password" /></div>
+            <div><label className={`mb-1 block ${labelClass}`}>Password</label><PasswordField value={password} onChange={setPassword} autoComplete="new-password" /><p className="mt-1.5 text-xs text-stone-500">Password must be 8 characters minimum.</p></div>
             <div><label className={`mb-1 block ${labelClass}`}>Confirm password</label><PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" /></div>
             <button type="submit" disabled={loading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Finishing account...' : 'Finish creating account'}</button>
           </form>
@@ -263,7 +263,7 @@ export const Register: React.FC = () => {
   return (
     <AuthShell>
       <section className="w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
-        <div className="text-center"><AuthLogo /><h1 className="mt-7 text-xl font-semibold text-stone-950">Create your Reshelved account</h1><p className="mt-2 text-sm text-stone-500">Verify your email before your account is created.</p></div>
+        <div className="text-center"><AuthLogo compact /><h1 className="mt-7 text-xl font-semibold text-stone-950">Create your Reshelved account</h1><p className="mt-2 text-sm text-stone-500">Verify your email before your account is created.</p></div>
         {error && <p className={errorClass}>{error}</p>}
         <form onSubmit={sendVerificationLink} className="mt-7 space-y-4">
           <div><label className={`mb-1 block ${labelClass}`}>Full name</label><input type="text" required value={displayName} onChange={(event) => setDisplayName(event.target.value)} className={inputClass} autoComplete="name" /></div>
