@@ -228,7 +228,7 @@ const AppContent: React.FC = () => {
       <PlatformListingDurationSync enabled={isAdminEnabled} />
       <Routes>
         <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
-        <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
+        <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPassword /></PublicOnlyRoute>} />
         <Route
           path="*"
