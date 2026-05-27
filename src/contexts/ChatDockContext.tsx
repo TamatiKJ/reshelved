@@ -5,15 +5,16 @@ import React, {
   useMemo,
   useState
 } from 'react';
-import type { Location } from 'react-router-dom';
 
 type ChatDockState = {
-  backgroundLocation: Location | null;
+  isOpen: boolean;
   isMinimized: boolean;
-  openFrom: (location: Location) => void;
+  chatPath: string;
+  open: (path?: string) => void;
+  updatePath: (path: string) => void;
   minimize: () => void;
   restore: () => void;
-  clear: () => void;
+  close: () => void;
 };
 
 const ChatDockContext = createContext<ChatDockState | null>(null);
@@ -21,13 +22,18 @@ const ChatDockContext = createContext<ChatDockState | null>(null);
 export const ChatDockProvider: React.FC<{ children: React.ReactNode }> = ({
   children
 }) => {
-  const [backgroundLocation, setBackgroundLocation] =
-    useState<Location | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [chatPath, setChatPath] = useState('/messages');
 
-  const openFrom = useCallback((location: Location) => {
-    setBackgroundLocation(location);
+  const open = useCallback((path = '/messages') => {
+    setChatPath(path);
+    setIsOpen(true);
     setIsMinimized(false);
+  }, []);
+
+  const updatePath = useCallback((path: string) => {
+    setChatPath(path);
   }, []);
 
   const minimize = useCallback(() => {
@@ -38,21 +44,24 @@ export const ChatDockProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsMinimized(false);
   }, []);
 
-  const clear = useCallback(() => {
-    setBackgroundLocation(null);
+  const close = useCallback(() => {
+    setIsOpen(false);
     setIsMinimized(false);
+    setChatPath('/messages');
   }, []);
 
   const value = useMemo(
     () => ({
-      backgroundLocation,
+      isOpen,
       isMinimized,
-      openFrom,
+      chatPath,
+      open,
+      updatePath,
       minimize,
       restore,
-      clear
+      close
     }),
-    [backgroundLocation, isMinimized, openFrom, minimize, restore, clear]
+    [isOpen, isMinimized, chatPath, open, updatePath, minimize, restore, close]
   );
 
   return (
