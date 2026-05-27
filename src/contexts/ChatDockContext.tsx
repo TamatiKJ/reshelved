@@ -5,16 +5,15 @@ import React, {
   useMemo,
   useState
 } from 'react';
+import type { Location } from 'react-router-dom';
 
 type ChatDockState = {
-  isOpen: boolean;
+  backgroundLocation: Location | null;
   isMinimized: boolean;
-  conversationId: string | null;
-  openInbox: () => void;
-  openConversation: (conversationId: string) => void;
+  openFrom: (location: Location) => void;
   minimize: () => void;
   restore: () => void;
-  close: () => void;
+  clear: () => void;
 };
 
 const ChatDockContext = createContext<ChatDockState | null>(null);
@@ -22,20 +21,13 @@ const ChatDockContext = createContext<ChatDockState | null>(null);
 export const ChatDockProvider: React.FC<{ children: React.ReactNode }> = ({
   children
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [backgroundLocation, setBackgroundLocation] =
+    useState<Location | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
 
-  const openInbox = useCallback(() => {
-    setConversationId(null);
+  const openFrom = useCallback((location: Location) => {
+    setBackgroundLocation(location);
     setIsMinimized(false);
-    setIsOpen(true);
-  }, []);
-
-  const openConversation = useCallback((id: string) => {
-    setConversationId(id);
-    setIsMinimized(false);
-    setIsOpen(true);
   }, []);
 
   const minimize = useCallback(() => {
@@ -44,36 +36,23 @@ export const ChatDockProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const restore = useCallback(() => {
     setIsMinimized(false);
-    setIsOpen(true);
   }, []);
 
-  const close = useCallback(() => {
-    setIsOpen(false);
+  const clear = useCallback(() => {
+    setBackgroundLocation(null);
     setIsMinimized(false);
-    setConversationId(null);
   }, []);
 
   const value = useMemo(
     () => ({
-      isOpen,
+      backgroundLocation,
       isMinimized,
-      conversationId,
-      openInbox,
-      openConversation,
+      openFrom,
       minimize,
       restore,
-      close
+      clear
     }),
-    [
-      isOpen,
-      isMinimized,
-      conversationId,
-      openInbox,
-      openConversation,
-      minimize,
-      restore,
-      close
-    ]
+    [backgroundLocation, isMinimized, openFrom, minimize, restore, clear]
   );
 
   return (
