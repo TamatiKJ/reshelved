@@ -49,13 +49,13 @@ const DesktopChatDock: React.FC = () => {
   return (
     <aside
       className="fixed bottom-5 right-5 z-[70] hidden
-        h-[min(660px,calc(100vh-92px))] w-[min(920px,calc(100vw-40px))]
-        flex-col overflow-hidden rounded-[24px] border border-stone-200
+        h-[min(590px,calc(100vh-92px))] w-[min(800px,calc(100vw-40px))]
+        flex-col overflow-hidden rounded-[22px] border border-stone-200
         bg-white shadow-2xl lg:flex"
       aria-label="Messages window"
     >
-      <header className="flex h-14 shrink-0 items-center justify-between
-        border-b border-stone-200 bg-white px-5"
+      <header className="flex shrink-0 items-center justify-between
+        border-b border-stone-200 bg-white px-4 py-2.5"
       >
         <div className="flex items-center gap-3 font-['Work_Sans']
           text-lg font-bold text-stone-950"
@@ -93,7 +93,7 @@ const DesktopChatDock: React.FC = () => {
         [&>div>div:last-child]:rounded-none
         [&>div>div:last-child]:border-0
         [&>div>div:last-child]:shadow-none
-        [&_aside]:w-[310px] [&_aside]:min-w-[310px]
+        [&_aside]:w-[265px] [&_aside]:min-w-[265px]
         [&_aside_h1]:hidden [&_aside_h1+div]:!mt-0"
       >
         <Routes>
