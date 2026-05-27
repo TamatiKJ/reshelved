@@ -48,9 +48,10 @@ const DesktopChatDock: React.FC = () => {
 
   return (
     <aside
-      className="fixed bottom-5 right-5 z-[70] hidden h-[min(720px,calc(100vh-92px))]
-        w-[min(1040px,calc(100vw-40px))] flex-col overflow-hidden rounded-[24px]
-        border border-stone-200 bg-white shadow-2xl lg:flex"
+      className="fixed bottom-5 right-5 z-[70] hidden
+        h-[min(660px,calc(100vh-92px))] w-[min(920px,calc(100vw-40px))]
+        flex-col overflow-hidden rounded-[24px] border border-stone-200
+        bg-white shadow-2xl lg:flex"
       aria-label="Messages window"
     >
       <header className="flex h-14 shrink-0 items-center justify-between
@@ -88,7 +89,7 @@ const DesktopChatDock: React.FC = () => {
         [&>div>div:last-child]:h-auto [&>div>div:last-child]:min-h-0
         [&>div>div:last-child]:flex-1 [&>div>div:last-child]:rounded-none
         [&>div>div:last-child]:border-0 [&>div>div:last-child]:shadow-none
-        [&_aside]:w-[330px] [&_aside]:min-w-[330px]"
+        [&_aside]:w-[310px] [&_aside]:min-w-[310px]"
       >
         <Routes>
           <Route path="/messages" element={<Messages />} />
