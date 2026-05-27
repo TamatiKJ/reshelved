@@ -84,12 +84,17 @@ const DesktopChatDock: React.FC = () => {
           </button>
         </div>
       </header>
-      <div className="min-h-0 flex-1 overflow-hidden [&>div]:flex
-        [&>div]:h-full [&>div]:max-w-none [&>div]:flex-col [&>div]:p-0
-        [&>div>div:last-child]:h-auto [&>div>div:last-child]:min-h-0
-        [&>div>div:last-child]:flex-1 [&>div>div:last-child]:rounded-none
-        [&>div>div:last-child]:border-0 [&>div>div:last-child]:shadow-none
-        [&_aside]:w-[310px] [&_aside]:min-w-[310px]"
+      <div className="min-h-0 flex-1 overflow-hidden
+        [&>div]:flex [&>div]:h-full [&>div]:max-w-none
+        [&>div]:flex-col [&>div]:p-0
+        [&>div>div:last-child]:h-auto
+        [&>div>div:last-child]:min-h-0
+        [&>div>div:last-child]:flex-1
+        [&>div>div:last-child]:rounded-none
+        [&>div>div:last-child]:border-0
+        [&>div>div:last-child]:shadow-none
+        [&_aside]:w-[310px] [&_aside]:min-w-[310px]
+        [&_aside_h1]:hidden [&_aside_h1+div]:!mt-0"
       >
         <Routes>
           <Route path="/messages" element={<Messages />} />
