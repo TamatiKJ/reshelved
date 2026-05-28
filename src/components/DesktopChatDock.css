@@ -30,6 +30,53 @@
   background: #f5f5f4;
 }
 
+.desktop-chat-dock .absolute.right-0.top-12.z-40.w-52 {
+  width: 172px !important;
+  padding: 5px !important;
+  border-radius: 11px !important;
+  box-shadow: 0 10px 24px rgba(28, 25, 23, 0.1) !important;
+}
+
+.desktop-chat-dock .absolute.right-0.top-12.z-40.w-52 button {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 10px;
+  border-radius: 7px;
+  padding: 8px 10px !important;
+  font-size: 13px !important;
+  line-height: 18px;
+  transition: background-color 150ms ease;
+}
+
+.desktop-chat-dock .absolute.right-0.top-12.z-40.w-52 button:hover {
+  background: #f5f5f4;
+}
+
+.desktop-chat-dock .absolute.right-0.top-12.z-40.w-52 button::before {
+  width: 17px;
+  flex-shrink: 0;
+  color: #44403c;
+  font-family: "Line Awesome Free";
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+}
+
+.desktop-chat-dock .absolute.right-0.top-12.z-40.w-52 button:nth-child(1)::before {
+  content: "\f2ed";
+}
+
+.desktop-chat-dock .absolute.right-0.top-12.z-40.w-52 button:nth-child(2)::before {
+  content: "\f024";
+}
+
+.desktop-chat-dock .absolute.right-0.top-12.z-40.w-52 button:nth-child(3)::before {
+  content: "\f05e";
+  color: #dc2626;
+}
+
 .desktop-chat-dock .border-primary-200.bg-primary-50.text-primary-700 {
   position: absolute;
   right: 16px;
