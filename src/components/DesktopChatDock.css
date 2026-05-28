@@ -1,3 +1,11 @@
+.desktop-chat-dock {
+  overscroll-behavior: contain;
+}
+
+.desktop-chat-dock .overflow-y-auto {
+  overscroll-behavior: contain;
+}
+
 .desktop-chat-dock button {
   cursor: pointer;
 }
