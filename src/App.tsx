@@ -63,7 +63,11 @@ const getPageScopeClass = (pathname: string) => {
 };
 
 const ScrollToTop: React.FC<{ disabled?: boolean }> = ({ disabled = false }) => {
-  const { pathname, search, key } = useLocation();
+  const location = useLocation();
+  const { pathname, search, key } = location;
+  const preserveScroll = Boolean(
+    (location.state as { preserveScroll?: boolean } | null)?.preserveScroll
+  );
 
   useEffect(() => {
     if ('scrollRestoration' in window.history) {
@@ -72,7 +76,7 @@ const ScrollToTop: React.FC<{ disabled?: boolean }> = ({ disabled = false }) => 
   }, []);
 
   useLayoutEffect(() => {
-    if (disabled) return undefined;
+    if (disabled || preserveScroll) return undefined;
 
     const html = document.documentElement;
     const body = document.body;
@@ -93,7 +97,7 @@ const ScrollToTop: React.FC<{ disabled?: boolean }> = ({ disabled = false }) => 
     return () => {
       html.style.scrollBehavior = previousScrollBehavior;
     };
-  }, [disabled, pathname, search, key]);
+  }, [disabled, preserveScroll, pathname, search, key]);
 
   return null;
 };
@@ -320,10 +324,47 @@ const AppContent: React.FC = () => {
   const showDesktopDock = Boolean(currentUser && isDesktop && isOpen);
 
   useEffect(() => {
+    if (!currentUser || !isDesktop) return undefined;
+
+    const openMessageLinkInDock = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented
+        || event.button !== 0
+        || event.ctrlKey
+        || event.metaKey
+        || event.shiftKey
+        || event.altKey
+      ) return;
+
+      const target = event.target as HTMLElement;
+      const anchor = target.closest<HTMLAnchorElement>('a[href]');
+      if (!anchor) return;
+
+      const url = new URL(anchor.href, window.location.origin);
+      if (
+        url.origin !== window.location.origin
+        || !url.pathname.startsWith('/messages')
+      ) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      open(`${url.pathname}${url.search}`);
+    };
+
+    document.addEventListener('click', openMessageLinkInDock, true);
+    return () => {
+      document.removeEventListener('click', openMessageLinkInDock, true);
+    };
+  }, [currentUser, isDesktop, open]);
+
+  useEffect(() => {
     if (!isDesktopMessageEntry) return;
     open(`${location.pathname}${location.search}`);
     const target = `${underlyingLocation.pathname}${underlyingLocation.search}${underlyingLocation.hash}`;
-    navigate(target, { replace: true });
+    navigate(target, {
+      replace: true,
+      state: { preserveScroll: true }
+    });
   }, [
     isDesktopMessageEntry,
     location.pathname,
