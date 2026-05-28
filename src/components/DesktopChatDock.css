@@ -1,13 +1,26 @@
 .desktop-chat-dock .absolute.top-full.z-40.w-48 {
   position: fixed !important;
   z-index: 240 !important;
+  width: 144px !important;
   right: auto !important;
   bottom: auto !important;
   margin: 0 !important;
+  padding: 4px !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 20px rgba(28, 25, 23, 0.1) !important;
 }
 
 .desktop-chat-dock .absolute.top-full.z-40.w-48 button {
+  min-height: 34px;
   cursor: pointer;
+  border-radius: 7px;
+  padding: 7px 10px !important;
+  font-size: 13px !important;
+  line-height: 18px;
+}
+
+.desktop-chat-dock .absolute.top-full.z-40.w-48 button:hover {
+  background: #f5f5f4;
 }
 
 .desktop-chat-dock .border-primary-200.bg-primary-50.text-primary-700 {
