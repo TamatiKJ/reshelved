@@ -1,1 +1,1 @@
-export { default } from '../components/MessagesPage';
+export { default } from '../components/MessagesPageEnhanced';
