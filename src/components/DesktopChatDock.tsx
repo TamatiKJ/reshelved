@@ -69,15 +69,40 @@ const DesktopChatDock: React.FC = () => {
       });
     };
 
+    const preventBackgroundScroll = (event: WheelEvent) => {
+      const target = event.target as HTMLElement;
+      const scrollRegion = target.closest<HTMLElement>('.overflow-y-auto');
+
+      if (!scrollRegion || !dock.contains(scrollRegion)) {
+        event.preventDefault();
+        return;
+      }
+
+      const hasVerticalScroll = scrollRegion.scrollHeight > scrollRegion.clientHeight;
+      const atTop = scrollRegion.scrollTop <= 0;
+      const atBottom = (
+        Math.ceil(scrollRegion.scrollTop + scrollRegion.clientHeight)
+        >= scrollRegion.scrollHeight
+      );
+      const scrollingUpPastTop = event.deltaY < 0 && atTop;
+      const scrollingDownPastBottom = event.deltaY > 0 && atBottom;
+
+      if (!hasVerticalScroll || scrollingUpPastTop || scrollingDownPastBottom) {
+        event.preventDefault();
+      }
+    };
+
     const observer = new MutationObserver(positionMenus);
     observer.observe(dock, { childList: true, subtree: true });
     dock.addEventListener('scroll', positionMenus, true);
+    dock.addEventListener('wheel', preventBackgroundScroll, { passive: false });
     window.addEventListener('resize', positionMenus);
     positionMenus();
 
     return () => {
       observer.disconnect();
       dock.removeEventListener('scroll', positionMenus, true);
+      dock.removeEventListener('wheel', preventBackgroundScroll);
       window.removeEventListener('resize', positionMenus);
     };
   }, [chatPath, isMinimized]);
