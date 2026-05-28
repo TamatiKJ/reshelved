@@ -2,6 +2,7 @@ import React from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useChatDock } from '../contexts/ChatDockContext';
 import Messages from '../pages/Messages';
+import './DesktopChatDock.css';
 
 const iconClass = [
   'flex h-9 w-9 items-center justify-center rounded-full',
@@ -48,7 +49,7 @@ const DesktopChatDock: React.FC = () => {
 
   return (
     <aside
-      className="fixed bottom-0 right-5 z-[70] hidden
+      className="desktop-chat-dock fixed bottom-0 right-5 z-[70] hidden
         h-[min(590px,calc(100vh-72px))] w-[min(800px,calc(100vw-40px))]
         flex-col overflow-hidden rounded-t-[22px] border border-b-0
         border-stone-200 bg-white shadow-2xl lg:flex"
