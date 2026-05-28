@@ -1,0 +1,15 @@
+.desktop-chat-dock .absolute.top-full {
+  top: auto !important;
+  bottom: calc(100% + 0.5rem) !important;
+  margin-top: 0 !important;
+}
+
+.desktop-chat-dock .absolute.top-full.right-full {
+  right: 0 !important;
+  margin-right: 0 !important;
+}
+
+.desktop-chat-dock .absolute.top-full.left-full {
+  left: 0 !important;
+  margin-left: 0 !important;
+}
