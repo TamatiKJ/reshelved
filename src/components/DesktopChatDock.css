@@ -1,15 +1,9 @@
-.desktop-chat-dock .absolute.top-full {
-  top: auto !important;
-  bottom: calc(100% + 0.5rem) !important;
-  margin-top: 0 !important;
-}
-
-.desktop-chat-dock .absolute.top-full.right-full {
-  right: 0 !important;
-  margin-right: 0 !important;
-}
-
-.desktop-chat-dock .absolute.top-full.left-full {
-  left: 0 !important;
-  margin-left: 0 !important;
+.desktop-chat-dock .absolute.top-full.z-40.w-48 {
+  position: fixed !important;
+  z-index: 120 !important;
+  top: var(--message-menu-top) !important;
+  left: var(--message-menu-left) !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
 }
