@@ -5,3 +5,25 @@
   bottom: auto !important;
   margin: 0 !important;
 }
+
+.desktop-chat-dock .absolute.top-full.z-40.w-48 button {
+  cursor: pointer;
+}
+
+.desktop-chat-dock .border-primary-200.bg-primary-50.text-primary-700 {
+  position: absolute;
+  right: 16px;
+  bottom: 72px;
+  z-index: 220;
+  width: auto;
+  max-width: min(300px, calc(100% - 32px));
+  margin: 0;
+  border-color: #e7e5e4;
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 8px 12px;
+  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.12);
+  color: #57534e;
+  font-size: 13px;
+  font-weight: 500;
+}
