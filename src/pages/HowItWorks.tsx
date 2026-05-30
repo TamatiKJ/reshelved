@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const processSteps = [
@@ -48,6 +48,33 @@ const benefits = [
     icon: 'la-star',
     title: 'Use ratings and reviews',
     description: 'Feedback helps readers identify reliable book owners.',
+  },
+];
+
+const storySteps = [
+  {
+    id: 'list',
+    eyebrow: 'Step 1',
+    icon: 'la-camera-retro',
+    title: 'List the book once',
+    description: 'Add photos, price, condition, and location. Readers can see the key details before they message you.',
+    imageLabel: 'Image placeholder 560 x 460',
+  },
+  {
+    id: 'find',
+    eyebrow: 'Step 2',
+    icon: 'la-search',
+    title: 'Readers find it fast',
+    description: 'They search by title, author, category, type, and Nairobi location instead of checking many apps.',
+    imageLabel: 'Image placeholder 560 x 460',
+  },
+  {
+    id: 'message',
+    eyebrow: 'Step 3',
+    icon: 'la-comments',
+    title: 'Agree inside the platform',
+    description: 'Message the owner, ask questions, and agree on the handover when both sides are ready.',
+    imageLabel: 'Image placeholder 560 x 460',
   },
 ];
 
@@ -143,6 +170,113 @@ const HeroVisual = () => (
     </div>
   </div>
 );
+
+const ScrollPlaceholder = ({ label }: { label: string }) => (
+  <div className="flex aspect-[14/11] min-h-[360px] items-center justify-center rounded-[30px] border border-stone-200 bg-[#FFF9F0] p-8 shadow-xl shadow-stone-200/60">
+    <div className="text-center">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-primary-600 shadow-sm">
+        <i className="las la-image text-3xl" />
+      </div>
+      <p className="mt-4 font-[Work_Sans] text-xl font-black text-stone-950">{label}</p>
+      <p className="mt-2 text-sm leading-6 text-stone-500">Replace this with the matching product image.</p>
+    </div>
+  </div>
+);
+
+const StoryStepCard = ({ step, isActive }: { step: (typeof storySteps)[number]; isActive: boolean }) => (
+  <div className={`rounded-2xl border p-6 transition duration-300 ${isActive ? 'border-primary-600 bg-[#FFF9F0]' : 'border-stone-200 bg-white'}`}>
+    <div className="flex items-start gap-4">
+      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${isActive ? 'bg-primary-600 text-white' : 'bg-[#FFF9F0] text-primary-600'}`}>
+        <i className={`las ${step.icon} text-2xl`} />
+      </div>
+      <div>
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-primary-700">{step.eyebrow}</p>
+        <h3 className="mt-2 font-[Work_Sans] text-xl font-black text-stone-950">{step.title}</h3>
+        <p className="mt-2 text-sm leading-6 text-stone-600">{step.description}</p>
+      </div>
+    </div>
+  </div>
+);
+
+const ScrollStorySection = () => {
+  const [activeStep, setActiveStep] = useState(0);
+  const sectionRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const stepElements = Array.from(section.querySelectorAll<HTMLElement>('[data-story-step]'));
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (!visible) return;
+
+        const nextIndex = Number(visible.target.getAttribute('data-story-step'));
+        if (!Number.isNaN(nextIndex)) {
+          setActiveStep(nextIndex);
+        }
+      },
+      { rootMargin: '-35% 0px -35% 0px', threshold: [0.25, 0.5, 0.75] }
+    );
+
+    stepElements.forEach((element) => observer.observe(element));
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <section ref={sectionRef} className="bg-white py-16 sm:py-24">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="text-sm font-black uppercase tracking-[0.22em] text-primary-700">Simple steps</p>
+          <h2 className="mt-4 font-[Work_Sans] text-4xl font-black tracking-[-0.03em] text-stone-950 sm:text-6xl">
+            How books move fast
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-stone-600">
+            Listing or finding a book is less hard than you think. Here is the quick path.
+          </p>
+        </div>
+
+        <div className="mt-14 hidden gap-14 lg:grid lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
+          <div className="sticky top-28">
+            <ScrollPlaceholder label={storySteps[activeStep].imageLabel} />
+          </div>
+
+          <div className="space-y-8 py-12">
+            {storySteps.map((step, index) => (
+              <div key={step.id} data-story-step={index} className="min-h-[360px] scroll-mt-32">
+                <StoryStepCard step={step} isActive={activeStep === index} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-10 lg:hidden">
+          <ScrollPlaceholder label={storySteps[activeStep].imageLabel} />
+          <div className="mt-5 grid grid-cols-3 gap-2 rounded-2xl bg-[#FFF9F0] p-2">
+            {storySteps.map((step, index) => (
+              <button
+                key={step.id}
+                type="button"
+                onClick={() => setActiveStep(index)}
+                className={`rounded-xl px-3 py-3 text-xs font-black transition ${activeStep === index ? 'bg-primary-600 text-white' : 'bg-white text-stone-700'}`}
+              >
+                {step.eyebrow}
+              </button>
+            ))}
+          </div>
+          <div className="mt-5">
+            <StoryStepCard step={storySteps[activeStep]} isActive />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
 
 const ProcessSection = () => (
   <section className="bg-[#121212] py-16 text-white sm:py-24">
@@ -306,6 +440,8 @@ const HowItWorks: React.FC = () => {
           <HeroVisual />
         </div>
       </section>
+
+      <ScrollStorySection />
 
       <section className="bg-white py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
