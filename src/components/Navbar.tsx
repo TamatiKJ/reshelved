@@ -67,7 +67,7 @@ const Navbar: React.FC = () => {
             <div className="hidden md:flex items-center gap-1">
               <Link to="/" className={navLinkClass}>Home</Link>
               <Link to="/browse" className={navLinkClass}>Browse</Link>
-              <a href="/#how-it-works" className={navLinkClass}>How it Works</a>
+              <Link to="/how-it-works" className={navLinkClass}>How it Works</Link>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-3 shrink-0">
@@ -143,7 +143,7 @@ const Navbar: React.FC = () => {
             </div>
             <div className="space-y-0">
               <Link to="/browse" onClick={closeMobile} className={mobileMainLinkClass}>Browse <i className="las la-angle-right text-xl" /></Link>
-              <a href="/#how-it-works" onClick={closeMobile} className={mobileMainLinkClass}>How it Works <i className="las la-angle-right text-xl" /></a>
+              <Link to="/how-it-works" onClick={closeMobile} className={mobileMainLinkClass}>How it Works <i className="las la-angle-right text-xl" /></Link>
               <Link to="/create" onClick={closeMobile} className={mobileMainLinkClass}>List a Book <i className="las la-angle-right text-xl" /></Link>
               {currentUser && <Link to="/messages" onClick={closeMobile} className={mobileMainLinkClass}>Messages <span className="flex items-center gap-2"><CountBadge count={messageUnreadCount} /><i className="las la-angle-right text-xl" /></span></Link>}
               {currentUser && <Link to="/notifications" onClick={closeMobile} className={mobileMainLinkClass}>Notifications <span className="flex items-center gap-2">{unreadCount > 0 && <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>}<i className="las la-angle-right text-xl" /></span></Link>}
