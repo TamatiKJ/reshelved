@@ -176,11 +176,11 @@ const ProcessSection = () => (
         </div>
       </div>
 
-      <div className="mt-12 flex items-start gap-4 rounded-xl border border-white/10 bg-white/[0.04] p-5">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FFF4E2]/50 text-primary-600">
+      <div className="mt-12 flex items-center gap-5 rounded-xl border border-white/10 bg-white/[0.04] p-5 sm:p-6">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-primary-600">
           <i className="las la-shield-alt text-2xl" />
         </div>
-        <p className="text-sm leading-6 text-white/75">
+        <p className="max-w-2xl text-sm leading-6 text-white/75">
           Your account information and conversations stay inside the platform. You remain in control of what you list, who you message, and when you remove a book from circulation.
         </p>
       </div>
