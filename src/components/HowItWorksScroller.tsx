@@ -49,7 +49,11 @@ const StepIcon = ({ icon, active }: { icon: string; active: boolean }) => (
 );
 
 const DesktopStep = ({ step, active, onClick }: { step: Step; active: boolean; onClick: () => void }) => (
-  <button type="button" onClick={onClick} className={`relative w-full rounded-[22px] border border-stone-200 bg-white py-4 pl-8 pr-4 text-left transition ${active ? 'opacity-100' : 'opacity-60 hover:opacity-90'}`}>
+  <button
+    type="button"
+    onClick={onClick}
+    className={`relative w-full rounded-none border-0 py-4 pl-8 pr-4 text-left transition ${active ? 'bg-[#FFF9F0] opacity-100' : 'bg-white opacity-60 hover:bg-stone-50 hover:opacity-90'}`}
+  >
     <span className="absolute bottom-4 left-0 top-4 w-[2px] bg-stone-200" />
     {active && (
       <span
