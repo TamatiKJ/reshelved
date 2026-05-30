@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 
-const brandBlue = '#1665CC';
 const autoAdvanceMs = 6000;
 
 const steps = [
@@ -112,8 +111,7 @@ const HowItWorksScroller = () => {
       `}</style>
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs font-black uppercase tracking-[0.22em]" style={{ color: brandBlue }}>Simple Steps</p>
-          <h2 className="mt-3 font-[Work_Sans] text-4xl font-black tracking-[-0.03em] text-stone-950 sm:text-5xl">How it works</h2>
+          <h2 className="font-[Work_Sans] text-4xl font-black tracking-[-0.03em] text-stone-950 sm:text-5xl">How it works</h2>
           <p className="mx-auto mt-3 max-w-2xl text-base leading-7 text-stone-600">Second-hand books should feel easy, safe, and worth it.</p>
         </div>
 
