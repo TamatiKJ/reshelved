@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const processSteps = [
@@ -57,8 +57,7 @@ const storySteps = [
     eyebrow: 'Step 1',
     icon: 'la-book-open',
     title: 'List your book once',
-    description: 'Add photos, condition, price, and location so readers know what you have before they message you.',
-    imageLabel: 'Image placeholder 560 x 460',
+    description: 'Add title, author, condition, photos, and location so readers know what you have before they message you.',
   },
   {
     id: 'choose',
@@ -66,7 +65,6 @@ const storySteps = [
     icon: 'la-sync-alt',
     title: 'Choose sell, swap, or donate',
     description: 'Pick how you want the book to move. Sell it for cash, swap it, or give it to a reader who needs it.',
-    imageLabel: 'Image placeholder 560 x 460',
   },
   {
     id: 'message',
@@ -74,7 +72,6 @@ const storySteps = [
     icon: 'la-comments',
     title: 'Message and agree',
     description: 'Talk inside Reshelved, confirm the book, and agree on the handover when both sides are ready.',
-    imageLabel: 'Image placeholder 560 x 460',
   },
   {
     id: 'rate',
@@ -82,7 +79,6 @@ const storySteps = [
     icon: 'la-star',
     title: 'Rate your exchange',
     description: 'Leave a quick rating after the exchange so other readers know who they can trust.',
-    imageLabel: 'Image placeholder 560 x 460',
   },
 ];
 
@@ -179,124 +175,211 @@ const HeroVisual = () => (
   </div>
 );
 
-const ScrollPlaceholder = ({ label }: { label: string }) => (
-  <div className="relative mx-auto w-full max-w-[560px]">
-    <div className="rounded-[22px] border border-stone-200 bg-stone-100 p-4 shadow-xl shadow-stone-200/70">
-      <div className="flex aspect-[28/23] items-center justify-center rounded-2xl bg-[#FFF9F0]">
-        <div className="text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-primary-600 shadow-sm">
-            <i className="las la-image text-3xl" />
+const PhoneMockup = ({ activeStep }: { activeStep: number }) => {
+  const current = storySteps[activeStep];
+
+  return (
+    <div className="relative mx-auto w-full max-w-[360px]">
+      <div className="absolute -left-10 top-16 hidden h-28 w-28 rounded-full bg-[#0F766E]/10 blur-2xl lg:block" />
+      <div className="absolute -right-8 bottom-16 hidden h-36 w-36 rounded-full bg-primary-600/10 blur-2xl lg:block" />
+      <div className="relative rounded-[46px] border border-stone-200 bg-stone-950 p-3 shadow-2xl shadow-stone-300/80">
+        <div className="rounded-[36px] bg-white p-4">
+          <div className="mx-auto mb-4 h-1.5 w-20 rounded-full bg-stone-200" />
+          <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-stone-400">Reshelved</p>
+              <h3 className="mt-1 font-[Work_Sans] text-base font-black text-stone-950">{current.title}</h3>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0F766E] text-white">
+              <i className={`las ${current.icon} text-xl`} />
+            </div>
           </div>
-          <p className="mt-4 font-[Work_Sans] text-lg font-black text-stone-950">{label}</p>
+
+          <div className="min-h-[430px] py-5">
+            {current.id === 'list' && (
+              <div className="space-y-4">
+                <div className="rounded-2xl bg-[#FFF9F0] p-4">
+                  <div className="flex h-28 items-center justify-center rounded-xl border border-dashed border-stone-300 bg-white text-stone-400">
+                    <div className="text-center">
+                      <i className="las la-camera text-3xl" />
+                      <p className="mt-1 text-xs font-bold">Book photo</p>
+                    </div>
+                  </div>
+                </div>
+                {[
+                  ['Book title', 'Atomic Habits'],
+                  ['Author', 'James Clear'],
+                  ['Condition', 'Good'],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-2xl border border-stone-200 bg-white p-4">
+                    <p className="text-xs font-bold text-stone-400">{label}</p>
+                    <p className="mt-1 font-[Work_Sans] text-sm font-black text-stone-950">{value}</p>
+                  </div>
+                ))}
+                <div className="rounded-2xl bg-[#0F766E] py-3 text-center text-sm font-black text-white">Publish Listing</div>
+              </div>
+            )}
+
+            {current.id === 'choose' && (
+              <div className="space-y-4">
+                {[
+                  ['Sell', 'Set a price and earn cash', 'la-money-bill-wave'],
+                  ['Swap', 'Trade for another book', 'la-sync-alt'],
+                  ['Donate', 'Give it to a reader', 'la-hand-holding-heart'],
+                ].map(([label, text, icon], index) => (
+                  <div key={label} className={`rounded-2xl border p-4 ${index === 0 ? 'border-[#0F766E] bg-[#0F766E]/5' : 'border-stone-200 bg-white'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${index === 0 ? 'bg-[#0F766E] text-white' : 'bg-[#FFF9F0] text-[#0F766E]'}`}>
+                        <i className={`las ${icon} text-xl`} />
+                      </div>
+                      <div>
+                        <p className="font-[Work_Sans] text-sm font-black text-stone-950">{label}</p>
+                        <p className="text-xs text-stone-500">{text}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="rounded-2xl bg-stone-950 py-3 text-center text-sm font-black text-white">Save Choice</div>
+              </div>
+            )}
+
+            {current.id === 'message' && (
+              <div className="space-y-4">
+                <div className="rounded-2xl bg-[#FFF9F0] p-4">
+                  <p className="font-[Work_Sans] text-sm font-black text-stone-950">Atomic Habits</p>
+                  <p className="mt-1 text-xs text-stone-500">KSh 650 · Westlands</p>
+                </div>
+                <div className="flex justify-start">
+                  <div className="max-w-[78%] rounded-2xl rounded-bl-sm bg-stone-100 px-4 py-3 text-sm text-stone-700">Hi, is this still available?</div>
+                </div>
+                <div className="flex justify-end">
+                  <div className="max-w-[78%] rounded-2xl rounded-br-sm bg-[#0F766E] px-4 py-3 text-sm text-white">Yes. It is still available.</div>
+                </div>
+                <div className="flex justify-start">
+                  <div className="max-w-[78%] rounded-2xl rounded-bl-sm bg-stone-100 px-4 py-3 text-sm text-stone-700">Can we meet near Sarit?</div>
+                </div>
+                <div className="rounded-2xl border border-stone-200 bg-white p-3 text-sm text-stone-400">Type a message...</div>
+              </div>
+            )}
+
+            {current.id === 'rate' && (
+              <div className="space-y-5 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#0F766E]/10 text-[#0F766E]">
+                  <i className="las la-check text-3xl" />
+                </div>
+                <div>
+                  <h4 className="font-[Work_Sans] text-xl font-black text-stone-950">Exchange complete</h4>
+                  <p className="mt-2 text-sm leading-6 text-stone-500">How was your book trade?</p>
+                </div>
+                <div className="flex justify-center gap-1 text-3xl text-[#0F766E]">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <i key={star} className="las la-star" />
+                  ))}
+                </div>
+                <div className="rounded-2xl border border-stone-200 bg-white p-4 text-left">
+                  <p className="text-xs font-bold text-stone-400">Short review</p>
+                  <p className="mt-2 text-sm text-stone-500">Smooth exchange. Book matched the listing.</p>
+                </div>
+                <div className="rounded-2xl bg-[#0F766E] py-3 text-center text-sm font-black text-white">Submit Rating</div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
-    <div className="absolute -bottom-8 right-6 hidden w-52 rounded-2xl border border-stone-200 bg-white p-4 shadow-xl shadow-stone-200/80 sm:block">
-      <p className="font-[Work_Sans] text-base font-black text-stone-950">Book listing preview</p>
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        {[1, 2, 3, 4, 5, 6].map((item) => (
-          <div key={item} className="rounded-lg bg-[#FFF9F0] p-2">
-            <div className="h-7 rounded-md bg-primary-600/10" />
-            <div className="mt-2 h-1.5 w-8 rounded-full bg-stone-200" />
-          </div>
-        ))}
+  );
+};
+
+const StoryStepCard = ({
+  step,
+  isActive,
+  onClick,
+}: {
+  step: (typeof storySteps)[number];
+  isActive: boolean;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`w-full rounded-2xl border bg-white p-6 text-left transition ${
+      isActive
+        ? 'border-stone-200 shadow-xl shadow-stone-200/70'
+        : 'border-stone-100 opacity-55 hover:opacity-80'
+    }`}
+  >
+    <div className={`border-l-4 pl-5 ${isActive ? 'border-[#0F766E]' : 'border-stone-200'}`}>
+      <div className="flex items-start gap-4">
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${isActive ? 'bg-[#0F766E] text-white' : 'bg-stone-100 text-stone-400'}`}>
+          <i className={`las ${step.icon} text-xl`} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={`text-xs font-black uppercase tracking-[0.2em] ${isActive ? 'text-[#0F766E]' : 'text-stone-400'}`}>{step.eyebrow}</p>
+          <h3 className={`mt-2 font-[Work_Sans] text-[19px] leading-6 text-stone-950 ${isActive ? 'font-black' : 'font-bold'}`}>{step.title}</h3>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600">{step.description}</p>
+        </div>
+      </div>
+      <div className="mt-5 h-1 overflow-hidden rounded-full bg-stone-100">
+        {isActive && (
+          <div
+            key={step.id}
+            className="h-full rounded-full bg-[#0F766E]"
+            style={{ animation: 'story-progress 3000ms linear forwards' }}
+          />
+        )}
       </div>
     </div>
-  </div>
-);
-
-const StoryStepCard = ({ step, isActive }: { step: (typeof storySteps)[number]; isActive: boolean }) => (
-  <div className="grid gap-5 sm:grid-cols-[56px_1fr]">
-    <div className={`flex h-12 w-12 items-center justify-center rounded-xl border transition ${isActive ? 'border-primary-600 bg-primary-600 text-white' : 'border-stone-200 bg-white text-primary-600'}`}>
-      <i className={`las ${step.icon} text-2xl`} />
-    </div>
-    <div>
-      <p className="text-xs font-black uppercase tracking-[0.2em] text-primary-700">{step.eyebrow}</p>
-      <h3 className="mt-2 font-[Work_Sans] text-xl font-black text-stone-950">{step.title}</h3>
-      <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600">{step.description}</p>
-    </div>
-  </div>
+  </button>
 );
 
 const ScrollStorySection = () => {
   const [activeStep, setActiveStep] = useState(0);
-  const sectionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
+    const timer = window.setTimeout(() => {
+      setActiveStep((current) => (current + 1) % storySteps.length);
+    }, 3000);
 
-    const stepElements = Array.from(section.querySelectorAll<HTMLElement>('[data-story-step]'));
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+    return () => window.clearTimeout(timer);
+  }, [activeStep]);
 
-        if (!visible) return;
-
-        const nextIndex = Number(visible.target.getAttribute('data-story-step'));
-        if (!Number.isNaN(nextIndex)) {
-          setActiveStep(nextIndex);
-        }
-      },
-      { rootMargin: '-35% 0px -35% 0px', threshold: [0.25, 0.5, 0.75] }
-    );
-
-    stepElements.forEach((element) => observer.observe(element));
-
-    return () => observer.disconnect();
-  }, []);
+  const handleStepClick = (index: number) => {
+    setActiveStep(index);
+  };
 
   return (
-    <section ref={sectionRef} className="bg-white py-16 sm:py-24">
+    <section className="bg-white py-16 sm:py-24">
+      <style>{`
+        @keyframes story-progress {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+      `}</style>
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-primary-700">Simple steps</p>
+          <p className="text-sm font-black uppercase tracking-[0.22em] text-[#0F766E]">Simple Steps</p>
           <h2 className="mt-4 font-[Work_Sans] text-4xl font-black tracking-[-0.03em] text-stone-950 sm:text-6xl">
-            Turn unused books into cash, swaps, or free help
+            How it works
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-stone-600">
-            List your book once and choose whether to sell, swap, or donate it to another reader.
+            No confusion or delays. Just fast and reliable book trading.
           </p>
         </div>
 
-        <div className="mt-16 hidden gap-16 lg:grid lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
-          <div className="sticky top-28 pt-8">
-            <ScrollPlaceholder label={storySteps[activeStep].imageLabel} />
+        <div className="mt-16 grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20 lg:items-start">
+          <div className="lg:sticky lg:top-28">
+            <PhoneMockup activeStep={activeStep} />
           </div>
 
-          <div className="relative py-8">
-            <div className="absolute bottom-8 left-6 top-8 w-px bg-stone-200" />
-            <div className="space-y-0">
-              {storySteps.map((step, index) => (
-                <div key={step.id} data-story-step={index} className="relative min-h-[280px] scroll-mt-32 pb-12">
-                  <div className={`absolute left-6 top-0 h-16 w-px transition ${activeStep === index ? 'bg-primary-600' : 'bg-transparent'}`} />
-                  <div className="relative bg-white pl-0">
-                    <StoryStepCard step={step} isActive={activeStep === index} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-10 lg:hidden">
-          <ScrollPlaceholder label={storySteps[activeStep].imageLabel} />
-          <div className="mt-12 grid grid-cols-2 gap-2 rounded-2xl bg-[#FFF9F0] p-2">
+          <div className="space-y-4">
             {storySteps.map((step, index) => (
-              <button
+              <StoryStepCard
                 key={step.id}
-                type="button"
-                onClick={() => setActiveStep(index)}
-                className={`rounded-xl px-3 py-3 text-xs font-black transition ${activeStep === index ? 'bg-primary-600 text-white' : 'bg-white text-stone-700'}`}
-              >
-                {step.eyebrow}
-              </button>
+                step={step}
+                isActive={activeStep === index}
+                onClick={() => handleStepClick(index)}
+              />
             ))}
-          </div>
-          <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-5">
-            <StoryStepCard step={storySteps[activeStep]} isActive />
           </div>
         </div>
       </div>
