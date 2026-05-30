@@ -100,7 +100,7 @@ const HeroVisual = () => (
     <div className="absolute -left-5 top-8 hidden rounded-full bg-primary-600 px-4 py-2 text-sm font-bold text-white shadow-xl lg:block">
       Books near you
     </div>
-    <div className="w-full rounded-t-[32px] border border-b-0 border-white/10 bg-white p-4 shadow-2xl shadow-black/50 lg:rounded-b-none">
+    <div className="w-full rounded-t-[32px] border border-b-0 border-white/10 bg-white p-4 lg:rounded-b-none">
       <div className="flex min-h-[520px] items-center justify-center rounded-t-[24px] bg-[#ffdd00] p-8 lg:min-h-[560px] lg:rounded-b-none">
         <div className="text-center text-stone-950">
           <i className="las la-image text-7xl" />
@@ -253,7 +253,7 @@ const HowItWorks: React.FC = () => {
     <div className="overflow-hidden bg-white">
       <section className="relative bg-[#121212] text-white">
         <div className="mx-auto grid max-w-7xl items-end gap-12 px-4 pb-0 pt-20 sm:px-6 lg:min-h-[700px] lg:grid-cols-[0.95fr_1.05fr] lg:pt-28">
-          <div className="pb-20 lg:pb-28">
+          <div className="order-2 pb-20 lg:order-1 lg:pb-28">
             <h1 className="max-w-3xl font-[Work_Sans] text-5xl font-black leading-[1.02] tracking-[-0.045em] text-white sm:text-7xl">
               Build a Reading Habit Without Overpaying
             </h1>
@@ -269,7 +269,9 @@ const HowItWorks: React.FC = () => {
               </Link>
             </div>
           </div>
-          <HeroVisual />
+          <div className="order-1 lg:order-2">
+            <HeroVisual />
+          </div>
         </div>
       </section>
 
