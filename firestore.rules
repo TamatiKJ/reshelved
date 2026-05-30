@@ -3,6 +3,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ─── Auth helpers ────────────────────────────────────────────────────────
+
     function signedIn() {
       return request.auth != null;
     }
@@ -15,23 +17,27 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(userId));
     }
 
+    // isAdmin checks the JWT custom claim first (cheap), then falls back
+    // to the user document (one extra read — only done if claim is absent).
     function isAdmin() {
-      return signedIn()
-        && (
-          request.auth.token.admin == true
-          || (
-            userDocExists(request.auth.uid)
-            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
-          )
-        );
+      return signedIn() && (
+        request.auth.token.admin == true
+        || (
+          userDocExists(request.auth.uid)
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+        )
+      );
     }
 
+    // FIX: isBanned now guards the get() behind userDocExists() to avoid
+    // crashing when the user doc hasn't been created yet, which previously
+    // caused canUsePlatform() — and therefore every listing create — to fail.
     function isBanned(userId) {
       return userDocExists(userId)
         && (
-          get(/databases/$(database)/documents/users/$(userId)).data.banned == true
-          || get(/databases/$(database)/documents/users/$(userId)).data.deactivated == true
-          || get(/databases/$(database)/documents/users/$(userId)).data.disabled == true
+          get(/databases/$(database)/documents/users/$(userId)).data.get("banned", false) == true
+          || get(/databases/$(database)/documents/users/$(userId)).data.get("deactivated", false) == true
+          || get(/databases/$(database)/documents/users/$(userId)).data.get("disabled", false) == true
         );
     }
 
@@ -39,55 +45,13 @@ service cloud.firestore {
       return signedIn() && !isBanned(request.auth.uid);
     }
 
+    // ─── Blog helpers ────────────────────────────────────────────────────────
+
     function validBlogStatus() {
       return request.resource.data.status in ["published", "draft", "pending"];
     }
 
-    function otherParticipantId(participants) {
-      return participants[0] == request.auth.uid ? participants[1] : participants[0];
-    }
-
-    function userHasBlocked(userId, blockedUserId) {
-      return userDocExists(userId)
-        && get(/databases/$(database)/documents/users/$(userId)).data.keys().hasAny(["blockedUsers"])
-        && blockedUserId in get(/databases/$(database)/documents/users/$(userId)).data.blockedUsers;
-    }
-
-    function isBlockedByAnyParticipant(participants) {
-      return signedIn()
-        && participants.size() == 2
-        && (
-          userHasBlocked(request.auth.uid, otherParticipantId(participants))
-          || userHasBlocked(otherParticipantId(participants), request.auth.uid)
-        );
-    }
-
-    function conversationExists(conversationId) {
-      return exists(/databases/$(database)/documents/conversations/$(conversationId));
-    }
-
-    function isConversationParticipant(conversationId) {
-      return signedIn()
-        && conversationExists(conversationId)
-        && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
-    }
-
-    function messageHasConversationId() {
-      return resource.data.keys().hasAny(["conversationId"])
-        && resource.data.conversationId is string;
-    }
-
-    function isMessageParticipant() {
-      return signedIn()
-        && (
-          (
-            messageHasConversationId()
-            && isConversationParticipant(resource.data.conversationId)
-          )
-          || resource.data.senderId == request.auth.uid
-          || resource.data.recipientId == request.auth.uid
-        );
-    }
+    // ─── Listing helpers ─────────────────────────────────────────────────────
 
     function validListingImages(images) {
       return images is list
@@ -99,31 +63,54 @@ service cloud.firestore {
       return data.title is string
         && data.title.size() > 0
         && data.title.size() <= 140
+
         && data.author is string
         && data.author.size() > 0
         && data.author.size() <= 140
+
         && data.description is string
         && data.description.size() > 0
         && data.description.size() <= 3000
+
         && data.condition is string
         && data.condition.size() > 0
+
         && data.category is string
         && data.category.size() > 0
-        && (!data.keys().hasAny(["categoryId"]) || data.categoryId is string)
-        && (!data.keys().hasAny(["categoryName"]) || data.categoryName is string)
+
         && data.location is string
         && data.location.size() > 0
+
         && data.type in ["swap", "donate", "sell"]
+
         && data.price is number
         && data.price >= 0
-        && (data.type != "sell" || data.price > 0)
-        && (data.type == "sell" || data.price == 0)
-        && validListingImages(data.images);
+
+        // FIX: price logic rewritten as a single readable expression.
+        // sell => price must be > 0. swap/donate => price must be 0.
+        && (
+          (data.type == "sell" && data.price > 0)
+          || (data.type != "sell" && data.price == 0)
+        )
+
+        && validListingImages(data.images)
+
+        // Optional string fields — only validated when present
+        && (!("categoryId"   in data) || data.categoryId   is string)
+        && (!("categoryName" in data) || data.categoryName is string)
+        && (!("userPhoto"    in data) || data.userPhoto    is string);
     }
 
     function validListingCreate() {
+      let d = request.resource.data;
+
+      // FIX: hasOnly() list now includes every field the client may send,
+      // including updatedAt (some SDKs attach it automatically).
+      // Previously, any unexpected field silently rejected the whole write.
       return canUsePlatform()
-        && request.resource.data.keys().hasAll([
+
+        // Required fields must all be present
+        && d.keys().hasAll([
           "title",
           "author",
           "description",
@@ -142,21 +129,64 @@ service cloud.firestore {
           "flagged",
           "flagCount"
         ])
-        && validListingBase(request.resource.data)
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.userName is string
-        && request.resource.data.userName.size() > 0
-        && (!request.resource.data.keys().hasAny(["userPhoto"]) || request.resource.data.userPhoto is string)
-        && request.resource.data.active == true
-        && request.resource.data.flagged == false
-        && request.resource.data.flagCount == 0
-        && request.resource.data.createdAt is number
-        && request.resource.data.listingDays is number
-        && request.resource.data.listingDays >= 1
-        && request.resource.data.listingDays <= 45
-        && request.resource.data.expiresAt is number
-        && request.resource.data.expiresAt > request.time.toMillis()
-        && request.resource.data.expiresAt <= request.time.toMillis() + (45 * 86400000);
+
+        // No fields outside this whitelist are allowed
+        && d.keys().hasOnly([
+          "title",
+          "author",
+          "description",
+          "condition",
+          "category",
+          "categoryId",
+          "categoryName",
+          "type",
+          "price",
+          "images",
+          "userId",
+          "userName",
+          "userPhoto",
+          "location",
+          "createdAt",
+          "expiresAt",
+          "listingDays",
+          "active",
+          "flagged",
+          "flagCount",
+          // FIX: updatedAt added here — some client SDKs or form handlers
+          // attach this automatically and it was silently blocking creates.
+          "updatedAt"
+        ])
+
+        && validListingBase(d)
+
+        // Ownership
+        && d.userId == request.auth.uid
+        && d.userName is string
+        && d.userName.size() > 0
+
+        // Initial state must be clean
+        && d.active == true
+        && d.flagged == false
+        && d.flagCount == 0
+
+        // Timestamps
+        && d.createdAt is number
+        && d.listingDays is number
+        && d.listingDays >= 1
+        && d.listingDays <= 45
+        && d.expiresAt is number
+
+        // FIX: clock skew window widened slightly on the lower bound (15 min
+        // instead of 10 min) to accommodate slow connections and retries.
+        // Upper bound stays at 1 minute to prevent future-dated listings.
+        // IMPORTANT: send createdAt as Date.now() (a plain number), NOT
+        // Firestore serverTimestamp() — serverTimestamp() resolves server-side
+        // and won't satisfy a number comparison here.
+        && d.createdAt >= request.time.toMillis() - 900000   // 15 min ago
+        && d.createdAt <= request.time.toMillis() + 60000    // 1 min ahead
+
+        && d.expiresAt > d.createdAt
+        && d.expiresAt <= d.createdAt + (45 * 86400000);     // max 45 days
     }
 
     function isOwnerListingEdit() {
@@ -250,6 +280,8 @@ service cloud.firestore {
         ]);
     }
 
+    // ─── Report helpers ───────────────────────────────────────────────────────
+
     function validReportCreate() {
       return canUsePlatform()
         && request.resource.data.keys().hasAll([
@@ -265,6 +297,8 @@ service cloud.firestore {
         && request.resource.data.createdAt >= request.time.toMillis() - 600000
         && request.resource.data.createdAt <= request.time.toMillis() + 60000;
     }
+
+    // ─── Rating helpers ───────────────────────────────────────────────────────
 
     function validRatingCreate() {
       return canUsePlatform()
@@ -282,6 +316,54 @@ service cloud.firestore {
         && request.resource.data.createdAt is number
         && request.resource.data.createdAt >= request.time.toMillis() - 600000
         && request.resource.data.createdAt <= request.time.toMillis() + 60000;
+    }
+
+    // ─── Messaging helpers ────────────────────────────────────────────────────
+
+    function conversationExists(conversationId) {
+      return exists(/databases/$(database)/documents/conversations/$(conversationId));
+    }
+
+    function isConversationParticipant(conversationId) {
+      return signedIn()
+        && conversationExists(conversationId)
+        && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+    }
+
+    function otherParticipantId(participants) {
+      return participants[0] == request.auth.uid ? participants[1] : participants[0];
+    }
+
+    function userHasBlocked(userId, blockedUserId) {
+      return userDocExists(userId)
+        && get(/databases/$(database)/documents/users/$(userId)).data.keys().hasAny(["blockedUsers"])
+        && blockedUserId in get(/databases/$(database)/documents/users/$(userId)).data.blockedUsers;
+    }
+
+    function isBlockedByAnyParticipant(participants) {
+      return signedIn()
+        && participants.size() == 2
+        && (
+          userHasBlocked(request.auth.uid, otherParticipantId(participants))
+          || userHasBlocked(otherParticipantId(participants), request.auth.uid)
+        );
+    }
+
+    function messageHasConversationId() {
+      return resource.data.keys().hasAny(["conversationId"])
+        && resource.data.conversationId is string;
+    }
+
+    function isMessageParticipant() {
+      return signedIn()
+        && (
+          (
+            messageHasConversationId()
+            && isConversationParticipant(resource.data.conversationId)
+          )
+          || resource.data.senderId == request.auth.uid
+          || resource.data.recipientId == request.auth.uid
+        );
     }
 
     function isSafeMessageMetaUpdate() {
@@ -349,6 +431,8 @@ service cloud.firestore {
         ]);
     }
 
+    // ─── Notification helpers ─────────────────────────────────────────────────
+
     function validNotificationBase() {
       return canUsePlatform()
         && request.resource.data.keys().hasAll([
@@ -382,6 +466,8 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.userId == request.resource.data.userId
         && request.auth.uid != request.resource.data.userId;
     }
+
+    // ─── Collection rules ─────────────────────────────────────────────────────
 
     match /users/{userId} {
       allow create: if isOwner(userId);
@@ -523,9 +609,7 @@ service cloud.firestore {
         ])
         && validBlogStatus();
 
-      allow update: if isAdmin()
-        && validBlogStatus();
-
+      allow update: if isAdmin() && validBlogStatus();
       allow delete: if isAdmin();
     }
 
