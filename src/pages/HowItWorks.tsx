@@ -51,6 +51,33 @@ const benefits = [
   },
 ];
 
+const platformFeatures = [
+  {
+    title: 'Verified accounts',
+    description: 'Every user signs in before they list, save, or message.',
+  },
+  {
+    title: 'Book photos',
+    description: 'See real book photos before you talk to the owner.',
+  },
+  {
+    title: 'Smart filters',
+    description: 'Find books by title, author, type, price, and location.',
+  },
+  {
+    title: 'In-app messages',
+    description: 'Talk about the book without moving to many apps first.',
+  },
+  {
+    title: 'Ratings and reviews',
+    description: 'Check what other readers say before you agree to meet.',
+  },
+  {
+    title: 'Report controls',
+    description: 'Report bad listings so the platform can stay clean.',
+  },
+];
+
 const faqs = [
   {
     question: 'How does Reshelved work?',
@@ -158,6 +185,32 @@ const ProcessSection = () => (
             </p>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+);
+
+const PlatformFeaturesSection = () => (
+  <section className="bg-[#FAFAF9] py-16 sm:py-24">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <h2 className="mx-auto max-w-4xl text-center font-[Work_Sans] text-4xl font-black leading-tight tracking-[-0.03em] text-stone-950 sm:text-6xl">
+        What you get inside
+      </h2>
+
+      <div className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {platformFeatures.map((feature) => (
+          <article key={feature.title} className="rounded-2xl bg-white p-8">
+            <div className="flex items-start gap-3">
+              <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-600/20 text-primary-700">
+                <i className="las la-check text-base" />
+              </span>
+              <div>
+                <h3 className="font-[Work_Sans] text-xl font-black text-stone-950">{feature.title}</h3>
+                <p className="mt-3 text-base leading-7 text-stone-600">{feature.description}</p>
+              </div>
+            </div>
+          </article>
+        ))}
       </div>
     </div>
   </section>
@@ -287,6 +340,7 @@ const HowItWorks: React.FC = () => {
       </section>
 
       <ProcessSection />
+      <PlatformFeaturesSection />
 
       <section className="bg-[#FAFAF9] py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
