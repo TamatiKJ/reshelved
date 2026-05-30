@@ -27,7 +27,7 @@ const steps = [
 type Step = (typeof steps)[number];
 
 const ImagePlaceholder = ({ label }: { label: string }) => (
-  <div className="flex h-[336px] w-full items-center justify-center rounded-[22px] border border-stone-200 bg-[#FFF9F0] p-6">
+  <div className="flex h-[336px] w-full items-center justify-center rounded-none border border-stone-200 bg-[#FFF9F0] p-6">
     <div className="text-center">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#1665CC] shadow-sm">
         <i className="las la-image text-2xl" />
@@ -52,13 +52,13 @@ const DesktopStep = ({ step, active, onClick }: { step: Step; active: boolean; o
   <button
     type="button"
     onClick={onClick}
-    className={`relative w-full rounded-none border-0 py-4 pl-8 pr-4 text-left transition ${active ? 'bg-[#FFF9F0] opacity-100' : 'bg-white opacity-60 hover:bg-stone-50 hover:opacity-90'}`}
+    className={`relative w-full rounded-none border-0 py-4 pl-8 pr-4 text-left transition ${active ? 'bg-stone-50 opacity-100' : 'bg-white opacity-60 hover:bg-stone-50 hover:opacity-90'}`}
   >
-    <span className="absolute bottom-4 left-0 top-4 w-[2px] bg-stone-200" />
+    <span className="absolute bottom-0 left-0 top-0 w-[2px] bg-stone-200" />
     {active && (
       <span
         key={step.title}
-        className="absolute left-0 top-4 w-[2px] bg-[#1665CC]"
+        className="absolute left-0 top-0 w-[2px] bg-[#1665CC]"
         style={{ animation: `how-it-works-progress ${autoAdvanceMs}ms linear forwards` }}
       />
     )}
@@ -107,7 +107,7 @@ const HowItWorksScroller = () => {
       <style>{`
         @keyframes how-it-works-progress {
           from { height: 0%; }
-          to { height: calc(100% - 2rem); }
+          to { height: 100%; }
         }
       `}</style>
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
