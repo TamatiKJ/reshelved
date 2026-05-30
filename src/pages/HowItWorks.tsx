@@ -200,15 +200,13 @@ const PlatformFeaturesSection = () => (
       <div className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
         {platformFeatures.map((feature) => (
           <article key={feature.title} className="rounded-2xl bg-white p-8">
-            <div className="flex items-start gap-3">
-              <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white">
                 <i className="las la-check text-base" />
               </span>
-              <div>
-                <h3 className="font-[Work_Sans] text-[17px] font-black leading-6 text-stone-950">{feature.title}</h3>
-                <p className="mt-3 text-base leading-7 text-stone-600">{feature.description}</p>
-              </div>
+              <h3 className="font-[Work_Sans] text-[17px] font-black leading-6 text-stone-950">{feature.title}</h3>
             </div>
+            <p className="mt-3 text-base leading-7 text-stone-600">{feature.description}</p>
           </article>
         ))}
       </div>
