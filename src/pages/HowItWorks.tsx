@@ -1,193 +1,194 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-const steps = [
+const processSteps = [
   {
-    number: '01',
-    title: 'Search for the book you need',
-    description: 'Find books by title, author, category, condition, exchange type, and Nairobi location without digging through scattered WhatsApp groups or social media posts.',
-    imageTitle: 'Smart book search',
-    imageDescription: 'Filter listings by location, price, condition, and category.',
+    number: '1',
+    icon: 'la-user-plus',
+    title: 'Create your free account',
+    description: 'Sign up so you can save books, list your own books, message other readers, and manage your exchanges from one place.',
   },
   {
-    number: '02',
-    title: 'Check the listing before you message',
-    description: 'Review real photos, book condition, seller details, price, and whether the owner wants to sell, swap, or donate before you start a conversation.',
-    imageTitle: 'Clear listing details',
-    imageDescription: 'See the book, seller, condition, and exchange option first.',
+    number: '2',
+    icon: 'la-search',
+    title: 'Find books near you',
+    description: 'Search by title, author, category, condition, price, exchange type, and Nairobi location instead of scrolling through scattered posts.',
   },
   {
-    number: '03',
+    number: '3',
+    icon: 'la-clipboard-check',
+    title: 'Check the listing details',
+    description: 'Review the book photos, condition, seller details, location, price, and whether the owner wants to sell, swap, or donate.',
+  },
+  {
+    number: '4',
+    icon: 'la-comments',
     title: 'Message and arrange the exchange',
-    description: 'Use the in-app chat to ask questions, agree on terms, and arrange the safest offline handover with more confidence and less back-and-forth.',
-    imageTitle: 'Organized buyer chat',
-    imageDescription: 'Keep exchange conversations tied to each book listing.',
+    description: 'Use the in-app chat to ask questions, agree on terms, and arrange a safe handover directly with the book owner.',
   },
 ];
 
 const benefits = [
   {
-    icon: 'la-user-check',
-    title: 'Verified accounts',
-    description: 'Users create accounts before listing or messaging, which improves accountability across the platform.',
+    icon: 'la-map-marker-alt',
+    title: 'Search books by Nairobi location',
+    description: 'Find books closer to where you live, study, or work.',
   },
   {
     icon: 'la-tags',
-    title: 'Clear book condition labels',
-    description: 'Every listing shows the condition upfront, so buyers know what they are considering before contacting the owner.',
+    title: 'See condition before contacting',
+    description: 'Each listing gives key details before you start messaging.',
   },
   {
-    icon: 'la-map-marker-alt',
-    title: 'Nairobi location search',
-    description: 'Search books by area to find options closer to where you live, study, or work.',
-  },
-  {
-    icon: 'la-comments',
-    title: 'Built-in messaging',
-    description: 'Ask questions and arrange swaps, sales, or donations without losing conversations across different apps.',
+    icon: 'la-sync-alt',
+    title: 'Sell, swap, or donate',
+    description: 'Choose the exchange type that fits the book and the reader.',
   },
   {
     icon: 'la-star',
-    title: 'Ratings and reviews',
-    description: 'Seller feedback helps readers make better decisions and encourages responsible exchange behaviour.',
-  },
-  {
-    icon: 'la-recycle',
-    title: 'Reuse instead of waste',
-    description: 'Books stay in circulation longer, helping readers save money while reducing unused books on shelves.',
+    title: 'Use ratings and reviews',
+    description: 'Feedback helps readers identify reliable book owners.',
   },
 ];
 
 const faqs = [
   {
     question: 'How does Reshelved work?',
-    answer: 'Reshelved lets readers in Nairobi list, search, sell, swap, or donate physical books through a structured peer-to-peer platform. You search for a book, check the listing details, message the owner, and arrange the exchange offline.',
+    answer: 'Reshelved is a peer-to-peer book exchange platform for readers in Nairobi. You create an account, search for books, review listing details, message the owner, and arrange the sale, swap, or donation directly.',
   },
   {
     question: 'Is Reshelved free to use?',
-    answer: 'Yes. Readers can create an account, browse available books, list books, and message other users. If a seller has priced a book, the payment or handover arrangement is handled directly between the users.',
+    answer: 'Yes. You can browse books, create an account, list books, and message other users for free. If a book is being sold, payment is agreed directly between the buyer and seller.',
   },
   {
-    question: 'Can I sell, swap, and donate books on Reshelved?',
-    answer: 'Yes. When creating a listing, you can choose whether you want to sell the book, swap it for another book, or donate it for free.',
+    question: 'Can I sell second-hand books on Reshelved?',
+    answer: 'Yes. You can list second-hand books for sale by adding the title, author, photos, condition, price, category, and location. Readers can then find your listing and contact you through the platform.',
   },
   {
-    question: 'Does Reshelved deliver books in Nairobi?',
-    answer: 'No. Reshelved does not handle delivery at this stage. Buyers and sellers use the platform to discover books and communicate, then agree on their own pickup, meet-up, or delivery arrangement.',
+    question: 'Can I swap books with other readers in Nairobi?',
+    answer: 'Yes. Reshelved supports book swaps. When listing a book, choose the swap option so other readers know you are open to exchanging it for another book.',
   },
   {
-    question: 'How do I know if a seller is trustworthy?',
-    answer: 'Reshelved improves trust through user accounts, clear listing details, real book photos, condition labels, in-app messaging, ratings, reviews, and reporting tools. You should still meet in safe public places and confirm the book before completing an exchange.',
+    question: 'Can I donate books on Reshelved?',
+    answer: 'Yes. You can mark a listing as a donation if you want to give the book away for free. This helps unused books reach readers who need them.',
   },
   {
-    question: 'Can I search for second-hand books near me in Nairobi?',
-    answer: 'Yes. Reshelved allows users to search and filter books by Nairobi locations, making it easier to find affordable second-hand books near your preferred area.',
+    question: 'Does Reshelved deliver books?',
+    answer: 'No. Reshelved does not handle delivery at this stage. Users communicate through the platform and agree on their own pickup, meet-up, or delivery arrangement.',
   },
   {
-    question: 'What happens when my book listing expires?',
-    answer: 'Listings stay active for the platform’s set listing period. After expiry, the listing is no longer shown as active, but you can create or refresh listings when you still want to make the book available.',
+    question: 'How can I find second-hand books near me in Nairobi?',
+    answer: 'Use the search and filters on Reshelved to look for books by location, title, author, category, condition, price, and exchange type. This makes it easier to find second-hand books near your preferred Nairobi area.',
+  },
+  {
+    question: 'How do I know if a book seller is trustworthy?',
+    answer: 'Reshelved supports trust through user accounts, clear listings, book photos, condition labels, in-app messaging, ratings, reviews, and reporting tools. You should still confirm the book and meet in a safe public place before completing an exchange.',
   },
   {
     question: 'What types of books can I find on Reshelved?',
-    answer: 'You can find academic books, novels, business books, self-development books, children’s books, and other physical books listed by readers, students, and book owners in Nairobi.',
+    answer: 'You can find academic books, novels, business books, self-development books, children’s books, and other physical books listed by readers, students, parents, and book owners in Nairobi.',
   },
 ];
 
-const StepMockup = ({ index, title, description }: { index: number; title: string; description: string }) => {
-  if (index === 0) {
-    return (
-      <div className="relative overflow-hidden rounded-[28px] border border-stone-200 bg-white p-5 shadow-xl shadow-stone-200/70">
-        <div className="rounded-2xl bg-[#FFF4E2] p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary-700">Search dashboard</p>
-              <h3 className="mt-1 font-[Work_Sans] text-xl font-bold text-stone-950">Find books faster</h3>
-            </div>
-            <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-primary-700 shadow-sm">Nairobi</div>
-          </div>
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-primary-100 bg-white px-3 py-2.5 text-sm font-semibold text-stone-500">
-            <i className="las la-search text-xl text-stone-700" />
-            Search by title, author, or category
-          </div>
-        </div>
-        <div className="mt-4 grid grid-cols-3 gap-3">
-          {['Atomic Habits', 'Company Law', 'The River'].map((book, itemIndex) => (
-            <div key={book} className="rounded-2xl border border-stone-200 bg-white p-3">
-              <div className={`${itemIndex === 0 ? 'bg-orange-100' : itemIndex === 1 ? 'bg-amber-100' : 'bg-emerald-50'} flex aspect-[4/5] items-center justify-center rounded-xl`}>
-                <i className="las la-book text-3xl text-primary-700" />
-              </div>
-              <p className="mt-3 truncate text-xs font-bold text-stone-950">{book}</p>
-              <p className="mt-1 text-[11px] font-semibold text-stone-500">Good · Westlands</p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {['Swap', 'For Sale', 'Good condition'].map((tag) => <span key={tag} className="rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-700">{tag}</span>)}
+const MiniBookCard = ({ title, meta }: { title: string; meta: string }) => (
+  <div className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
+    <div className="flex aspect-[4/5] items-center justify-center rounded-xl bg-[#FFF4E2]">
+      <i className="las la-book text-4xl text-primary-600" />
+    </div>
+    <p className="mt-3 truncate text-sm font-bold text-stone-950">{title}</p>
+    <p className="mt-1 text-xs font-semibold text-stone-500">{meta}</p>
+  </div>
+);
+
+const HeroVisual = () => (
+  <div className="relative">
+    <div className="absolute -left-5 top-8 hidden rounded-full bg-primary-600 px-4 py-2 text-sm font-bold text-white shadow-xl lg:block">
+      Books near you
+    </div>
+    <div className="rounded-[32px] border border-white/10 bg-white p-4 shadow-2xl shadow-black/50">
+      <div className="flex min-h-[430px] items-center justify-center rounded-[24px] bg-[#ffdd00] p-8">
+        <div className="text-center text-stone-950">
+          <i className="las la-image text-7xl" />
+          <p className="mt-4 font-[Work_Sans] text-2xl font-black">Image placeholder</p>
+          <p className="mt-2 max-w-sm text-sm font-semibold text-stone-800">Add your Figma SaaS illustration or product screenshot here.</p>
         </div>
       </div>
-    );
-  }
+    </div>
+  </div>
+);
 
-  if (index === 1) {
-    return (
-      <div className="relative overflow-hidden rounded-[28px] border border-stone-200 bg-white p-5 shadow-xl shadow-stone-200/70">
-        <div className="grid grid-cols-[0.9fr_1.1fr] gap-4">
-          <div className="flex min-h-[250px] items-center justify-center rounded-3xl bg-[#FFF4E2]">
-            <i className="las la-book-open text-7xl text-primary-700" />
+const ProcessSection = () => (
+  <section className="bg-[#121212] py-16 text-white sm:py-24">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <div className="grid gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
+        <div className="lg:sticky lg:top-28 lg:self-start">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+            <h2 className="font-[Work_Sans] text-2xl font-black tracking-tight">Ready to start?</h2>
+            <p className="mt-3 text-sm leading-6 text-white/75">Create your account, find a book, and message the owner. Reshelved keeps the process simple.</p>
+            <Link to="/register" className="mt-6 inline-flex rounded-md bg-primary-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-primary-700">
+              Join Free
+            </Link>
           </div>
-          <div className="space-y-4">
-            <div>
-              <span className="rounded-full bg-primary-50 px-3 py-1 text-xs font-bold text-primary-700">Good condition</span>
-              <h3 className="mt-3 font-[Work_Sans] text-2xl font-bold text-stone-950">Clean listing details</h3>
-              <p className="mt-2 text-sm leading-6 text-stone-500">Photos, location, exchange type, and seller information are visible before you contact anyone.</p>
-            </div>
-            <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-sm font-bold text-primary-700">A</div>
+        </div>
+
+        <div>
+          <div className="space-y-0">
+            {processSteps.map((step, index) => (
+              <div key={step.number} className={`grid gap-5 py-8 sm:grid-cols-[64px_1fr] ${index !== processSteps.length - 1 ? 'border-b border-white/10' : ''}`}>
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFF4E2]/50 text-primary-600">
+                  <i className={`las ${step.icon} text-3xl`} />
+                </div>
                 <div>
-                  <p className="text-sm font-bold text-stone-950">Listed by Amina</p>
-                  <p className="text-xs font-semibold text-amber-500">★★★★★ <span className="text-stone-500">(8 reviews)</span></p>
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-600 text-sm font-black text-white">{step.number}</span>
+                    <h3 className="font-[Work_Sans] text-xl font-black text-white">{step.title}</h3>
+                  </div>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">{step.description}</p>
                 </div>
               </div>
-            </div>
-            <button className="w-full rounded-xl bg-primary-600 px-4 py-3 text-sm font-bold text-white">Contact Seller</button>
+            ))}
           </div>
-        </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="relative overflow-hidden rounded-[28px] border border-stone-200 bg-white p-5 shadow-xl shadow-stone-200/70">
-      <div className="rounded-3xl border border-stone-200 bg-stone-50">
-        <div className="flex items-center gap-3 border-b border-stone-200 bg-white p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 font-bold text-primary-700">B</div>
-          <div>
-            <p className="text-sm font-bold text-stone-950">Brian</p>
-            <p className="text-xs text-primary-700">Re: Introduction to Algorithms</p>
-          </div>
-        </div>
-        <div className="space-y-3 p-4">
-          <div className="max-w-[78%] rounded-2xl rounded-bl-md bg-white px-4 py-3 text-sm text-stone-700 shadow-sm">Is the book still available near CBD?</div>
-          <div className="ml-auto max-w-[78%] rounded-2xl rounded-br-md bg-primary-600 px-4 py-3 text-sm text-white">Yes. I can meet tomorrow afternoon.</div>
-          <div className="rounded-2xl border border-stone-200 bg-white p-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#FFF4E2]"><i className="las la-book text-2xl text-primary-700" /></div>
-              <div>
-                <p className="text-sm font-bold text-stone-950">Book attached to chat</p>
-                <p className="text-xs text-stone-500">Sale · KSh 800 · CBD</p>
-              </div>
+          <div className="mt-12 flex items-start gap-4 rounded-xl border border-white/10 bg-white/[0.04] p-5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FFF4E2]/50 text-primary-600">
+              <i className="las la-shield-alt text-2xl" />
             </div>
-          </div>
-          <div className="flex items-center gap-2 rounded-2xl bg-white p-2">
-            <div className="flex-1 rounded-xl bg-stone-100 px-4 py-2 text-sm text-stone-400">Type a message...</div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-600 text-white"><i className="las la-paper-plane" /></div>
+            <p className="text-sm leading-6 text-white/75">
+              Your account information and conversations stay inside the platform. You remain in control of what you list, who you message, and when you remove a book from circulation.
+            </p>
           </div>
         </div>
       </div>
     </div>
-  );
-};
+  </section>
+);
+
+const FooterStartFree = () => (
+  <section className="relative bg-[#121212] text-white pt-0 pb-0">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-0 pt-0">
+      <div className="border-b border-white/25 pb-20 pt-20">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-12">
+          <div className="text-[clamp(64px,11vw,140px)] font-bold leading-[0.92] tracking-tight text-white">
+            <div>Start free</div>
+            <div className="inline-flex items-center gap-3 sm:gap-8">
+              <span>today</span>
+              <Link
+                to="/register"
+                className="w-[clamp(58px,8vw,104px)] h-[clamp(58px,8vw,104px)] rounded-full bg-primary-600 hover:bg-primary-700 flex items-center justify-center transition shrink-0"
+                aria-label="Join Reshelved free"
+              >
+                <i className="las la-arrow-right text-[clamp(26px,3vw,44px)] text-white" />
+              </Link>
+            </div>
+          </div>
+          <p className="text-white/80 text-lg max-w-md lg:pb-8">
+            Built with feedback from readers across Nairobi. Try Reshelved and see why they love it.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+);
 
 const HowItWorks: React.FC = () => {
   useEffect(() => {
@@ -233,124 +234,132 @@ const HowItWorks: React.FC = () => {
   }, []);
 
   return (
-    <div className="overflow-hidden bg-[#FAFAF9]">
-      <section className="relative border-b border-stone-200 bg-white">
-        <div className="absolute left-0 top-0 h-72 w-72 rounded-full bg-[#FFF4E2] blur-3xl" />
-        <div className="absolute right-0 top-24 h-80 w-80 rounded-full bg-orange-100/70 blur-3xl" />
-        <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.02fr_0.98fr] lg:py-24">
+    <div className="overflow-hidden bg-white">
+      <section className="relative bg-[#121212] text-white">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:py-28">
           <div>
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-primary-700">How Reshelved works</p>
-            <h1 className="mt-4 max-w-3xl font-[Work_Sans] text-4xl font-black leading-[1.05] tracking-[-0.04em] text-stone-950 sm:text-6xl lg:text-7xl">
+            <p className="text-sm font-black uppercase tracking-[0.24em] text-primary-500">How Reshelved works</p>
+            <h1 className="mt-5 max-w-3xl font-[Work_Sans] text-5xl font-black leading-[1.02] tracking-[-0.045em] text-white sm:text-7xl">
               Find affordable books in Nairobi without chasing sellers everywhere.
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-stone-600">
-              Reshelved helps you search, verify, message, and arrange book exchanges from one clean platform. No scattered posts. No unclear book condition. No wasted calls for books that are already gone.
+            <p className="mt-7 max-w-2xl text-xl leading-8 text-white/75">
+              Search, verify, message, and arrange book exchanges from one structured platform. No scattered posts. No unclear book condition. No wasted calls for books that are already gone.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link to="/browse" className="inline-flex items-center justify-center rounded-xl bg-primary-600 px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-700">
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Link to="/browse" className="inline-flex items-center justify-center rounded-md bg-primary-600 px-5 py-3 text-base font-bold text-white transition hover:bg-primary-700">
                 Start Finding Books
               </Link>
-              <Link to="/create" className="inline-flex items-center justify-center rounded-xl border border-stone-300 bg-white px-6 py-3.5 text-base font-bold text-stone-950 transition hover:bg-stone-50">
-                List a Book
+              <Link to="/create" className="inline-flex items-center justify-center rounded-md border border-white/60 px-5 py-3 text-base font-bold text-white transition hover:bg-white hover:text-stone-950">
+                List a Book <i className="las la-angle-right ml-1" />
               </Link>
             </div>
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              {['Search by location', 'Sell, swap, or donate', 'Message before meeting'].map((item) => (
-                <div key={item} className="flex items-center gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-bold text-stone-700">
-                  <i className="las la-check-circle text-xl text-primary-600" />
-                  {item}
-                </div>
-              ))}
-            </div>
           </div>
-          <div className="relative">
-            <div className="absolute -left-5 top-10 hidden rounded-2xl bg-primary-600 px-4 py-2 text-sm font-bold text-white shadow-xl lg:block">Books near you</div>
-            <StepMockup index={0} title="Smart book search" description="Browse clean listings." />
+          <HeroVisual />
+        </div>
+      </section>
+
+      <section className="bg-white py-16 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.22em] text-primary-700">One platform, less friction</p>
+              <h2 className="mt-4 max-w-xl font-[Work_Sans] text-4xl font-black leading-tight tracking-[-0.03em] text-stone-950 sm:text-6xl">
+                Book hunting should feel organized, not random.
+              </h2>
+            </div>
+            <p className="max-w-2xl text-lg leading-8 text-stone-600">
+              Reshelved gives readers a clearer way to find second-hand books, compare available listings, and talk to the owner before making a decision.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {benefits.map((benefit) => (
+              <div key={benefit.title} className="rounded-[22px] border border-stone-200 bg-white p-6 transition hover:-translate-y-1 hover:border-primary-600 hover:shadow-xl">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFF4E2]/50 text-primary-600">
+                  <i className={`las ${benefit.icon} text-3xl`} />
+                </div>
+                <h3 className="mt-5 font-[Work_Sans] text-xl font-black text-stone-950">{benefit.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-stone-600">{benefit.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:py-24">
-        <div className="mx-auto max-w-3xl text-center">
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-primary-700">Simple process</p>
-          <h2 className="mt-3 font-[Work_Sans] text-3xl font-black tracking-[-0.03em] text-stone-950 sm:text-5xl">From search to exchange in three clear steps.</h2>
-          <p className="mt-4 text-lg leading-8 text-stone-600">The page flow is built for readers who want fast answers: what is available, who listed it, what condition it is in, and how to contact the owner.</p>
-        </div>
+      <ProcessSection />
 
-        <div className="mt-14 space-y-16">
-          {steps.map((step, index) => (
-            <div key={step.number} className={`grid items-center gap-8 lg:grid-cols-2 ${index % 2 === 1 ? 'lg:[&>*:first-child]:order-2' : ''}`}>
-              <div className="rounded-[28px] border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
-                <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFF4E2] text-lg font-black text-primary-700">{step.number}</span>
-                <h3 className="mt-5 font-[Work_Sans] text-2xl font-black tracking-[-0.02em] text-stone-950 sm:text-4xl">{step.title}</h3>
-                <p className="mt-4 text-base leading-8 text-stone-600">{step.description}</p>
-                <div className="mt-6 rounded-2xl bg-stone-50 p-4">
-                  <p className="text-sm font-black text-stone-950">Figma image idea</p>
-                  <p className="mt-1 text-sm leading-6 text-stone-600">Create a SaaS-style screen called <strong>{step.imageTitle}</strong>. {step.imageDescription}</p>
+      <section className="bg-[#FAFAF9] py-16 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.22em] text-primary-700">What users see</p>
+              <h2 className="mt-4 max-w-xl font-[Work_Sans] text-4xl font-black leading-tight tracking-[-0.03em] text-stone-950 sm:text-6xl">
+                A clean flow for finding, checking, and messaging.
+              </h2>
+              <p className="mt-5 max-w-xl text-lg leading-8 text-stone-600">
+                Each part of the system is designed around the real job readers want done: find the book, check the condition, contact the owner, and agree on the exchange.
+              </p>
+            </div>
+            <div className="rounded-[30px] border border-stone-200 bg-white p-5 shadow-xl shadow-stone-200/60">
+              <div className="rounded-3xl bg-stone-50 p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-primary-700">Browse books</p>
+                    <h3 className="mt-1 font-[Work_Sans] text-2xl font-black text-stone-950">Available near Westlands</h3>
+                  </div>
+                  <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-stone-600 shadow-sm">12 results</div>
+                </div>
+                <div className="mt-5 grid grid-cols-3 gap-3">
+                  <MiniBookCard title="Atomic Habits" meta="KSh 650" />
+                  <MiniBookCard title="Company Law" meta="Swap" />
+                  <MiniBookCard title="The River" meta="Free" />
+                </div>
+                <div className="mt-5 rounded-2xl border border-stone-200 bg-white p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FFF4E2]/50 text-primary-600">
+                      <i className="las la-comments text-2xl" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-stone-950">Message attached to a listing</p>
+                      <p className="text-sm text-stone-500">Every conversation stays tied to the book being discussed.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <StepMockup index={index} title={step.imageTitle} description={step.imageDescription} />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="border-y border-stone-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:py-24">
-          <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr]">
-            <div>
-              <p className="text-sm font-black uppercase tracking-[0.22em] text-primary-700">Why readers use it</p>
-              <h2 className="mt-3 font-[Work_Sans] text-3xl font-black tracking-[-0.03em] text-stone-950 sm:text-5xl">A cleaner way to buy and exchange second-hand books.</h2>
-              <p className="mt-4 text-lg leading-8 text-stone-600">Reshelved is not a noisy general marketplace. It is built specifically around book discovery, listing clarity, trust, and local reader-to-reader exchange.</p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {benefits.map((benefit) => (
-                <div key={benefit.title} className="rounded-3xl border border-stone-200 bg-[#FAFAF9] p-6">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFF4E2] text-primary-700">
-                    <i className={`las ${benefit.icon} text-2xl`} />
-                  </div>
-                  <h3 className="mt-4 font-[Work_Sans] text-xl font-black text-stone-950">{benefit.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-stone-600">{benefit.description}</p>
-                </div>
-              ))}
             </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:py-24">
-        <div className="text-center">
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-primary-700">FAQs</p>
-          <h2 className="mt-3 font-[Work_Sans] text-3xl font-black tracking-[-0.03em] text-stone-950 sm:text-5xl">Questions readers search before using Reshelved.</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-stone-600">Clear answers for buying second-hand books, swapping books, donating books, and arranging safe exchanges in Nairobi.</p>
-        </div>
-        <div className="mt-10 divide-y divide-stone-200 overflow-hidden rounded-[28px] border border-stone-200 bg-white shadow-sm">
-          {faqs.map((faq) => (
-            <details key={faq.question} className="group p-6 open:bg-stone-50">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left font-[Work_Sans] text-lg font-black text-stone-950">
-                {faq.question}
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FFF4E2] text-primary-700 transition group-open:rotate-45"><i className="las la-plus text-xl" /></span>
-              </summary>
-              <p className="mt-3 max-w-3xl text-base leading-8 text-stone-600">{faq.answer}</p>
-            </details>
-          ))}
-        </div>
-      </section>
+      <section className="bg-white py-16 sm:py-24">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <div className="text-center">
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-primary-700">FAQs</p>
+            <h2 className="mt-4 font-[Work_Sans] text-4xl font-black tracking-[-0.03em] text-stone-950 sm:text-6xl">
+              Questions readers ask before using Reshelved.
+            </h2>
+            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-stone-600">
+              SEO-friendly answers for buying second-hand books, swapping books, donating books, and arranging safe book exchanges in Nairobi.
+            </p>
+          </div>
 
-      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:pb-24">
-        <div className="relative overflow-hidden rounded-[34px] bg-primary-700 px-6 py-14 text-center shadow-xl shadow-primary-700/20 sm:px-10">
-          <div className="absolute -left-24 -top-24 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
-          <div className="absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-[#F7AF31]/30 blur-2xl" />
-          <div className="relative mx-auto max-w-3xl">
-            <h2 className="font-[Work_Sans] text-3xl font-black tracking-[-0.03em] text-white sm:text-5xl">Your next book might already be sitting on someone else’s shelf.</h2>
-            <p className="mt-4 text-lg leading-8 text-orange-50">Browse available books in Nairobi or list a book someone else needs today.</p>
-            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-              <Link to="/browse" className="inline-flex items-center justify-center rounded-xl bg-white px-6 py-3.5 text-base font-bold text-primary-700 transition hover:bg-orange-50">Browse Available Books</Link>
-              <Link to="/create" className="inline-flex items-center justify-center rounded-xl border border-white/30 px-6 py-3.5 text-base font-bold text-white transition hover:bg-white/10">List Your Book</Link>
-            </div>
+          <div className="mt-12 divide-y divide-stone-200 overflow-hidden rounded-[28px] border border-stone-200 bg-white">
+            {faqs.map((faq) => (
+              <details key={faq.question} className="group p-6 open:bg-stone-50">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left font-[Work_Sans] text-lg font-black text-stone-950">
+                  {faq.question}
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4E2]/50 text-primary-600 transition group-open:rotate-45">
+                    <i className="las la-plus text-xl" />
+                  </span>
+                </summary>
+                <p className="mt-3 max-w-3xl text-base leading-8 text-stone-600">{faq.answer}</p>
+              </details>
+            ))}
           </div>
         </div>
       </section>
+
+      <FooterStartFree />
     </div>
   );
 };
