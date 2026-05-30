@@ -129,8 +129,8 @@ const ProcessSection = () => (
         <div className="space-y-0">
           {processSteps.map((step, index) => (
             <div key={step.number} className={`grid gap-5 py-8 sm:grid-cols-[64px_1fr] ${index !== processSteps.length - 1 ? 'border-b border-white/10' : ''}`}>
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-primary-600">
-                <i className={`las ${step.icon} text-3xl`} />
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-600 text-base font-black text-white">
+                {step.number}
               </div>
               <div>
                 <h3 className="font-[Work_Sans] text-xl font-black text-white">{step.title}</h3>
