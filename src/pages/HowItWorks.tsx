@@ -96,15 +96,15 @@ const faqs = [
 ];
 
 const HeroVisual = () => (
-  <div className="relative">
+  <div className="relative flex h-full items-end lg:min-h-[620px]">
     <div className="absolute -left-5 top-8 hidden rounded-full bg-primary-600 px-4 py-2 text-sm font-bold text-white shadow-xl lg:block">
       Books near you
     </div>
-    <div className="rounded-[32px] border border-white/10 bg-white p-4 shadow-2xl shadow-black/50">
-      <div className="flex min-h-[430px] items-center justify-center rounded-[24px] bg-[#ffdd00] p-8">
+    <div className="w-full rounded-t-[32px] border border-b-0 border-white/10 bg-white p-4 shadow-2xl shadow-black/50 lg:rounded-b-none">
+      <div className="flex min-h-[520px] items-center justify-center rounded-t-[24px] bg-[#ffdd00] p-8 lg:min-h-[560px] lg:rounded-b-none">
         <div className="text-center text-stone-950">
           <i className="las la-image text-7xl" />
-          <p className="mt-4 font-[Work_Sans] text-2xl font-black">Image placeholder 560 x 430</p>
+          <p className="mt-4 font-[Work_Sans] text-2xl font-black">Image placeholder 560 x 560</p>
           <p className="mt-2 max-w-sm text-sm font-semibold text-stone-800">Add your Figma SaaS illustration or product screenshot here.</p>
         </div>
       </div>
@@ -252,8 +252,8 @@ const HowItWorks: React.FC = () => {
   return (
     <div className="overflow-hidden bg-white">
       <section className="relative bg-[#121212] text-white">
-        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:py-28">
-          <div>
+        <div className="mx-auto grid max-w-7xl items-end gap-12 px-4 pb-0 pt-20 sm:px-6 lg:min-h-[700px] lg:grid-cols-[0.95fr_1.05fr] lg:pt-28">
+          <div className="pb-20 lg:pb-28">
             <h1 className="max-w-3xl font-[Work_Sans] text-5xl font-black leading-[1.02] tracking-[-0.045em] text-white sm:text-7xl">
               Build a Reading Habit Without Overpaying
             </h1>
