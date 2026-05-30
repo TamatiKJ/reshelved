@@ -35,6 +35,17 @@ const steps: Array<{ id: CreateStep; label: string }> = [
   { id: 3, label: 'Preview' }
 ];
 
+const clampListingDays = (value: unknown) => {
+  const days = Number(value);
+  if (!Number.isFinite(days)) return DEFAULT_LISTING_DAYS;
+  return Math.max(1, Math.min(45, Math.round(days)));
+};
+
+const getValidSellPrice = (value: string) => {
+  const parsedPrice = Number(value);
+  return Number.isFinite(parsedPrice) ? parsedPrice : 0;
+};
+
 const formatBytes = (bytes: number) => {
   if (!bytes) return '0 KB';
   const units = ['B', 'KB', 'MB', 'GB'];
@@ -95,6 +106,7 @@ const CreateListing: React.FC = () => {
 
   const activeListingType = useMemo(() => listingTypes.find((item) => item.value === type), [type]);
   const selectedCategory = useMemo(() => listingCategories.find((item) => item.name === category || item.id === category || item.slug === category), [listingCategories, category]);
+  const safeListingDays = useMemo(() => clampListingDays(listingDays), [listingDays]);
   const previewTitle = title.trim() || 'Book title will appear here';
   const previewAuthor = author.trim() || 'Author Name';
   const previewPrice = type === 'sell' ? `KSh ${price || '0'}` : type === 'donate' ? 'Free' : 'Swap';
@@ -105,8 +117,8 @@ const CreateListing: React.FC = () => {
   useEffect(() => {
     const loadListingDays = async () => {
       const snapshot = await getDoc(doc(db, 'platform', 'settings')).catch(() => null);
-      const days = Number(snapshot?.exists() ? snapshot.data().listingDays : DEFAULT_LISTING_DAYS) || DEFAULT_LISTING_DAYS;
-      setListingDays(Math.max(1, Math.min(45, days)));
+      const days = snapshot?.exists() ? snapshot.data().listingDays : DEFAULT_LISTING_DAYS;
+      setListingDays(clampListingDays(days));
     };
     loadListingDays();
   }, []);
@@ -131,7 +143,7 @@ const CreateListing: React.FC = () => {
     if (!condition) return 'Choose the book condition before continuing.';
     if (!category) return 'Choose the book category before continuing.';
     if (!location) return 'Choose the book location before continuing.';
-    if (type === 'sell' && (!price.trim() || Number(price) <= 0)) return 'Add a valid price before continuing.';
+    if (type === 'sell' && (!price.trim() || getValidSellPrice(price) <= 0)) return 'Add a valid price before continuing.';
     return '';
   };
 
@@ -275,16 +287,21 @@ const CreateListing: React.FC = () => {
 
     try {
       const now = Date.now();
-      const categoryName = selectedCategory?.name || category;
+      const categoryName = (selectedCategory?.name || category).trim();
+      const finalListingDays = clampListingDays(safeListingDays);
+      const finalPrice = type === 'sell' ? getValidSellPrice(price) : 0;
+
+      if (!categoryName) throw new Error('Choose a valid category before publishing.');
+      if (type === 'sell' && finalPrice <= 0) throw new Error('Add a valid price before publishing.');
 
       publishStage = 'creating listing reference';
       const listingRef = doc(collection(db, 'listings'));
 
       publishStage = 'uploading listing images';
       const imageUrls = await uploadListingImages(listingRef.id, [...images]);
+      if (imageUrls.length < 1 || imageUrls.length > MAX_IMAGES) throw new Error('Upload between 1 and 4 listing images.');
 
-      publishStage = 'creating listing document';
-      await setDoc(listingRef, {
+      const listingData = {
         title: title.trim(),
         author: author.trim(),
         description: description.trim(),
@@ -293,19 +310,23 @@ const CreateListing: React.FC = () => {
         categoryId: selectedCategory?.id || selectedCategory?.slug || categoryName,
         categoryName,
         type,
-        price: type === 'sell' ? parseFloat(price) || 0 : 0,
+        price: finalPrice,
         images: imageUrls,
         userId: currentUser.uid,
-        userName: userProfile.displayName || currentUser.displayName || 'Reshelved User',
+        userName: (userProfile.displayName || currentUser.displayName || 'Reshelved User').trim(),
         userPhoto: userProfile.photoURL || '',
-        location,
+        location: location.trim(),
         createdAt: now,
-        expiresAt: now + listingDays * DAY_MS,
-        listingDays,
+        expiresAt: now + finalListingDays * DAY_MS,
+        listingDays: finalListingDays,
         active: true,
         flagged: false,
         flagCount: 0
-      });
+      };
+
+      publishStage = 'creating listing document';
+      console.info('Creating listing payload:', listingData);
+      await setDoc(listingRef, listingData);
 
       publishStage = 'syncing profile location';
       await syncDefaultLocationIfNeeded().catch((profileSyncError) => {
@@ -348,7 +369,7 @@ const CreateListing: React.FC = () => {
           <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-stone-200 px-4 py-2 text-sm font-bold text-stone-950"><i className={`${activeListingType?.icon || 'las la-tag'} text-primary-600`} />{activeListingType?.label || 'Listing'}</span>
           <p className="mt-3 text-sm font-bold text-stone-950">{previewPrice}</p>
         </div>
-        <div className="mt-5 rounded-2xl bg-green-50 p-4 text-sm leading-6 text-green-800"><i className="las la-info-circle mr-1 text-lg text-green-700" />Your listing will be active for {listingDays} {listingDays === 1 ? 'day' : 'days'} after publishing.</div>
+        <div className="mt-5 rounded-2xl bg-green-50 p-4 text-sm leading-6 text-green-800"><i className="las la-info-circle mr-1 text-lg text-green-700" />Your listing will be active for {safeListingDays} {safeListingDays === 1 ? 'day' : 'days'} after publishing.</div>
       </div>
     </aside>
   );
@@ -429,7 +450,7 @@ const CreateListing: React.FC = () => {
                 <div>
                   <h2 className="text-2xl font-bold text-stone-950">Preview</h2>
                   <p className="mt-1 text-sm leading-6 text-stone-500">Review your listing before publishing.</p>
-                  <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5 text-sm leading-6 text-green-800"><p className="font-bold text-green-900">Your listing will be active after publishing.</p><p className="mt-1">It will be visible on your account page, visible publicly in browse results, and active for {listingDays} {listingDays === 1 ? 'day' : 'days'}.</p></div>
+                  <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5 text-sm leading-6 text-green-800"><p className="font-bold text-green-900">Your listing will be active after publishing.</p><p className="mt-1">It will be visible on your account page, visible publicly in browse results, and active for {safeListingDays} {safeListingDays === 1 ? 'day' : 'days'}.</p></div>
                   <div className="mt-6 rounded-2xl border border-stone-200 bg-stone-50 p-5"><div className="grid gap-4 text-sm sm:grid-cols-2"><div><span className="font-bold text-stone-500">Title</span><p className="mt-1 font-bold text-stone-950">{previewTitle}</p></div><div><span className="font-bold text-stone-500">Author</span><p className="mt-1 text-stone-700">{previewAuthor}</p></div><div><span className="font-bold text-stone-500">Listing</span><p className="mt-1 text-stone-700">{activeListingType?.label}</p></div><div><span className="font-bold text-stone-500">Value</span><p className="mt-1 text-stone-700">{previewPrice}</p></div></div></div>
                   <div className="mt-6 flex flex-wrap items-center gap-3"><button type="button" onClick={() => goToStep(2)} disabled={loading} className="cursor-pointer rounded-lg border border-stone-200 px-8 py-3 text-sm font-bold text-stone-600 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50">Back</button><button type="submit" disabled={loading} className="cursor-pointer rounded-lg bg-primary-600 px-8 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Publishing...' : 'Publish Listing'}</button>{cancelButton}</div>
                 </div>
