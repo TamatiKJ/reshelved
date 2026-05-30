@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import HowItWorksScroller from '../components/HowItWorksScroller';
 
@@ -58,24 +58,24 @@ const platformFeatures = [
 
 const faqs = [
   {
-    question: 'How does Reshelved work?',
-    answer: 'Reshelved is a peer-to-peer book exchange platform for readers in Nairobi. You create an account, search for books, review listing details, message the owner, and arrange the sale, swap, or donation directly.',
+    question: 'How can I use Reshelved to find second-hand books in Nairobi?',
+    answer: 'Create an account, search for books by title, author, category, condition, price, exchange type, and Nairobi location, then message the book owner directly through Reshelved.',
   },
   {
-    question: 'Is Reshelved free to use?',
-    answer: 'Yes. You can browse books, create an account, list books, and message other users for free. If a book is being sold, payment is agreed directly between the buyer and seller.',
+    question: 'How can I use Reshelved for free?',
+    answer: 'You can browse books, create an account, list books, and message other users for free. If a book is being sold, payment is agreed directly between the buyer and seller.',
   },
   {
-    question: 'Can I sell second-hand books on Reshelved?',
-    answer: 'Yes. You can list second-hand books for sale by adding the title, author, photos, condition, price, category, and location. Readers can then find your listing and contact you through the platform.',
+    question: 'How can I sell my second-hand books in Nairobi on Reshelved?',
+    answer: 'Add the book title, author, photos, condition, price, category, and location. Readers can then find your listing and contact you through the platform.',
   },
   {
-    question: 'Can I swap books with other readers in Nairobi?',
-    answer: 'Yes. Reshelved supports book swaps. When listing a book, choose the swap option so other readers know you are open to exchanging it for another book.',
+    question: 'How can I swap books with other readers in Nairobi?',
+    answer: 'When listing a book, choose the swap option so other readers know you are open to exchanging it for another book.',
   },
   {
-    question: 'Can I donate books on Reshelved?',
-    answer: 'Yes. You can mark a listing as a donation if you want to give the book away for free. This helps unused books reach readers who need them.',
+    question: 'How can I donate books on Reshelved?',
+    answer: 'Mark your listing as a donation if you want to give the book away for free. This helps unused books reach readers who need them.',
   },
   {
     question: 'Does Reshelved deliver books?',
@@ -86,8 +86,8 @@ const faqs = [
     answer: 'Use the search and filters on Reshelved to look for books by location, title, author, category, condition, price, and exchange type. This makes it easier to find second-hand books near your preferred Nairobi area.',
   },
   {
-    question: 'How do I know if a book seller is trustworthy?',
-    answer: 'Reshelved supports trust through user accounts, clear listings, book photos, condition labels, in-app messaging, ratings, reviews, and reporting tools. You should still confirm the book and meet in a safe public place before completing an exchange.',
+    question: 'How can I know if a book seller is trustworthy?',
+    answer: 'Check the seller profile, book photos, condition labels, ratings, reviews, and messages before agreeing to meet. You should still confirm the book and meet in a safe public place before completing an exchange.',
   },
   {
     question: 'What types of books can I find on Reshelved?',
@@ -142,7 +142,7 @@ const ProcessSection = () => (
       </div>
 
       <div className="mt-12 flex items-center gap-5 rounded-xl border border-white/10 bg-white/[0.04] p-5 sm:p-6">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-primary-600">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white bg-transparent text-white">
           <i className="las la-shield-alt text-2xl" />
         </div>
         <p className="max-w-2xl text-sm leading-6 text-white/75">
@@ -205,6 +205,8 @@ const FooterStartFree = () => (
 );
 
 const HowItWorks: React.FC = () => {
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+
   useEffect(() => {
     const previousTitle = document.title;
     const nextTitle = 'How Reshelved Works | Buy, Sell, Swap and Donate Books in Nairobi';
@@ -284,17 +286,26 @@ const HowItWorks: React.FC = () => {
           </div>
 
           <div className="mt-12 divide-y divide-stone-200 overflow-hidden rounded-[28px] border border-stone-200 bg-white">
-            {faqs.map((faq) => (
-              <details key={faq.question} className="group p-6 open:bg-stone-50">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left font-[Work_Sans] text-lg font-black text-stone-950">
-                  {faq.question}
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4E2]/50 text-primary-600 transition group-open:rotate-45">
-                    <i className="las la-plus text-xl" />
-                  </span>
-                </summary>
-                <p className="mt-3 max-w-3xl text-base leading-8 text-stone-600">{faq.answer}</p>
-              </details>
-            ))}
+            {faqs.map((faq, index) => {
+              const isOpen = openFaqIndex === index;
+
+              return (
+                <div key={faq.question} className={`p-6 ${isOpen ? 'bg-stone-50' : 'bg-white'}`}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaqIndex((current) => (current === index ? null : index))}
+                    className="flex w-full cursor-pointer items-center justify-between gap-4 text-left font-[Work_Sans] text-lg font-black text-stone-950"
+                    aria-expanded={isOpen}
+                  >
+                    {faq.question}
+                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4E2]/50 text-primary-600 transition ${isOpen ? 'rotate-45' : ''}`}>
+                      <i className="las la-plus text-xl" />
+                    </span>
+                  </button>
+                  {isOpen && <p className="mt-3 max-w-3xl text-base leading-8 text-stone-600">{faq.answer}</p>}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
