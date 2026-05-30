@@ -49,12 +49,12 @@ const StepIcon = ({ icon, active }: { icon: string; active: boolean }) => (
 );
 
 const DesktopStep = ({ step, active, onClick }: { step: Step; active: boolean; onClick: () => void }) => (
-  <button type="button" onClick={onClick} className={`relative w-full bg-white py-4 pl-8 pr-4 text-left transition ${active ? 'opacity-100' : 'opacity-60 hover:opacity-90'}`}>
-    <span className="absolute bottom-0 left-0 top-0 w-px bg-stone-200" />
+  <button type="button" onClick={onClick} className={`relative w-full rounded-[22px] border border-stone-200 bg-white py-4 pl-8 pr-4 text-left transition ${active ? 'opacity-100' : 'opacity-60 hover:opacity-90'}`}>
+    <span className="absolute bottom-4 left-0 top-4 w-[2px] bg-stone-200" />
     {active && (
       <span
         key={step.title}
-        className="absolute left-0 top-0 w-px bg-[#1665CC]"
+        className="absolute left-0 top-4 w-[2px] bg-[#1665CC]"
         style={{ animation: `how-it-works-progress ${autoAdvanceMs}ms linear forwards` }}
       />
     )}
@@ -103,7 +103,7 @@ const HowItWorksScroller = () => {
       <style>{`
         @keyframes how-it-works-progress {
           from { height: 0%; }
-          to { height: 100%; }
+          to { height: calc(100% - 2rem); }
         }
       `}</style>
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
