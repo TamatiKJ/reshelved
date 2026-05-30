@@ -55,25 +55,33 @@ const storySteps = [
   {
     id: 'list',
     eyebrow: 'Step 1',
-    icon: 'la-camera-retro',
-    title: 'List the book once',
-    description: 'Add photos, price, condition, and location. Readers can see the key details before they message you.',
+    icon: 'la-book-open',
+    title: 'List your book once',
+    description: 'Add photos, condition, price, and location so readers know what you have before they message you.',
     imageLabel: 'Image placeholder 560 x 460',
   },
   {
-    id: 'find',
+    id: 'choose',
     eyebrow: 'Step 2',
-    icon: 'la-search',
-    title: 'Readers find it fast',
-    description: 'They search by title, author, category, type, and Nairobi location instead of checking many apps.',
+    icon: 'la-sync-alt',
+    title: 'Choose sell, swap, or donate',
+    description: 'Pick how you want the book to move. Sell it for cash, swap it, or give it to a reader who needs it.',
     imageLabel: 'Image placeholder 560 x 460',
   },
   {
     id: 'message',
     eyebrow: 'Step 3',
     icon: 'la-comments',
-    title: 'Agree inside the platform',
-    description: 'Message the owner, ask questions, and agree on the handover when both sides are ready.',
+    title: 'Message and agree',
+    description: 'Talk inside Reshelved, confirm the book, and agree on the handover when both sides are ready.',
+    imageLabel: 'Image placeholder 560 x 460',
+  },
+  {
+    id: 'rate',
+    eyebrow: 'Step 4',
+    icon: 'la-star',
+    title: 'Rate your exchange',
+    description: 'Leave a quick rating after the exchange so other readers know who they can trust.',
     imageLabel: 'Image placeholder 560 x 460',
   },
 ];
@@ -172,28 +180,40 @@ const HeroVisual = () => (
 );
 
 const ScrollPlaceholder = ({ label }: { label: string }) => (
-  <div className="flex aspect-[14/11] min-h-[360px] items-center justify-center rounded-[30px] border border-stone-200 bg-[#FFF9F0] p-8 shadow-xl shadow-stone-200/60">
-    <div className="text-center">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-primary-600 shadow-sm">
-        <i className="las la-image text-3xl" />
+  <div className="relative mx-auto w-full max-w-[560px]">
+    <div className="rounded-[22px] border border-stone-200 bg-stone-100 p-4 shadow-xl shadow-stone-200/70">
+      <div className="flex aspect-[28/23] items-center justify-center rounded-2xl bg-[#FFF9F0]">
+        <div className="text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-primary-600 shadow-sm">
+            <i className="las la-image text-3xl" />
+          </div>
+          <p className="mt-4 font-[Work_Sans] text-lg font-black text-stone-950">{label}</p>
+        </div>
       </div>
-      <p className="mt-4 font-[Work_Sans] text-xl font-black text-stone-950">{label}</p>
-      <p className="mt-2 text-sm leading-6 text-stone-500">Replace this with the matching product image.</p>
+    </div>
+    <div className="absolute -bottom-8 right-6 hidden w-52 rounded-2xl border border-stone-200 bg-white p-4 shadow-xl shadow-stone-200/80 sm:block">
+      <p className="font-[Work_Sans] text-base font-black text-stone-950">Book listing preview</p>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {[1, 2, 3, 4, 5, 6].map((item) => (
+          <div key={item} className="rounded-lg bg-[#FFF9F0] p-2">
+            <div className="h-7 rounded-md bg-primary-600/10" />
+            <div className="mt-2 h-1.5 w-8 rounded-full bg-stone-200" />
+          </div>
+        ))}
+      </div>
     </div>
   </div>
 );
 
 const StoryStepCard = ({ step, isActive }: { step: (typeof storySteps)[number]; isActive: boolean }) => (
-  <div className={`rounded-2xl border p-6 transition duration-300 ${isActive ? 'border-primary-600 bg-[#FFF9F0]' : 'border-stone-200 bg-white'}`}>
-    <div className="flex items-start gap-4">
-      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${isActive ? 'bg-primary-600 text-white' : 'bg-[#FFF9F0] text-primary-600'}`}>
-        <i className={`las ${step.icon} text-2xl`} />
-      </div>
-      <div>
-        <p className="text-xs font-black uppercase tracking-[0.2em] text-primary-700">{step.eyebrow}</p>
-        <h3 className="mt-2 font-[Work_Sans] text-xl font-black text-stone-950">{step.title}</h3>
-        <p className="mt-2 text-sm leading-6 text-stone-600">{step.description}</p>
-      </div>
+  <div className="grid gap-5 sm:grid-cols-[56px_1fr]">
+    <div className={`flex h-12 w-12 items-center justify-center rounded-xl border transition ${isActive ? 'border-primary-600 bg-primary-600 text-white' : 'border-stone-200 bg-white text-primary-600'}`}>
+      <i className={`las ${step.icon} text-2xl`} />
+    </div>
+    <div>
+      <p className="text-xs font-black uppercase tracking-[0.2em] text-primary-700">{step.eyebrow}</p>
+      <h3 className="mt-2 font-[Work_Sans] text-xl font-black text-stone-950">{step.title}</h3>
+      <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600">{step.description}</p>
     </div>
   </div>
 );
@@ -234,30 +254,36 @@ const ScrollStorySection = () => {
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm font-black uppercase tracking-[0.22em] text-primary-700">Simple steps</p>
           <h2 className="mt-4 font-[Work_Sans] text-4xl font-black tracking-[-0.03em] text-stone-950 sm:text-6xl">
-            How books move fast
+            Turn unused books into cash, swaps, or free help
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-stone-600">
-            Listing or finding a book is less hard than you think. Here is the quick path.
+            List your book once and choose whether to sell, swap, or donate it to another reader.
           </p>
         </div>
 
-        <div className="mt-14 hidden gap-14 lg:grid lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
-          <div className="sticky top-28">
+        <div className="mt-16 hidden gap-16 lg:grid lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
+          <div className="sticky top-28 pt-8">
             <ScrollPlaceholder label={storySteps[activeStep].imageLabel} />
           </div>
 
-          <div className="space-y-8 py-12">
-            {storySteps.map((step, index) => (
-              <div key={step.id} data-story-step={index} className="min-h-[360px] scroll-mt-32">
-                <StoryStepCard step={step} isActive={activeStep === index} />
-              </div>
-            ))}
+          <div className="relative py-8">
+            <div className="absolute bottom-8 left-6 top-8 w-px bg-stone-200" />
+            <div className="space-y-0">
+              {storySteps.map((step, index) => (
+                <div key={step.id} data-story-step={index} className="relative min-h-[280px] scroll-mt-32 pb-12">
+                  <div className={`absolute left-6 top-0 h-16 w-px transition ${activeStep === index ? 'bg-primary-600' : 'bg-transparent'}`} />
+                  <div className="relative bg-white pl-0">
+                    <StoryStepCard step={step} isActive={activeStep === index} />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         <div className="mt-10 lg:hidden">
           <ScrollPlaceholder label={storySteps[activeStep].imageLabel} />
-          <div className="mt-5 grid grid-cols-3 gap-2 rounded-2xl bg-[#FFF9F0] p-2">
+          <div className="mt-12 grid grid-cols-2 gap-2 rounded-2xl bg-[#FFF9F0] p-2">
             {storySteps.map((step, index) => (
               <button
                 key={step.id}
@@ -269,7 +295,7 @@ const ScrollStorySection = () => {
               </button>
             ))}
           </div>
-          <div className="mt-5">
+          <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-5">
             <StoryStepCard step={storySteps[activeStep]} isActive />
           </div>
         </div>
