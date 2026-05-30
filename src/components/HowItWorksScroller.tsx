@@ -4,21 +4,21 @@ const autoAdvanceMs = 6000;
 
 const steps = [
   {
-    title: 'List your book once',
-    description: 'Add the title, condition, price, and location so readers know what you have before they message you.',
-    imageLabel: 'Image placeholder 560 x 336',
-    icon: 'la-book-reader',
+    title: 'List your book',
+    description: 'One listing puts your book in front of nearby readers. No reposting, no repeating yourself.',
+    imageLabel: 'Image placeholder 1 420 x 520',
+    icon: 'la-book-open',
   },
   {
-    title: 'Choose how it moves',
-    description: 'Sell it for cash, swap it for another book, or donate it to a reader who needs it.',
-    imageLabel: 'Image placeholder 560 x 336',
-    icon: 'la-random',
+    title: 'Choose your exchange and location',
+    description: 'Want cash, a new read, or a clear shelf? Pick how it moves and where you want to meet.',
+    imageLabel: 'Image placeholder 2 420 x 520',
+    icon: 'la-exchange-alt',
   },
   {
     title: 'Message, meet, and rate',
-    description: 'Agree on the handover inside Reshelved, then rate the exchange to help other readers know who to trust.',
-    imageLabel: 'Image placeholder 560 x 336',
+    description: 'Chat with your reader, agree on a spot, and meet up. A quick rating afterwards keeps the community honest.',
+    imageLabel: 'Image placeholder 3 420 x 520',
     icon: 'la-comment-dots',
   },
 ];
@@ -26,9 +26,9 @@ const steps = [
 type Step = (typeof steps)[number];
 
 const ImagePlaceholder = ({ label }: { label: string }) => (
-  <div className="flex h-[336px] w-full items-center justify-center rounded-none border border-stone-200 bg-[#FFF9F0] p-6">
+  <div className="flex h-[520px] w-full max-w-[420px] items-center justify-center rounded-none border border-stone-200 bg-[#FFF9F0] p-6">
     <div className="text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#1665CC] shadow-sm">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-white text-primary-600 shadow-sm">
         <i className="las la-image text-2xl" />
       </div>
       <p className="mt-4 font-[Work_Sans] text-lg font-black text-stone-950">{label}</p>
@@ -39,8 +39,8 @@ const ImagePlaceholder = ({ label }: { label: string }) => (
 
 const StepIcon = ({ icon, active }: { icon: string; active: boolean }) => (
   <span
-    className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-lg transition ${
-      active ? 'bg-[#FFF4E2] text-primary-600 shadow-sm' : 'border border-stone-200 bg-white text-stone-500'
+    className={`flex h-[74px] w-[74px] shrink-0 items-center justify-center rounded-full transition ${
+      active ? 'bg-[#FFF4E2] text-primary-600' : 'bg-[#F7F2ED] text-stone-400'
     }`}
   >
     <i className={`las ${icon} text-3xl`} />
@@ -51,28 +51,28 @@ const DesktopStep = ({ step, active, onClick }: { step: Step; active: boolean; o
   <button
     type="button"
     onClick={onClick}
-    className={`relative w-full rounded-none border-0 py-4 pl-8 pr-4 text-left transition ${active ? 'bg-stone-50 opacity-100' : 'bg-white opacity-60 hover:bg-stone-50 hover:opacity-90'}`}
+    className={`relative w-full rounded-none border-0 py-8 pl-9 pr-8 text-left transition ${active ? 'bg-[#FFF9F0] opacity-100' : 'bg-white opacity-45 hover:bg-stone-50 hover:opacity-75'}`}
   >
     <span className="absolute bottom-0 left-0 top-0 w-1 bg-stone-200" />
     {active && (
       <span
         key={step.title}
-        className="absolute left-0 top-0 w-1 bg-[#1665CC]"
+        className="absolute left-0 top-0 w-1 bg-primary-600"
         style={{ animation: `how-it-works-progress ${autoAdvanceMs}ms linear forwards` }}
       />
     )}
-    <div className="grid gap-5 sm:grid-cols-[56px_1fr] sm:items-start">
+    <div className="grid gap-7 sm:grid-cols-[84px_1fr] sm:items-start">
       <StepIcon icon={step.icon} active={active} />
       <div>
-        <h3 className="font-[Work_Sans] text-[18px] font-black leading-6 text-stone-950">{step.title}</h3>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600">{step.description}</p>
+        <h3 className={`font-[Work_Sans] text-[24px] leading-7 text-stone-950 ${active ? 'font-black' : 'font-black'}`}>{step.title}</h3>
+        <p className="mt-4 max-w-2xl text-[19px] leading-8 text-stone-600">{step.description}</p>
       </div>
     </div>
   </button>
 );
 
 const MobileAccordionItem = ({ step, open, onToggle }: { step: Step; open: boolean; onToggle: () => void }) => (
-  <div className="rounded-2xl border border-stone-200 bg-white">
+  <div className={`rounded-2xl border border-stone-200 bg-white ${open ? 'bg-[#FFF9F0]' : ''}`}>
     <button type="button" onClick={onToggle} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left">
       <div className="flex items-center gap-4">
         <StepIcon icon={step.icon} active={open} />
@@ -110,19 +110,19 @@ const HowItWorksScroller = () => {
         }
       `}</style>
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="mx-auto max-w-3xl text-center">
+        <div className="max-w-3xl">
           <h2 className="font-[Work_Sans] text-4xl font-black tracking-[-0.03em] text-stone-950 sm:text-5xl">Read More, Spend Less</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-base leading-7 text-stone-600">Reshelved helps you find cheaper second-hand books in Nairobi, so you can reach your reading goals without stretching your budget.</p>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-stone-600">Reshelved helps you find cheaper second-hand books in Nairobi, so you can reach your reading goals without stretching your budget.</p>
         </div>
 
-        <div className="mt-12 hidden gap-10 lg:grid lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
-          <div className="sticky top-28">
-            <ImagePlaceholder label={steps[activeStep].imageLabel} />
-          </div>
-          <div className="space-y-3">
+        <div className="mt-14 hidden gap-12 lg:grid lg:grid-cols-[1.35fr_0.65fr] lg:items-start">
+          <div className="space-y-0">
             {steps.map((step, index) => (
               <DesktopStep key={step.title} step={step} active={activeStep === index} onClick={() => setActiveStep(index)} />
             ))}
+          </div>
+          <div className="sticky top-28 flex justify-end">
+            <ImagePlaceholder label={steps[activeStep].imageLabel} />
           </div>
         </div>
 
