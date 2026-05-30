@@ -104,7 +104,7 @@ const HeroVisual = () => (
       <div className="flex min-h-[430px] items-center justify-center rounded-[24px] bg-[#ffdd00] p-8">
         <div className="text-center text-stone-950">
           <i className="las la-image text-7xl" />
-          <p className="mt-4 font-[Work_Sans] text-2xl font-black">Image placeholder</p>
+          <p className="mt-4 font-[Work_Sans] text-2xl font-black">Image placeholder 560 x 430</p>
           <p className="mt-2 max-w-sm text-sm font-semibold text-stone-800">Add your Figma SaaS illustration or product screenshot here.</p>
         </div>
       </div>
@@ -253,10 +253,10 @@ const HowItWorks: React.FC = () => {
         <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:py-28">
           <div>
             <h1 className="max-w-3xl font-[Work_Sans] text-5xl font-black leading-[1.02] tracking-[-0.045em] text-white sm:text-7xl">
-              Find affordable books in Nairobi without chasing sellers everywhere.
+              Build a Reading Habit Without Overpaying
             </h1>
             <p className="mt-7 max-w-2xl text-xl leading-8 text-white/75">
-              Search, verify, message, and arrange book exchanges from one structured platform. No scattered posts. No unclear book condition. No wasted calls for books that are already gone.
+              Books are expensive, and finding the right one is frustrating. Reshelved helps you find affordable second-hand books near you, message the owner, and keep reading without overspending.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link to="/browse" className="inline-flex items-center justify-center rounded-md bg-primary-600 px-5 py-3 text-base font-bold text-white transition hover:bg-primary-700">
