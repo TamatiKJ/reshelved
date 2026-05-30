@@ -1,4 +1,13 @@
-import { collection, doc, getDocs, query, updateDoc, where, writeBatch, increment } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDocs,
+  increment,
+  query,
+  updateDoc,
+  where,
+  writeBatch
+} from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Conversation, Message } from '../types';
 
@@ -92,21 +101,35 @@ export const markConversationMessagesRead = async ({
   userId: string;
   messages: Message[];
 }) => {
+  const now = Date.now();
+
+  await updateDoc(doc(db, 'conversations', conversationId), {
+    [`unreadCount.${userId}`]: 0,
+    [`lastReadAt.${userId}`]: now
+  });
+
   const incomingToUpdate = messages.filter((message) => {
     const data = message as any;
     if (message.senderId === userId || data.deleted) return false;
+
     const deliveredTo = Array.isArray(data.deliveredTo) ? data.deliveredTo : [];
     const readBy = Array.isArray(data.readBy) ? data.readBy : [];
-    return !deliveredTo.includes(userId) || !readBy.includes(userId) || data.status !== 'read' || data.messageStatus !== 'read';
+
+    return (
+      !deliveredTo.includes(userId)
+      || !readBy.includes(userId)
+      || data.status !== 'read'
+      || data.messageStatus !== 'read'
+    );
   });
 
-  const now = Date.now();
-  const batch = writeBatch(db);
+  if (incomingToUpdate.length === 0) return;
 
-  incomingToUpdate.forEach((message) => {
+  const updates = incomingToUpdate.map(async (message) => {
     const data = message as any;
     const deliveredTo = Array.isArray(data.deliveredTo) ? data.deliveredTo : [];
     const readBy = Array.isArray(data.readBy) ? data.readBy : [];
+
     const update: Record<string, unknown> = {
       deliveredTo: Array.from(new Set([...deliveredTo, userId])),
       readBy: Array.from(new Set([...readBy, userId])),
@@ -114,15 +137,19 @@ export const markConversationMessagesRead = async ({
       messageStatus: 'read'
     };
 
-    if (!deliveredTo.includes(userId)) update[`deliveredAt.${userId}`] = now;
-    batch.update(doc(db, 'messages', message.id), update);
+    if (!deliveredTo.includes(userId)) {
+      update[`deliveredAt.${userId}`] = now;
+    }
+
+    await updateDoc(doc(db, 'messages', message.id), update);
   });
 
-  batch.update(doc(db, 'conversations', conversationId), {
-    [`unreadCount.${userId}`]: 0,
-    [`lastReadAt.${userId}`]: now
-  });
-  await batch.commit();
+  const results = await Promise.allSettled(updates);
+  const failed = results.filter((result) => result.status === 'rejected');
+
+  if (failed.length > 0) {
+    console.warn(`${failed.length} message read-status update(s) failed. Conversation unread count was still cleared.`);
+  }
 };
 
 export const hideConversationForUser = async ({
@@ -146,6 +173,23 @@ export const hideConversationForUser = async ({
 };
 
 export const markConversationNotificationsRead = async (conversationId: string, userId: string) => {
-  const notificationSnap = await getDocs(query(collection(db, 'notifications'), where('userId', '==', userId), where('conversationId', '==', conversationId), where('read', '==', false)));
-  await Promise.all(notificationSnap.docs.map((item) => updateDoc(doc(db, 'notifications', item.id), { read: true })));
+  const notificationSnap = await getDocs(
+    query(
+      collection(db, 'notifications'),
+      where('userId', '==', userId),
+      where('conversationId', '==', conversationId),
+      where('read', '==', false)
+    )
+  );
+
+  const updates = notificationSnap.docs.map((item) => (
+    updateDoc(doc(db, 'notifications', item.id), { read: true })
+  ));
+
+  const results = await Promise.allSettled(updates);
+  const failed = results.filter((result) => result.status === 'rejected');
+
+  if (failed.length > 0) {
+    console.warn(`${failed.length} notification read update(s) failed.`);
+  }
 };
