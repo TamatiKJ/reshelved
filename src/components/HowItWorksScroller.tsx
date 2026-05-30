@@ -19,7 +19,7 @@ const steps = [
     title: 'Message, meet, and rate',
     description: 'Chat with your reader, agree on a spot, and meet up. A quick rating afterwards keeps the community honest.',
     imageLabel: 'Image placeholder 3 460 x 420',
-    icon: 'la-comment-dots',
+    icon: 'la-comments',
   },
 ];
 
