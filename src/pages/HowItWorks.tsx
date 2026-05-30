@@ -162,14 +162,11 @@ const ProcessSection = () => (
         <div className="space-y-0">
           {processSteps.map((step, index) => (
             <div key={step.number} className={`grid gap-5 py-8 sm:grid-cols-[64px_1fr] ${index !== processSteps.length - 1 ? 'border-b border-white/10' : ''}`}>
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFF4E2]/50 text-primary-600">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-primary-600">
                 <i className={`las ${step.icon} text-3xl`} />
               </div>
               <div>
-                <div className="flex items-center gap-3">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-600 text-sm font-black text-white">{step.number}</span>
-                  <h3 className="font-[Work_Sans] text-xl font-black text-white">{step.title}</h3>
-                </div>
+                <h3 className="font-[Work_Sans] text-xl font-black text-white">{step.title}</h3>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">{step.description}</p>
               </div>
             </div>
@@ -288,8 +285,7 @@ const HowItWorks: React.FC = () => {
       <section className="relative bg-[#121212] text-white">
         <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:py-28">
           <div>
-            <p className="text-sm font-black uppercase tracking-[0.24em] text-primary-500">How Reshelved works</p>
-            <h1 className="mt-5 max-w-3xl font-[Work_Sans] text-5xl font-black leading-[1.02] tracking-[-0.045em] text-white sm:text-7xl">
+            <h1 className="max-w-3xl font-[Work_Sans] text-5xl font-black leading-[1.02] tracking-[-0.045em] text-white sm:text-7xl">
               Find affordable books in Nairobi without chasing sellers everywhere.
             </h1>
             <p className="mt-7 max-w-2xl text-xl leading-8 text-white/75">
