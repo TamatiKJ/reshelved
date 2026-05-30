@@ -1,0 +1,556 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function userDocExists(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && (
+          request.auth.token.admin == true
+          || (
+            userDocExists(request.auth.uid)
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+          )
+        );
+    }
+
+    function isBanned(userId) {
+      return userDocExists(userId)
+        && (
+          get(/databases/$(database)/documents/users/$(userId)).data.banned == true
+          || get(/databases/$(database)/documents/users/$(userId)).data.deactivated == true
+          || get(/databases/$(database)/documents/users/$(userId)).data.disabled == true
+        );
+    }
+
+    function canUsePlatform() {
+      return signedIn() && !isBanned(request.auth.uid);
+    }
+
+    function validBlogStatus() {
+      return request.resource.data.status in ["published", "draft", "pending"];
+    }
+
+    function otherParticipantId(participants) {
+      return participants[0] == request.auth.uid ? participants[1] : participants[0];
+    }
+
+    function userHasBlocked(userId, blockedUserId) {
+      return userDocExists(userId)
+        && get(/databases/$(database)/documents/users/$(userId)).data.keys().hasAny(["blockedUsers"])
+        && blockedUserId in get(/databases/$(database)/documents/users/$(userId)).data.blockedUsers;
+    }
+
+    function isBlockedByAnyParticipant(participants) {
+      return signedIn()
+        && participants.size() == 2
+        && (
+          userHasBlocked(request.auth.uid, otherParticipantId(participants))
+          || userHasBlocked(otherParticipantId(participants), request.auth.uid)
+        );
+    }
+
+    function conversationExists(conversationId) {
+      return exists(/databases/$(database)/documents/conversations/$(conversationId));
+    }
+
+    function isConversationParticipant(conversationId) {
+      return signedIn()
+        && conversationExists(conversationId)
+        && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+    }
+
+    function messageHasConversationId() {
+      return resource.data.keys().hasAny(["conversationId"])
+        && resource.data.conversationId is string;
+    }
+
+    function isMessageParticipant() {
+      return signedIn()
+        && (
+          (
+            messageHasConversationId()
+            && isConversationParticipant(resource.data.conversationId)
+          )
+          || resource.data.senderId == request.auth.uid
+          || resource.data.recipientId == request.auth.uid
+        );
+    }
+
+    function validListingImages(images) {
+      return images is list
+        && images.size() >= 1
+        && images.size() <= 4;
+    }
+
+    function validListingBase(data) {
+      return data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 140
+        && data.author is string
+        && data.author.size() > 0
+        && data.author.size() <= 140
+        && data.description is string
+        && data.description.size() > 0
+        && data.description.size() <= 3000
+        && data.condition is string
+        && data.condition.size() > 0
+        && data.category is string
+        && data.category.size() > 0
+        && (!data.keys().hasAny(["categoryId"]) || data.categoryId is string)
+        && (!data.keys().hasAny(["categoryName"]) || data.categoryName is string)
+        && data.location is string
+        && data.location.size() > 0
+        && data.type in ["swap", "donate", "sell"]
+        && data.price is number
+        && data.price >= 0
+        && (data.type != "sell" || data.price > 0)
+        && (data.type == "sell" || data.price == 0)
+        && validListingImages(data.images);
+    }
+
+    function validListingCreate() {
+      return canUsePlatform()
+        && request.resource.data.keys().hasAll([
+          "title",
+          "author",
+          "description",
+          "condition",
+          "category",
+          "type",
+          "price",
+          "images",
+          "userId",
+          "userName",
+          "location",
+          "createdAt",
+          "expiresAt",
+          "listingDays",
+          "active",
+          "flagged",
+          "flagCount"
+        ])
+        && validListingBase(request.resource.data)
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userName is string
+        && request.resource.data.userName.size() > 0
+        && (!request.resource.data.keys().hasAny(["userPhoto"]) || request.resource.data.userPhoto is string)
+        && request.resource.data.active == true
+        && request.resource.data.flagged == false
+        && request.resource.data.flagCount == 0
+        && request.resource.data.createdAt is number
+        && request.resource.data.listingDays is number
+        && request.resource.data.listingDays >= 1
+        && request.resource.data.listingDays <= 45
+        && request.resource.data.expiresAt is number
+        && request.resource.data.expiresAt > request.time.toMillis()
+        && request.resource.data.expiresAt <= request.time.toMillis() + (45 * 86400000);
+    }
+
+    function isOwnerListingEdit() {
+      return canUsePlatform()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.active == resource.data.active
+        && request.resource.data.expiresAt == resource.data.expiresAt
+        && request.resource.data.listingDays == resource.data.listingDays
+        && request.resource.data.flagged == resource.data.flagged
+        && request.resource.data.flagCount == resource.data.flagCount
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "title",
+          "author",
+          "description",
+          "condition",
+          "category",
+          "categoryId",
+          "categoryName",
+          "type",
+          "price",
+          "images",
+          "location",
+          "updatedAt",
+          "userName",
+          "userPhoto"
+        ])
+        && validListingBase(request.resource.data);
+    }
+
+    function isOwnerListingRenewal() {
+      return canUsePlatform()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.listingDays == resource.data.listingDays
+        && request.resource.data.flagged == resource.data.flagged
+        && request.resource.data.flagCount == resource.data.flagCount
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "active",
+          "expiresAt",
+          "renewedAt"
+        ])
+        && request.resource.data.active == true
+        && request.resource.data.expiresAt is number
+        && request.resource.data.expiresAt > request.time.toMillis()
+        && request.resource.data.expiresAt <= request.time.toMillis() + 3888000000
+        && request.resource.data.renewedAt is number
+        && request.resource.data.renewedAt >= request.time.toMillis() - 600000
+        && request.resource.data.renewedAt <= request.time.toMillis() + 60000;
+    }
+
+    function isListingReportFlagUpdate() {
+      return canUsePlatform()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "flagged",
+          "flagCount"
+        ])
+        && request.resource.data.flagged == true
+        && request.resource.data.flagCount is number
+        && request.resource.data.flagCount == resource.data.flagCount + 1;
+    }
+
+    function isAdminListingUpdate() {
+      return isAdmin()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "title",
+          "author",
+          "description",
+          "condition",
+          "category",
+          "categoryId",
+          "categoryName",
+          "type",
+          "price",
+          "images",
+          "location",
+          "updatedAt",
+          "userName",
+          "userPhoto",
+          "active",
+          "expiresAt",
+          "listingDays",
+          "flagged",
+          "flagCount",
+          "deleted",
+          "deletedAt",
+          "deletedBy",
+          "durationAdjustedAt"
+        ]);
+    }
+
+    function validReportCreate() {
+      return canUsePlatform()
+        && request.resource.data.keys().hasAll([
+          "reporterId",
+          "reason",
+          "createdAt"
+        ])
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && request.resource.data.reason.size() <= 1000
+        && request.resource.data.createdAt is number
+        && request.resource.data.createdAt >= request.time.toMillis() - 600000
+        && request.resource.data.createdAt <= request.time.toMillis() + 60000;
+    }
+
+    function validRatingCreate() {
+      return canUsePlatform()
+        && request.resource.data.keys().hasAll([
+          "fromUserId",
+          "toUserId",
+          "rating",
+          "createdAt"
+        ])
+        && request.resource.data.fromUserId == request.auth.uid
+        && request.resource.data.toUserId != request.auth.uid
+        && request.resource.data.rating is number
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.createdAt is number
+        && request.resource.data.createdAt >= request.time.toMillis() - 600000
+        && request.resource.data.createdAt <= request.time.toMillis() + 60000;
+    }
+
+    function isSafeMessageMetaUpdate() {
+      return canUsePlatform()
+        && isMessageParticipant()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "readBy",
+          "deliveredTo",
+          "deliveredAt",
+          "deletedFor",
+          "status",
+          "messageStatus"
+        ]);
+    }
+
+    function isDeleteForEveryone() {
+      return canUsePlatform()
+        && resource.data.senderId == request.auth.uid
+        && request.time.toMillis() < resource.data.createdAt + 1800000
+        && request.resource.data.deleted == true
+        && request.resource.data.deletedBy == request.auth.uid
+        && request.resource.data.text == "This message was deleted"
+        && request.resource.data.type == "text"
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "deleted",
+          "deletedAt",
+          "deletedBy",
+          "text",
+          "type",
+          "imageUrl",
+          "imageData",
+          "imageName",
+          "imageSize",
+          "storagePath",
+          "mapUrl",
+          "lat",
+          "lng"
+        ]);
+    }
+
+    function isSafeConversationUpdate() {
+      return canUsePlatform()
+        && request.auth.uid in resource.data.participants
+        && request.resource.data.participants == resource.data.participants
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "lastMessage",
+          "lastMessageAt",
+          "lastMessageBy",
+          "updatedAt",
+          "hiddenFor",
+          "deletedFor",
+          "blockedUsers",
+          "conversationKey",
+          "unreadCount",
+          "lastReadAt",
+          "deliveredAt",
+          "listingId",
+          "listingTitle",
+          "listingImage",
+          "listingPrice",
+          "listingType",
+          "participantNames",
+          "participantPhotos",
+          "swapCompletion"
+        ]);
+    }
+
+    function validNotificationBase() {
+      return canUsePlatform()
+        && request.resource.data.keys().hasAll([
+          "userId",
+          "type",
+          "subject",
+          "message",
+          "createdAt",
+          "read"
+        ])
+        && request.resource.data.userId is string
+        && request.resource.data.subject is string
+        && request.resource.data.message is string
+        && request.resource.data.createdAt is number
+        && request.resource.data.read == false
+        && request.resource.data.type in [
+          "system",
+          "listing",
+          "swap",
+          "availability",
+          "admin",
+          "message"
+        ];
+    }
+
+    function validListingNotification() {
+      return validNotificationBase()
+        && request.resource.data.type == "listing"
+        && request.resource.data.keys().hasAny(["listingId"])
+        && exists(/databases/$(database)/documents/listings/$(request.resource.data.listingId))
+        && get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.userId == request.resource.data.userId
+        && request.auth.uid != request.resource.data.userId;
+    }
+
+    match /users/{userId} {
+      allow create: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin();
+
+      allow update: if isAdmin()
+        || (
+          isOwner(userId)
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+            "displayName",
+            "bio",
+            "location",
+            "phone",
+            "photoURL",
+            "updatedAt",
+            "lastSeen",
+            "blockedUsers",
+            "online"
+          ])
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    match /publicProfiles/{userId} {
+      allow read: if true;
+      allow create, update: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /listings/{listingId} {
+      allow read: if true;
+      allow create: if validListingCreate();
+
+      allow update: if isOwnerListingEdit()
+        || isOwnerListingRenewal()
+        || isListingReportFlagUpdate()
+        || isAdminListingUpdate();
+
+      allow delete: if signedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /ratings/{ratingId} {
+      allow read: if true;
+      allow create: if validRatingCreate();
+      allow update, delete: if isAdmin();
+    }
+
+    match /messages/{messageId} {
+      allow read: if isAdmin() || isMessageParticipant();
+
+      allow create: if canUsePlatform()
+        && request.resource.data.senderId == request.auth.uid
+        && conversationExists(request.resource.data.conversationId)
+        && request.auth.uid in get(/databases/$(database)/documents/conversations/$(request.resource.data.conversationId)).data.participants
+        && !isBlockedByAnyParticipant(
+          get(/databases/$(database)/documents/conversations/$(request.resource.data.conversationId)).data.participants
+        );
+
+      allow update: if isAdmin()
+        || isSafeMessageMetaUpdate()
+        || isDeleteForEveryone();
+
+      allow delete: if isAdmin();
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if signedIn()
+        && (request.auth.uid in resource.data.participants || isAdmin());
+
+      allow create: if canUsePlatform()
+        && request.resource.data.participants is list
+        && request.resource.data.participants.size() == 2
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.participants[0] != request.resource.data.participants[1]
+        && !isBlockedByAnyParticipant(request.resource.data.participants);
+
+      allow update: if isAdmin() || isSafeConversationUpdate();
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update, delete: if signedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow create: if isAdmin()
+        || validListingNotification()
+        || (
+          validNotificationBase()
+          && request.resource.data.type in ["system", "swap", "availability", "message"]
+        );
+    }
+
+    match /reports/{reportId} {
+      allow create: if validReportCreate();
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /contacts/{contactId} {
+      allow create: if canUsePlatform()
+        && request.resource.data.userId == request.auth.uid;
+
+      allow read, update: if isAdmin()
+        || (
+          canUsePlatform()
+          && (
+            resource.data.userId == request.auth.uid
+            || resource.data.sellerId == request.auth.uid
+            || resource.data.buyerId == request.auth.uid
+          )
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    match /platform/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /blogPosts/{postId} {
+      allow read: if resource.data.status == "published" || isAdmin();
+
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasAll([
+          "title",
+          "content",
+          "authorId",
+          "authorName",
+          "seoTitle",
+          "slug",
+          "seoDescription",
+          "featuredImage",
+          "category",
+          "tags",
+          "status",
+          "createdAt"
+        ])
+        && validBlogStatus();
+
+      allow update: if isAdmin()
+        && validBlogStatus();
+
+      allow delete: if isAdmin();
+    }
+
+    match /blogCategories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /blogTags/{tagId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /locations/{locationId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
