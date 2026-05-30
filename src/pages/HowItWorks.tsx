@@ -278,13 +278,9 @@ const HowItWorks: React.FC = () => {
       <section className="bg-white py-16 sm:py-24">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <div className="text-center">
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-primary-700">FAQs</p>
-            <h2 className="mt-4 font-[Work_Sans] text-4xl font-black tracking-[-0.03em] text-stone-950 sm:text-6xl">
+            <h2 className="font-[Work_Sans] text-4xl font-black tracking-[-0.03em] text-stone-950 sm:text-6xl">
               Questions readers ask before using Reshelved.
             </h2>
-            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-stone-600">
-              SEO-friendly answers for buying second-hand books, swapping books, donating books, and arranging safe book exchanges in Nairobi.
-            </p>
           </div>
 
           <div className="mt-12 divide-y divide-stone-200 overflow-hidden rounded-[28px] border border-stone-200 bg-white">
