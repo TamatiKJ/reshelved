@@ -6,19 +6,19 @@ const steps = [
   {
     title: 'List your book',
     description: 'One listing puts your book in front of nearby readers. No reposting, no repeating yourself.',
-    imageLabel: 'Image placeholder 1 420 x 420',
+    imageLabel: 'Image placeholder 1 460 x 420',
     icon: 'la-book-open',
   },
   {
     title: 'Choose your exchange and location',
     description: 'Want cash, a new read, or a clear shelf? Pick how it moves and where you want to meet.',
-    imageLabel: 'Image placeholder 2 420 x 420',
+    imageLabel: 'Image placeholder 2 460 x 420',
     icon: 'la-exchange-alt',
   },
   {
     title: 'Message, meet, and rate',
     description: 'Chat with your reader, agree on a spot, and meet up. A quick rating afterwards keeps the community honest.',
-    imageLabel: 'Image placeholder 3 420 x 420',
+    imageLabel: 'Image placeholder 3 460 x 420',
     icon: 'la-comment-dots',
   },
 ];
@@ -26,7 +26,7 @@ const steps = [
 type Step = (typeof steps)[number];
 
 const ImagePlaceholder = ({ label }: { label: string }) => (
-  <div className="flex h-[420px] w-full max-w-[420px] items-center justify-center rounded-none border border-stone-200 bg-[#FFF9F0] p-6">
+  <div className="flex h-[420px] w-full max-w-[460px] items-center justify-center rounded-none border border-stone-200 bg-[#FFF9F0] p-6">
     <div className="text-center">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-white text-primary-600 shadow-sm">
         <i className="las la-image text-2xl" />
@@ -64,7 +64,7 @@ const DesktopStep = ({ step, active, onClick }: { step: Step; active: boolean; o
     <div className="grid gap-5 sm:grid-cols-[56px_1fr] sm:items-start">
       <StepIcon icon={step.icon} active={active} />
       <div>
-        <h3 className="font-[Work_Sans] text-[18px] font-black leading-6 text-stone-950">{step.title}</h3>
+        <h3 className="font-[Work_Sans] text-[20px] font-black leading-7 text-stone-950">{step.title}</h3>
         <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600">{step.description}</p>
       </div>
     </div>
@@ -76,7 +76,7 @@ const MobileAccordionItem = ({ step, open, onToggle }: { step: Step; open: boole
     <button type="button" onClick={onToggle} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left">
       <div className="flex items-center gap-4">
         <StepIcon icon={step.icon} active={open} />
-        <h3 className="font-[Work_Sans] text-[17px] font-black leading-6 text-stone-950">{step.title}</h3>
+        <h3 className="font-[Work_Sans] text-[18px] font-black leading-6 text-stone-950">{step.title}</h3>
       </div>
       <i className={`las ${open ? 'la-angle-up' : 'la-angle-down'} text-lg text-stone-600`} />
     </button>
@@ -115,7 +115,7 @@ const HowItWorksScroller = () => {
           <p className="mt-4 max-w-2xl text-base leading-7 text-stone-600">Reshelved helps you find cheaper second-hand books in Nairobi, so you can reach your reading goals without stretching your budget.</p>
         </div>
 
-        <div className="mt-12 hidden gap-10 lg:grid lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+        <div className="mt-12 hidden gap-10 lg:grid lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
           <div className="space-y-3">
             {steps.map((step, index) => (
               <DesktopStep key={step.title} step={step} active={activeStep === index} onClick={() => setActiveStep(index)} />
