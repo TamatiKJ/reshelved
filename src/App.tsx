@@ -25,6 +25,7 @@ import MobileBottomNav from './components/MobileBottomNav';
 import DesktopChatDock from './components/DesktopChatDock';
 import Home from './pages/Home';
 import Browse from './pages/Browse';
+import HowItWorks from './pages/HowItWorks';
 import { Login, Register, ForgotPassword } from './pages/Auth';
 import CreateListing from './pages/CreateListing';
 import EditListing from './pages/EditListing';
@@ -59,6 +60,7 @@ const getPageScopeClass = (pathname: string) => {
   ) return 'page-profile';
   if (pathname.startsWith('/admin')) return 'page-admin';
   if (pathname.startsWith('/listing/')) return 'page-listing-detail';
+  if (pathname.startsWith('/how-it-works')) return 'page-how-it-works';
   return 'page-content';
 };
 
@@ -441,6 +443,7 @@ const AppContent: React.FC = () => {
                 <Routes location={renderedLocation}>
                   <Route path="/" element={<Home />} />
                   <Route path="/browse" element={<Browse />} />
+                  <Route path="/how-it-works" element={<HowItWorks />} />
                   <Route path="/listing/:id" element={<ListingDetail />} />
                   <Route
                     path="/listing/:id/edit"
