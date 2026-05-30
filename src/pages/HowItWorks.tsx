@@ -58,39 +58,39 @@ const platformFeatures = [
 
 const faqs = [
   {
-    question: 'How can I use Reshelved to find second-hand books in Nairobi?',
-    answer: 'Create an account, search for books by title, author, category, condition, price, exchange type, and Nairobi location, then message the book owner directly through Reshelved.',
+    question: 'Where can I buy cheap second-hand books in Nairobi?',
+    answer: 'You can use Reshelved to search for affordable second-hand books in Nairobi by title, author, category, condition, price, exchange type, and location, then message the book owner directly.',
   },
   {
-    question: 'How can I use Reshelved for free?',
-    answer: 'You can browse books, create an account, list books, and message other users for free. If a book is being sold, payment is agreed directly between the buyer and seller.',
+    question: 'How can I sell my second-hand books in Nairobi?',
+    answer: 'You can list your book on Reshelved by adding the title, author, photos, condition, price, category, and location. Readers can then find your listing and contact you through the platform.',
   },
   {
-    question: 'How can I sell my second-hand books in Nairobi on Reshelved?',
-    answer: 'Add the book title, author, photos, condition, price, category, and location. Readers can then find your listing and contact you through the platform.',
+    question: 'How can I find second-hand books near me?',
+    answer: 'Use location filters on Reshelved to search for second-hand books near your preferred Nairobi area. You can also filter by title, author, category, condition, price, and exchange type.',
   },
   {
     question: 'How can I swap books with other readers in Nairobi?',
-    answer: 'When listing a book, choose the swap option so other readers know you are open to exchanging it for another book.',
+    answer: 'When listing a book on Reshelved, choose the swap option so other readers know you are open to exchanging it for another book.',
   },
   {
-    question: 'How can I donate books on Reshelved?',
+    question: 'How can I donate books in Nairobi?',
     answer: 'Mark your listing as a donation if you want to give the book away for free. This helps unused books reach readers who need them.',
+  },
+  {
+    question: 'Is it free to buy and sell second-hand books online?',
+    answer: 'Reshelved lets you browse books, create an account, list books, and message other users for free. If a book is being sold, payment is agreed directly between the buyer and seller.',
   },
   {
     question: 'Does Reshelved deliver books?',
     answer: 'No. Reshelved does not handle delivery at this stage. Users communicate through the platform and agree on their own pickup, meet-up, or delivery arrangement.',
   },
   {
-    question: 'How can I find second-hand books near me in Nairobi?',
-    answer: 'Use the search and filters on Reshelved to look for books by location, title, author, category, condition, price, and exchange type. This makes it easier to find second-hand books near your preferred Nairobi area.',
-  },
-  {
-    question: 'How can I know if a book seller is trustworthy?',
+    question: 'How do I know if a second-hand book seller is trustworthy?',
     answer: 'Check the seller profile, book photos, condition labels, ratings, reviews, and messages before agreeing to meet. You should still confirm the book and meet in a safe public place before completing an exchange.',
   },
   {
-    question: 'What types of books can I find on Reshelved?',
+    question: 'What types of second-hand books can I find in Nairobi?',
     answer: 'You can find academic books, novels, business books, self-development books, children’s books, and other physical books listed by readers, students, parents, and book owners in Nairobi.',
   },
 ];
