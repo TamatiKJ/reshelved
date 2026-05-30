@@ -111,8 +111,8 @@ const HowItWorksScroller = () => {
       `}</style>
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
-          <h2 className="font-[Work_Sans] text-4xl font-black tracking-[-0.03em] text-stone-950 sm:text-5xl">How it works</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-base leading-7 text-stone-600">Second-hand books should feel easy, safe, and worth it.</p>
+          <h2 className="font-[Work_Sans] text-4xl font-black tracking-[-0.03em] text-stone-950 sm:text-5xl">Read More, Spend Less</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-base leading-7 text-stone-600">Reshelved helps you find cheaper second-hand books in Nairobi, so you can reach your reading goals without stretching your budget.</p>
         </div>
 
         <div className="mt-12 hidden gap-10 lg:grid lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
