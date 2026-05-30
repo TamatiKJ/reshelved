@@ -40,7 +40,7 @@ const ImagePlaceholder = ({ label }: { label: string }) => (
 
 const StepIcon = ({ icon, active }: { icon: string; active: boolean }) => (
   <span
-    className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl transition ${
+    className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-lg transition ${
       active ? 'bg-[#FFF4E2] text-primary-600 shadow-sm' : 'border border-stone-200 bg-white text-stone-500'
     }`}
   >
@@ -54,11 +54,11 @@ const DesktopStep = ({ step, active, onClick }: { step: Step; active: boolean; o
     onClick={onClick}
     className={`relative w-full rounded-none border-0 py-4 pl-8 pr-4 text-left transition ${active ? 'bg-stone-50 opacity-100' : 'bg-white opacity-60 hover:bg-stone-50 hover:opacity-90'}`}
   >
-    <span className="absolute bottom-0 left-0 top-0 w-[2px] bg-stone-200" />
+    <span className="absolute bottom-0 left-0 top-0 w-1 bg-stone-200" />
     {active && (
       <span
         key={step.title}
-        className="absolute left-0 top-0 w-[2px] bg-[#1665CC]"
+        className="absolute left-0 top-0 w-1 bg-[#1665CC]"
         style={{ animation: `how-it-works-progress ${autoAdvanceMs}ms linear forwards` }}
       />
     )}
