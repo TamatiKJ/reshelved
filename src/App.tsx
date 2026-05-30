@@ -8,6 +8,7 @@ import Footer from './components/Footer';
 import MobileBottomNav from './components/MobileBottomNav';
 import Home from './pages/Home';
 import Browse from './pages/Browse';
+import HowItWorks from './pages/HowItWorks';
 import { Login, Register, ForgotPassword } from './pages/Auth';
 import CreateListing from './pages/CreateListing';
 import EditListing from './pages/EditListing';
@@ -31,6 +32,7 @@ const getPageScopeClass = (pathname: string) => {
   if (pathname.startsWith('/profile') || pathname.startsWith('/my-listings') || pathname.startsWith('/user/')) return 'page-profile';
   if (pathname.startsWith('/admin')) return 'page-admin';
   if (pathname.startsWith('/listing/')) return 'page-listing-detail';
+  if (pathname.startsWith('/how-it-works')) return 'page-how-it-works';
   return 'page-content';
 };
 
@@ -239,6 +241,7 @@ const AppContent: React.FC = () => {
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/browse" element={<Browse />} />
+                  <Route path="/how-it-works" element={<HowItWorks />} />
                   <Route path="/listing/:id" element={<ListingDetail />} />
                   <Route path="/listing/:id/edit" element={<ProtectedRoute><EditListing /></ProtectedRoute>} />
                   <Route path="/user/:userId" element={<Profile />} />
