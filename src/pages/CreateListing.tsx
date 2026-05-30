@@ -9,7 +9,7 @@ import type { Listing } from '../types';
 import LocationCombobox from '../components/LocationCombobox';
 import { useListingCategories } from '../hooks/useListingCategories';
 
-const DEFAULT_LISTING_DAYS = 10;
+const DEFAULT_LISTING_DAYS = 14;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_IMAGES = 4;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
