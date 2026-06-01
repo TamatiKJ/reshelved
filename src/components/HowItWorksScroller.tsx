@@ -51,7 +51,7 @@ const DesktopStep = ({ step, active, onClick }: { step: Step; active: boolean; o
   <button
     type="button"
     onClick={onClick}
-    className={`relative w-full rounded-none border-0 py-4 pl-8 pr-5 text-left transition ${active ? 'bg-stone-50 opacity-100' : 'bg-white opacity-55 hover:bg-stone-50 hover:opacity-85'}`}
+    className={`relative w-full cursor-pointer rounded-none border-0 py-4 pl-8 pr-5 text-left transition ${active ? 'bg-stone-50 opacity-100' : 'bg-white opacity-55 hover:bg-stone-50 hover:opacity-85'}`}
   >
     <span className="absolute bottom-0 left-0 top-0 w-1 bg-stone-200" />
     {active && (
@@ -73,7 +73,7 @@ const DesktopStep = ({ step, active, onClick }: { step: Step; active: boolean; o
 
 const MobileAccordionItem = ({ step, open, onToggle }: { step: Step; open: boolean; onToggle: () => void }) => (
   <div className={`rounded-2xl border border-stone-200 bg-white ${open ? 'bg-stone-50' : ''}`}>
-    <button type="button" onClick={onToggle} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left">
+    <button type="button" onClick={onToggle} className="flex w-full cursor-pointer items-center justify-between gap-4 px-5 py-4 text-left">
       <div className="flex items-center gap-4">
         <StepIcon icon={step.icon} active={open} />
         <h3 className="font-[Work_Sans] text-[18px] font-black leading-6 text-stone-950">{step.title}</h3>
