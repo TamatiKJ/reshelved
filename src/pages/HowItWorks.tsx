@@ -101,13 +101,11 @@ const HeroVisual = () => (
       Books near you
     </div>
     <div className="w-full rounded-t-[32px] border border-b-0 border-white/10 bg-white p-4 lg:rounded-b-none">
-      <div className="flex min-h-[520px] items-center justify-center rounded-t-[24px] bg-[#ffdd00] p-8 lg:min-h-[560px] lg:rounded-b-none">
-        <div className="text-center text-stone-950">
-          <i className="las la-image text-7xl" />
-          <p className="mt-4 font-[Work_Sans] text-2xl font-black">Image placeholder 560 x 560</p>
-          <p className="mt-2 max-w-sm text-sm font-semibold text-stone-800">Add your Figma SaaS illustration or product screenshot here.</p>
-        </div>
-      </div>
+      <div
+        aria-label="Reshelved how it works hero image"
+        className="min-h-[420px] rounded-t-[24px] bg-[#ffdd00] bg-contain bg-bottom bg-no-repeat sm:min-h-[520px] lg:min-h-[560px] lg:rounded-b-none"
+        style={{ backgroundImage: "url('/how%20it%20works%20hero%20image.webp')" }}
+      />
     </div>
   </div>
 );
