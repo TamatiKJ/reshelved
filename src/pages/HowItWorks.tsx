@@ -96,18 +96,11 @@ const faqs = [
 ];
 
 const HeroVisual = () => (
-  <div className="relative flex h-full items-end lg:min-h-[620px]">
-    <div className="absolute -left-5 top-8 hidden rounded-full bg-primary-600 px-4 py-2 text-sm font-bold text-white shadow-xl lg:block">
-      Books near you
-    </div>
-    <div className="w-full rounded-t-[32px] border border-b-0 border-white/10 bg-white p-4 lg:rounded-b-none">
-      <div
-        aria-label="Reshelved how it works hero image"
-        className="min-h-[420px] rounded-t-[24px] bg-[#ffdd00] bg-contain bg-bottom bg-no-repeat sm:min-h-[520px] lg:min-h-[560px] lg:rounded-b-none"
-        style={{ backgroundImage: "url('/how%20it%20works%20hero%20image.webp')" }}
-      />
-    </div>
-  </div>
+  <img
+    src="/how it works hero image.webp"
+    alt="Reshelved book exchange illustration"
+    className="block h-auto w-full object-contain object-bottom"
+  />
 );
 
 const ProcessSection = () => (
