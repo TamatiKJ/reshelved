@@ -243,7 +243,7 @@ const HowItWorks: React.FC = () => {
   return (
     <div className="overflow-hidden bg-white">
       <section className="relative bg-[#121212] text-white">
-        <div className="mx-auto grid max-w-7xl items-end gap-12 px-4 pb-0 pt-20 sm:px-6 lg:min-h-[700px] lg:grid-cols-[0.95fr_1.05fr] lg:pt-28">
+        <div className="mx-auto grid max-w-7xl items-end gap-12 px-4 pb-0 pt-10 sm:px-6 lg:min-h-[700px] lg:grid-cols-[0.95fr_1.05fr] lg:pt-28">
           <div className="order-2 pb-20 lg:order-1 lg:pb-28">
             <h1 className="max-w-3xl font-[Work_Sans] text-5xl font-black leading-[1.02] tracking-[-0.045em] text-white sm:text-7xl">
               Reach your reading goals without overspending
