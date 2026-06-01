@@ -7,6 +7,7 @@ const steps = [
     title: 'List your book',
     description: 'One listing puts your book in front of nearby readers. No reposting, no repeating yourself.',
     imageLabel: 'Image placeholder 1 460 x 420',
+    imageSrc: '/how it works 1.webp',
     icon: 'la-book-open',
   },
   {
@@ -25,17 +26,23 @@ const steps = [
 
 type Step = (typeof steps)[number];
 
-const ImagePlaceholder = ({ label }: { label: string }) => (
-  <div className="flex h-[420px] w-full max-w-[460px] items-center justify-center rounded-none border border-stone-200 bg-[#FFF9F0] p-6">
-    <div className="text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-white text-primary-600 shadow-sm">
-        <i className="las la-image text-2xl" />
-      </div>
-      <p className="mt-4 font-[Work_Sans] text-lg font-black text-stone-950">{label}</p>
-      <p className="mt-2 text-sm leading-6 text-stone-500">Replace this with the matching step image.</p>
+const StepVisual = ({ step }: { step: Step }) => {
+  if ('imageSrc' in step && step.imageSrc) {
+    return (
+      <img
+        src={step.imageSrc}
+        alt={step.title}
+        className="block h-auto w-full max-w-[460px] object-contain"
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-[420px] w-full max-w-[460px] items-center justify-center">
+      <p className="font-[Work_Sans] text-lg font-black text-stone-950">{step.imageLabel}</p>
     </div>
-  </div>
-);
+  );
+};
 
 const StepIcon = ({ icon, active }: { icon: string; active: boolean }) => (
   <span
@@ -82,7 +89,7 @@ const MobileAccordionItem = ({ step, open, onToggle }: { step: Step; open: boole
     </button>
     {open && (
       <div className="border-t border-stone-200 px-5 pb-5 pt-4">
-        <ImagePlaceholder label={step.imageLabel} />
+        <StepVisual step={step} />
         <p className="mt-4 text-sm leading-6 text-stone-600">{step.description}</p>
       </div>
     )}
@@ -122,7 +129,7 @@ const HowItWorksScroller = () => {
             ))}
           </div>
           <div className="sticky top-28 flex justify-end">
-            <ImagePlaceholder label={steps[activeStep].imageLabel} />
+            <StepVisual step={steps[activeStep]} />
           </div>
         </div>
 
