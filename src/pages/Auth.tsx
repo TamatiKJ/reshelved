@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -65,7 +65,7 @@ const AuthShell: React.FC<{ children: React.ReactNode; showLegal?: boolean }> = 
 );
 
 export const Login: React.FC = () => {
-  const { login, resetPassword } = useAuth();
+  const { login, resetPassword, currentUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -73,6 +73,10 @@ export const Login: React.FC = () => {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && currentUser) navigate('/browse', { replace: true });
+  }, [authLoading, currentUser, navigate]);
 
   const handlePasswordReset = async () => {
     setError(''); setMessage('');
@@ -85,7 +89,7 @@ export const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setMessage(''); setLoading(true);
-    try { await login(email, password); navigate('/browse'); }
+    try { await login(email, password); navigate('/browse', { replace: true }); }
     catch (err: any) { setError(getAuthErrorMessage(err, 'Failed to log in')); }
     finally { setLoading(false); }
   };
@@ -99,7 +103,7 @@ export const Login: React.FC = () => {
         <form onSubmit={handleSubmit} className="mt-7 space-y-4">
           <div><div className="mb-1 flex items-center justify-between gap-3"><label className={labelClass}>Email</label></div><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" /></div>
           <div><div className="mb-1 flex items-center justify-between gap-3"><label className={labelClass}>Password</label><button type="button" onClick={handlePasswordReset} disabled={resetLoading} className="cursor-pointer text-xs font-medium hover:underline disabled:cursor-not-allowed disabled:opacity-60" style={{ color: LINK_BLUE }}>{resetLoading ? 'Sending...' : 'Forgot password?'}</button></div><PasswordField value={password} onChange={setPassword} autoComplete="current-password" /></div>
-          <button type="submit" disabled={loading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Logging in...' : 'Log in'}</button>
+          <button type="submit" disabled={loading || authLoading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Logging in...' : 'Log in'}</button>
         </form>
         <p className="mt-6 text-center text-sm text-stone-600">Don&apos;t have an account? <Link to="/register" className="font-semibold hover:underline" style={{ color: LINK_BLUE }}>Sign up</Link></p>
       </section>
@@ -153,7 +157,7 @@ export const ForgotPassword: React.FC = () => {
 };
 
 export const Register: React.FC = () => {
-  const { register } = useAuth();
+  const { register, currentUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -162,12 +166,16 @@ export const Register: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (!authLoading && currentUser) navigate('/browse', { replace: true });
+  }, [authLoading, currentUser, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setError('');
     if (password !== confirmPassword) { setError('Passwords do not match'); return; }
     if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
     setLoading(true);
-    try { await register(email, password, displayName, ''); navigate('/browse'); }
+    try { await register(email, password, displayName, ''); navigate('/browse', { replace: true }); }
     catch (err: any) { setError(getAuthErrorMessage(err, 'Failed to create account')); }
     finally { setLoading(false); }
   };
@@ -175,14 +183,14 @@ export const Register: React.FC = () => {
   return (
     <AuthShell>
       <section className="w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
-        <div className="text-center"><AuthLogo /><h1 className="mt-7 text-xl font-semibold text-stone-950">Create your Reshelved account</h1></div>
+        <div className="text-center"><AuthLogo /><h1 className="mt-7 text-xl font-semibold text-stone-950">Create your Reshelved account</h1><p className="mt-2 text-sm text-stone-500">Continue with Google or create an account using email.</p></div>
         {error && <p className={errorClass}>{error}</p>}
         <form onSubmit={handleSubmit} className="mt-7 space-y-4">
           <div><label className={`mb-1 block ${labelClass}`}>Full name</label><input type="text" required value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputClass} autoComplete="name" /></div>
           <div><label className={`mb-1 block ${labelClass}`}>Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" /></div>
           <div><label className={`mb-1 block ${labelClass}`}>Password</label><PasswordField value={password} onChange={setPassword} autoComplete="new-password" /></div>
           <div><label className={`mb-1 block ${labelClass}`}>Confirm password</label><PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" /></div>
-          <button type="submit" disabled={loading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Creating account...' : 'Create account'}</button>
+          <button type="submit" disabled={loading || authLoading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Creating account...' : 'Create account'}</button>
         </form>
         <p className="mt-6 text-center text-sm text-stone-600">Already have an account? <Link to="/login" className="font-semibold hover:underline" style={{ color: LINK_BLUE }}>Log in</Link></p>
       </section>
