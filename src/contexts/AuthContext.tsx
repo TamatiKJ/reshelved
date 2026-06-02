@@ -49,10 +49,15 @@ const getAuthCreatedAt = (user: User) => {
   return Number.isFinite(createdAt) && createdAt > 0 ? createdAt : Date.now();
 };
 
+const isGoogleUser = (user: User) => user.providerData.some((provider) => provider.providerId === 'google.com');
+
+const getEmailVerifiedStatus = (user: User) => user.emailVerified || isGoogleUser(user);
+
 const buildUserProfile = (user: User, displayName?: string, location = '', isAdmin = false): UserProfile => ({
   uid: user.uid,
   displayName: displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
   email: user.email || '',
+  emailVerified: getEmailVerifiedStatus(user),
   photoURL: user.photoURL || '',
   location,
   phone: '',
@@ -114,6 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const snap = await getDoc(userRef);
     const adminStatus = await getIsAdminFromClaims(user, true);
     const authCreatedAt = getAuthCreatedAt(user);
+    const emailVerified = getEmailVerifiedStatus(user);
 
     if (snap.exists()) {
       const existingProfile = snap.data() as UserProfile;
@@ -122,6 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         uid: existingProfile.uid || user.uid,
         displayName: existingProfile.displayName || displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
         email: user.email || existingProfile.email || '',
+        emailVerified,
         photoURL: existingProfile.photoURL || user.photoURL || '',
         location: existingProfile.location || location || '',
         createdAt: existingProfile.createdAt || authCreatedAt,
@@ -141,6 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         uid: normalizedProfile.uid,
         displayName: normalizedProfile.displayName,
         email: normalizedProfile.email,
+        emailVerified: normalizedProfile.emailVerified,
         photoURL: normalizedProfile.photoURL,
         location: normalizedProfile.location,
         createdAt: normalizedProfile.createdAt,
@@ -163,14 +171,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (uid: string) => {
     try {
+      if (auth.currentUser?.uid === uid) {
+        await auth.currentUser.reload().catch(() => undefined);
+      }
       const snap = await getDoc(doc(db, 'users', uid));
       if (snap.exists()) {
         const profile = snap.data() as UserProfile;
         const adminStatus = await getIsAdminFromClaims(auth.currentUser, true);
         const authCreatedAt = auth.currentUser?.uid === uid ? getAuthCreatedAt(auth.currentUser) : 0;
+        const emailVerified = auth.currentUser?.uid === uid ? getEmailVerifiedStatus(auth.currentUser) : profile.emailVerified || false;
         const normalizedProfile = {
           ...profile,
           email: auth.currentUser?.email || profile.email || '',
+          emailVerified,
           location: profile.location || '',
           createdAt: profile.createdAt || authCreatedAt || Date.now(),
           isAdmin: adminStatus
@@ -180,6 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         syncConversationProfile(normalizedProfile).catch((err) => console.error('Conversation avatar sync failed:', err));
         await setDoc(doc(db, 'users', uid), {
           email: normalizedProfile.email,
+          emailVerified: normalizedProfile.emailVerified,
           location: normalizedProfile.location,
           createdAt: normalizedProfile.createdAt,
           isAdmin: normalizedProfile.isAdmin,
@@ -222,6 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       uid: cred.user.uid,
       displayName: cleanName,
       email: cleanEmail,
+      emailVerified: getEmailVerifiedStatus(cred.user),
       photoURL: cred.user.photoURL || '',
       bio: '',
       location: cleanLocation,
@@ -244,6 +259,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     await setPersistence(auth, browserSessionPersistence);
     const cred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+    await cred.user.reload().catch(() => undefined);
     setCurrentUser(cred.user);
     const profile = await ensureUserProfile(cred.user);
     setUserProfile(profile);
@@ -273,6 +289,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getRedirectResult(auth)
       .then(async (result) => {
         if (!result?.user) return;
+        await result.user.reload().catch(() => undefined);
         const profile = await ensureUserProfile(result.user);
         setCurrentUser(result.user);
         setUserProfile(profile);
@@ -281,11 +298,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Google redirect sign-in failed:', err);
       });
 
-    const unsub = onAuthStateChanged(auth, (user) => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       setLoading(false);
 
       if (user) {
+        await user.reload().catch(() => undefined);
         setUserProfile(buildUserProfile(user));
         ensureUserProfile(user).catch((err) => {
           console.error('Error syncing user profile:', err);
