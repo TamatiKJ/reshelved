@@ -35,8 +35,16 @@ export const useNotifications = () => {
       let unreadThreads = 0;
       snap.docs.forEach((item) => {
         const data = item.data();
-        const count = Number(data.unreadCount?.[currentUser.uid] || 0);
-        if (count > 0 && !(data.hiddenFor || []).includes(currentUser.uid)) unreadThreads += 1;
+        const hiddenFor = Array.isArray(data.hiddenFor) ? data.hiddenFor : [];
+        if (hiddenFor.includes(currentUser.uid)) return;
+
+        const storedUnreadCount = Number(data.unreadCount?.[currentUser.uid] || 0);
+        const lastMessageAt = Number(data.lastMessageAt || 0);
+        const lastReadAt = Number(data.lastReadAt?.[currentUser.uid] || 0);
+        const lastMessageBy = data.lastMessageBy || '';
+        const hasUnreadByTimestamp = Boolean(lastMessageAt && lastMessageAt > lastReadAt && lastMessageBy !== currentUser.uid);
+
+        if (storedUnreadCount > 0 || hasUnreadByTimestamp) unreadThreads += 1;
       });
       setMessageUnreadCount(unreadThreads);
     });
