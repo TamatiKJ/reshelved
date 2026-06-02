@@ -64,6 +64,9 @@ export const findOrCreateListingConversation = async ({
     listingType: listing.type,
     lastMessage: initialMessage,
     lastMessageAt: now,
+    lastMessageBy: buyerId,
+    lastReadAt: { [buyerId]: now, [listing.userId]: 0 },
+    unreadCount: { [buyerId]: 0, [listing.userId]: 1 },
     updatedAt: now,
     createdAt: now
   });
