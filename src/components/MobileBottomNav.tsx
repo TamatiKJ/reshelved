@@ -1,11 +1,15 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useNotifications } from '../hooks/useNotifications';
+import { useAuth } from '../contexts/AuthContext';
 
 const badgeClass = 'absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-extrabold leading-none text-white ring-2 ring-white';
 
 const MobileBottomNav: React.FC = () => {
+  const { currentUser } = useAuth();
   const { unreadCount, messageUnreadCount } = useNotifications();
+
+  if (!currentUser) return null;
 
   const items = [
     { to: '/browse', label: 'Browse', icon: 'la-search', badge: 0 },
