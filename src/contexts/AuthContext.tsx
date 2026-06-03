@@ -21,21 +21,21 @@ import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } fro
 import { auth, db } from '../firebase';
 import type { UserProfile } from '../types';
 
+const SIGNUP_SESSION_ID_KEY = 'reshelved:signupSessionId';
 const PENDING_SIGNUP_EMAIL_KEY = 'reshelved:pendingSignUpEmail';
 const PENDING_SIGNUP_NAME_KEY = 'reshelved:pendingSignUpName';
 const PENDING_SIGNUP_LOCATION_KEY = 'reshelved:pendingSignUpLocation';
-const EMAIL_LINK_VERIFIED_KEY = 'reshelved:emailLinkVerified';
 
 interface AuthContextType {
   currentUser: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
-  register: (email: string, displayName: string, location?: string) => Promise<void>;
+  register: (email: string, displayName: string, location?: string, existingSessionId?: string) => Promise<string>;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   sendVerificationEmail: () => Promise<void>;
   refreshAuthUser: () => Promise<User | null>;
-  setAccountPassword: (password: string) => Promise<void>;
+  setAccountPassword: (password: string, sessionId?: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -45,27 +45,30 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export const useAuth = () => useContext(AuthContext);
 
-const getSignInLinkSettings = (email: string): ActionCodeSettings => ({
-  url: `${window.location.origin}/register?email=${encodeURIComponent(email.trim().toLowerCase())}`,
+const getCurrentSessionId = () => new URLSearchParams(window.location.search).get('sessionId') || window.localStorage.getItem(SIGNUP_SESSION_ID_KEY) || '';
+const getEmailFromContinueUrl = () => new URLSearchParams(window.location.search).get('email')?.trim().toLowerCase() || '';
+const generateSessionId = () => {
+  if (crypto?.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
+
+const getSignInLinkSettings = (email: string, sessionId: string): ActionCodeSettings => ({
+  url: `${window.location.origin}/auth/verify?sessionId=${encodeURIComponent(sessionId)}&email=${encodeURIComponent(email.trim().toLowerCase())}`,
   handleCodeInApp: true
 });
 
-const savePendingSignUp = (email: string, displayName: string, location = '') => {
+const savePendingSignUp = (sessionId: string, email: string, displayName: string, location = '') => {
+  window.localStorage.setItem(SIGNUP_SESSION_ID_KEY, sessionId);
   window.localStorage.setItem(PENDING_SIGNUP_EMAIL_KEY, email.trim().toLowerCase());
   window.localStorage.setItem(PENDING_SIGNUP_NAME_KEY, displayName.trim());
   window.localStorage.setItem(PENDING_SIGNUP_LOCATION_KEY, location.trim());
 };
 
 const clearPendingSignUp = () => {
+  window.localStorage.removeItem(SIGNUP_SESSION_ID_KEY);
   window.localStorage.removeItem(PENDING_SIGNUP_EMAIL_KEY);
   window.localStorage.removeItem(PENDING_SIGNUP_NAME_KEY);
   window.localStorage.removeItem(PENDING_SIGNUP_LOCATION_KEY);
-};
-
-const getEmailFromContinueUrl = () => new URLSearchParams(window.location.search).get('email')?.trim().toLowerCase() || '';
-
-const markEmailLinkVerified = (email: string) => {
-  window.localStorage.setItem(EMAIL_LINK_VERIFIED_KEY, JSON.stringify({ email, verifiedAt: Date.now() }));
 };
 
 const getIsAdminFromClaims = async (user: User | null, forceRefresh = false) => {
@@ -86,7 +89,12 @@ const getAuthCreatedAt = (user: User) => {
 
 const isVerifiedAuthUser = (user: User) => user.emailVerified === true;
 
-const buildUserProfile = (user: User, displayName?: string, location = '', isAdmin = false): UserProfile => ({
+const getInitialOnboardingStatus = (user: User, isGoogleUser = false): UserProfile['onboardingStatus'] => {
+  if (isGoogleUser) return 'complete';
+  return user.emailVerified ? 'password_required' : 'pending';
+};
+
+const buildUserProfile = (user: User, displayName?: string, location = '', isAdmin = false, onboardingStatus?: UserProfile['onboardingStatus']): UserProfile => ({
   uid: user.uid,
   displayName: displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
   email: user.email || '',
@@ -98,6 +106,7 @@ const buildUserProfile = (user: User, displayName?: string, location = '', isAdm
   flagged: false,
   flagCount: 0,
   createdAt: getAuthCreatedAt(user),
+  onboardingStatus: onboardingStatus || getInitialOnboardingStatus(user),
   online: true,
   lastSeen: Date.now(),
   deactivated: false
@@ -109,6 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const syncPublicProfile = async (profile: UserProfile) => {
+    if (profile.onboardingStatus !== 'complete') return;
     const ratingSnap = await getDocs(query(collection(db, 'ratings'), where('toUserId', '==', profile.uid))).catch(() => null);
     let ratingAverage = 0;
     let ratingCount = 0;
@@ -131,6 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const syncConversationProfile = async (profile: UserProfile) => {
+    if (profile.onboardingStatus !== 'complete') return;
     const snap = await getDocs(query(collection(db, 'conversations'), where('participants', 'array-contains', profile.uid))).catch(() => null);
     if (!snap) return;
     await Promise.all(snap.docs.map((item) => updateDoc(doc(db, 'conversations', item.id), {
@@ -146,16 +157,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, { merge: true });
   };
 
-  const ensureUserProfile = async (user: User, displayName?: string, location = '') => {
+  const ensureUserProfile = async (user: User, displayName?: string, location = '', statusOverride?: UserProfile['onboardingStatus']) => {
     const userRef = doc(db, 'users', user.uid);
     const snap = await getDoc(userRef);
     const adminStatus = await getIsAdminFromClaims(user, true);
     const authCreatedAt = getAuthCreatedAt(user);
-    const canWriteVerifiedProfile = isVerifiedAuthUser(user);
+    const isGoogleUser = user.providerData.some((provider) => provider.providerId === 'google.com');
+    const nextStatus = statusOverride || (isGoogleUser ? 'complete' : undefined);
 
     if (snap.exists()) {
       const existingProfile = snap.data() as UserProfile;
-      const normalizedProfile = {
+      const normalizedProfile: UserProfile = {
         ...existingProfile,
         uid: existingProfile.uid || user.uid,
         displayName: displayName || existingProfile.displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
@@ -164,6 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         location: existingProfile.location || location || '',
         createdAt: existingProfile.createdAt || authCreatedAt,
         isAdmin: adminStatus,
+        onboardingStatus: nextStatus || existingProfile.onboardingStatus || getInitialOnboardingStatus(user, isGoogleUser),
         online: true,
         lastSeen: Date.now(),
         deactivated: existingProfile.deactivated || false
@@ -176,7 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUserProfile(normalizedProfile);
 
-      if (canWriteVerifiedProfile) {
+      if (isVerifiedAuthUser(user)) {
         await setDoc(userRef, {
           uid: normalizedProfile.uid,
           displayName: normalizedProfile.displayName,
@@ -185,7 +198,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           location: normalizedProfile.location,
           createdAt: normalizedProfile.createdAt,
           isAdmin: normalizedProfile.isAdmin,
-          online: true,
+          onboardingStatus: normalizedProfile.onboardingStatus,
+          online: normalizedProfile.onboardingStatus === 'complete',
           lastSeen: normalizedProfile.lastSeen,
           deactivated: normalizedProfile.deactivated
         }, { merge: true });
@@ -196,9 +210,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return normalizedProfile;
     }
 
-    const newProfile = buildUserProfile(user, displayName, location, adminStatus);
+    const newProfile = buildUserProfile(user, displayName, location, adminStatus, nextStatus);
     await setDoc(userRef, newProfile, { merge: true });
-    if (canWriteVerifiedProfile) await syncPublicProfile(newProfile);
+    await syncPublicProfile(newProfile);
     setUserProfile(newProfile);
     return newProfile;
   };
@@ -213,12 +227,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profile = snap.data() as UserProfile;
         const adminStatus = await getIsAdminFromClaims(auth.currentUser, true);
         const authCreatedAt = auth.currentUser?.uid === uid ? getAuthCreatedAt(auth.currentUser) : 0;
-        const normalizedProfile = {
+        const normalizedProfile: UserProfile = {
           ...profile,
           email: auth.currentUser?.email || profile.email || '',
           location: profile.location || '',
           createdAt: profile.createdAt || authCreatedAt || Date.now(),
-          isAdmin: adminStatus
+          isAdmin: adminStatus,
+          onboardingStatus: profile.onboardingStatus || (auth.currentUser?.emailVerified ? 'complete' : 'pending')
         };
         setUserProfile(normalizedProfile);
 
@@ -230,7 +245,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             location: normalizedProfile.location,
             createdAt: normalizedProfile.createdAt,
             isAdmin: normalizedProfile.isAdmin,
-            online: true,
+            onboardingStatus: normalizedProfile.onboardingStatus,
+            online: normalizedProfile.onboardingStatus === 'complete',
             lastSeen: Date.now()
           }, { merge: true });
         }
@@ -251,19 +267,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshProfile = async () => {
-    if (currentUser) {
-      await fetchProfile(currentUser.uid);
-    }
+    if (currentUser) await fetchProfile(currentUser.uid);
   };
 
-  const register = async (email: string, displayName: string, location = '') => {
+  const register = async (email: string, displayName: string, location = '', existingSessionId?: string) => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = displayName.trim();
     const cleanLocation = location.trim();
+    const sessionId = existingSessionId || generateSessionId();
+    const now = Date.now();
 
     await setPersistence(auth, browserLocalPersistence);
-    savePendingSignUp(cleanEmail, cleanName, cleanLocation);
-    await sendSignInLinkToEmail(auth, cleanEmail, getSignInLinkSettings(cleanEmail));
+    await setDoc(doc(db, 'pendingSignups', sessionId), {
+      sessionId,
+      email: cleanEmail,
+      displayName: cleanName,
+      location: cleanLocation,
+      onboardingStatus: 'pending',
+      createdAt: now,
+      updatedAt: now,
+      lastSentAt: now,
+      resendCount: existingSessionId ? 1 : 0
+    }, { merge: true });
+    savePendingSignUp(sessionId, cleanEmail, cleanName, cleanLocation);
+    await sendSignInLinkToEmail(auth, cleanEmail, getSignInLinkSettings(cleanEmail, sessionId));
+    return sessionId;
   };
 
   const login = async (email: string, password: string) => {
@@ -283,11 +311,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const sendVerificationEmail = async () => {
+    const sessionId = window.localStorage.getItem(SIGNUP_SESSION_ID_KEY) || '';
     const pendingEmail = window.localStorage.getItem(PENDING_SIGNUP_EMAIL_KEY) || '';
     const pendingName = window.localStorage.getItem(PENDING_SIGNUP_NAME_KEY) || '';
     const pendingLocation = window.localStorage.getItem(PENDING_SIGNUP_LOCATION_KEY) || '';
-    if (!pendingEmail) throw new Error('Enter your email address again to request a new link.');
-    await register(pendingEmail, pendingName, pendingLocation);
+    if (!pendingEmail || !sessionId) throw new Error('Enter your email address again to request a new link.');
+    await register(pendingEmail, pendingName, pendingLocation, sessionId);
   };
 
   const refreshAuthUser = async () => {
@@ -301,11 +330,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return auth.currentUser;
   };
 
-  const setAccountPassword = async (password: string) => {
+  const setAccountPassword = async (password: string, sessionId?: string) => {
     if (!auth.currentUser) throw new Error('You must be signed in to set a password.');
     await updatePassword(auth.currentUser, password);
     await auth.currentUser.getIdToken(true).catch(() => undefined);
+    const completedProfile = await ensureUserProfile(auth.currentUser, undefined, '', 'complete');
+    if (sessionId) {
+      await setDoc(doc(db, 'pendingSignups', sessionId), {
+        onboardingStatus: 'complete',
+        completedAt: Date.now(),
+        updatedAt: Date.now(),
+        uid: auth.currentUser.uid
+      }, { merge: true }).catch((err) => console.error('Pending signup completion failed:', err));
+    }
+    clearPendingSignUp();
     setCurrentUser(auth.currentUser);
+    setUserProfile(completedProfile);
   };
 
   const resetPassword = async (email: string) => {
@@ -324,28 +364,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const completeEmailLinkSignIn = async () => {
     if (!isSignInWithEmailLink(auth, window.location.href)) return false;
 
+    const sessionId = getCurrentSessionId();
     const pendingEmail = window.localStorage.getItem(PENDING_SIGNUP_EMAIL_KEY) || getEmailFromContinueUrl();
     const pendingName = window.localStorage.getItem(PENDING_SIGNUP_NAME_KEY) || '';
     const pendingLocation = window.localStorage.getItem(PENDING_SIGNUP_LOCATION_KEY) || '';
 
-    if (!pendingEmail) {
-      window.history.replaceState({}, document.title, '/register');
+    if (!pendingEmail || !sessionId) {
+      window.history.replaceState({}, document.title, '/auth/verify?error=missing-session');
       return false;
     }
 
     await setPersistence(auth, browserLocalPersistence);
     const cred = await signInWithEmailLink(auth, pendingEmail, window.location.href);
-    if (pendingName && cred.user.displayName !== pendingName) {
-      await updateProfile(cred.user, { displayName: pendingName });
+    const sessionSnap = await getDoc(doc(db, 'pendingSignups', sessionId)).catch(() => null);
+    const session = sessionSnap?.exists() ? sessionSnap.data() : null;
+    const displayName = String(session?.displayName || pendingName || '').trim();
+    const location = String(session?.location || pendingLocation || '').trim();
+
+    if (displayName && cred.user.displayName !== displayName) {
+      await updateProfile(cred.user, { displayName });
     }
     await cred.user.reload().catch(() => undefined);
     await cred.user.getIdToken(true).catch(() => undefined);
-    const profile = await ensureUserProfile(cred.user, pendingName, pendingLocation);
+    const profile = await ensureUserProfile(cred.user, displayName, location, 'password_required');
+    await setDoc(doc(db, 'pendingSignups', sessionId), {
+      onboardingStatus: 'password_required',
+      verifiedAt: Date.now(),
+      updatedAt: Date.now(),
+      uid: cred.user.uid
+    }, { merge: true });
     setCurrentUser(cred.user);
     setUserProfile(profile);
-    markEmailLinkVerified(pendingEmail);
-    clearPendingSignUp();
-    window.history.replaceState({}, document.title, '/set-password');
+    window.localStorage.setItem(SIGNUP_SESSION_ID_KEY, sessionId);
+    window.history.replaceState({}, document.title, `/auth/verify?sessionId=${encodeURIComponent(sessionId)}`);
     return true;
   };
 
@@ -395,6 +446,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         const result = await getRedirectResult(auth);
         if (result?.user) {
+          await ensureUserProfile(result.user, undefined, '', 'complete');
           await completeIfMounted(result.user);
           return;
         }
@@ -412,7 +464,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    if (!currentUser || !currentUser.emailVerified) return;
+    if (!currentUser || !currentUser.emailVerified || userProfile?.onboardingStatus !== 'complete') return;
 
     updatePresence(currentUser.uid, true).catch((err) => console.error('Error updating presence:', err));
     const interval = window.setInterval(() => {
@@ -433,7 +485,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('beforeunload', handleBeforeUnload);
       updatePresence(currentUser.uid, false).catch(() => undefined);
     };
-  }, [currentUser]);
+  }, [currentUser, userProfile?.onboardingStatus]);
 
   return (
     <AuthContext.Provider value={{ currentUser, userProfile, loading, register, login, loginWithGoogle, sendVerificationEmail, refreshAuthUser, setAccountPassword, resetPassword, logout, refreshProfile }}>
