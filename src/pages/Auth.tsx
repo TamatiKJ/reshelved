@@ -159,18 +159,21 @@ const EmailLinkSentScreen: React.FC<{ email: string; onResend: () => Promise<voi
   };
 
   return (
-    <AuthShell showLegal={false}>
-      <section className="w-full max-w-3xl px-4 text-center">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center text-primary-600"><i className="las la-envelope text-7xl" /></div>
-        <h1 className="mt-8 text-4xl font-black leading-tight tracking-tight text-stone-950 sm:text-6xl">Verify your email to create your account.</h1>
-        <p className="mx-auto mt-8 max-w-md text-xl font-bold leading-snug text-stone-800">We sent a secure sign-up link to<br />{email}.</p>
-        <p className="mt-10 text-lg font-bold text-stone-950">Check your <span style={{ color: LINK_BLUE }}>spam folder</span> if the email is missing.</p>
-        {error && <p className={errorClass}>{error}</p>}
-        {message && <div className="mx-auto mt-6 max-w-xl rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>}
-        <button onClick={resend} disabled={resending || cooldownRemaining > 0} className="mt-10 w-full max-w-2xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-5 text-lg font-bold text-stone-950 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">{resending ? 'Sending...' : cooldownRemaining > 0 ? `Resend verification link in ${cooldownRemaining}s` : 'Resend verification link'}</button>
-        <button onClick={onChangeEmail} className="mt-8 block w-full cursor-pointer text-lg font-bold text-stone-800 hover:underline">Change email address</button>
-      </section>
-    </AuthShell>
+    <div className="min-h-screen bg-white flex flex-col">
+      <main className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:py-14">
+        <section className="w-full max-w-3xl px-4 text-center">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center text-primary-600"><i className="las la-envelope text-7xl" /></div>
+          <h1 className="mt-8 text-4xl font-black leading-tight tracking-tight text-stone-950 sm:text-6xl">Verify your email to create your account.</h1>
+          <p className="mx-auto mt-8 max-w-md text-xl font-bold leading-snug text-stone-800">We sent a secure sign-up link to<br />{email}.</p>
+          <p className="mt-10 text-lg font-bold" style={{ color: LINK_BLUE }}>Check your spam folder if the email is missing.</p>
+          {error && <p className={errorClass}>{error}</p>}
+          {message && <div className="mx-auto mt-6 max-w-xl rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>}
+          <button onClick={resend} disabled={resending || cooldownRemaining > 0} className="mt-10 w-full max-w-2xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-5 text-lg font-bold text-stone-950 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">{resending ? 'Sending...' : cooldownRemaining > 0 ? `Resend verification link in ${cooldownRemaining}s` : 'Resend verification link'}</button>
+          <button onClick={onChangeEmail} className="mt-8 block w-full cursor-pointer text-lg font-bold text-stone-800 hover:underline">Change email address</button>
+        </section>
+      </main>
+      <AuthFooter />
+    </div>
   );
 };
 
