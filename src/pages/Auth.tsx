@@ -14,6 +14,7 @@ const getAuthErrorMessage = (error: any, fallback: string) => {
     case 'auth/email-already-in-use': return 'This email is already registered. Please log in instead.';
     case 'auth/invalid-email': return 'Please enter a valid email address.';
     case 'auth/weak-password': return 'Password must be at least 6 characters.';
+    case 'auth/too-many-requests': return 'Too many attempts. Please wait a moment and try again.';
     case 'auth/popup-blocked': return 'Allow pop-ups in your browser, then try Google sign-in again.';
     case 'auth/user-not-found':
     case 'auth/wrong-password':
@@ -113,12 +114,7 @@ const GoogleAuthButton: React.FC<{ label: string; disabled?: boolean; onError: (
   };
 
   return (
-    <button
-      type="button"
-      onClick={handleGoogleAuth}
-      disabled={disabled || googleLoading}
-      className="mt-8 flex w-full cursor-pointer items-center justify-center gap-3 rounded-md border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-900 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
-    >
+    <button type="button" onClick={handleGoogleAuth} disabled={disabled || googleLoading} className="mt-8 flex w-full cursor-pointer items-center justify-center gap-3 rounded-md border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-900 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">
       <GoogleIcon />
       {googleLoading ? 'Redirecting to Google...' : label}
     </button>
@@ -136,7 +132,7 @@ export const Login: React.FC = () => {
   const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && currentUser) navigate('/browse', { replace: true });
+    if (!authLoading && currentUser) navigate(currentUser.emailVerified ? '/browse' : '/verify-email', { replace: true });
   }, [authLoading, currentUser, navigate]);
 
   const handlePasswordReset = async () => {
@@ -150,8 +146,10 @@ export const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setMessage(''); setLoading(true);
-    try { await login(email, password); navigate('/browse', { replace: true }); }
-    catch (err: any) { setError(getAuthErrorMessage(err, 'Failed to log in')); }
+    try {
+      await login(email, password);
+      navigate('/browse', { replace: true });
+    } catch (err: any) { setError(getAuthErrorMessage(err, 'Failed to log in')); }
     finally { setLoading(false); }
   };
 
@@ -171,6 +169,68 @@ export const Login: React.FC = () => {
   );
 };
 
+export const VerifyEmail: React.FC = () => {
+  const { currentUser, loading: authLoading, sendVerificationEmail, refreshAuthUser, logout } = useAuth();
+  const navigate = useNavigate();
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [cooldownRemaining, setCooldownRemaining] = useState(RESEND_COOLDOWN_SECONDS);
+
+  useEffect(() => {
+    if (!authLoading && !currentUser) navigate('/login', { replace: true });
+    if (!authLoading && currentUser?.emailVerified) navigate('/browse', { replace: true });
+  }, [authLoading, currentUser, navigate]);
+
+  useEffect(() => {
+    if (cooldownRemaining <= 0) return undefined;
+    const timer = window.setInterval(() => setCooldownRemaining((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [cooldownRemaining]);
+
+  const handleResend = async () => {
+    if (cooldownRemaining > 0) return;
+    setError(''); setMessage(''); setResending(true);
+    try {
+      await sendVerificationEmail();
+      setMessage('Verification email sent again.');
+      setCooldownRemaining(RESEND_COOLDOWN_SECONDS);
+    } catch (err: any) { setError(getAuthErrorMessage(err, 'Could not resend the verification email.')); }
+    finally { setResending(false); }
+  };
+
+  const handleVerified = async () => {
+    setError(''); setMessage(''); setChecking(true);
+    try {
+      const user = await refreshAuthUser();
+      if (user?.emailVerified) {
+        navigate('/browse', { replace: true });
+        return;
+      }
+      setError('Your email is not verified yet. Open the link in your email, then try again.');
+    } catch (err: any) { setError(getAuthErrorMessage(err, 'Could not check verification status.')); }
+    finally { setChecking(false); }
+  };
+
+  return (
+    <AuthShell showLegal={false}>
+      <section className="w-full max-w-2xl px-4 text-center">
+        <AuthLogo className="mx-auto h-7 w-auto" />
+        <div className="mx-auto mt-10 flex h-28 w-28 items-center justify-center rounded-3xl border-4 border-stone-500 text-primary-600"><i className="las la-envelope-open-text text-6xl" /></div>
+        <h1 className="mt-8 text-4xl font-bold leading-tight text-stone-900 sm:text-5xl">Check your email.</h1>
+        <p className="mx-auto mt-5 max-w-md text-lg font-semibold leading-snug text-stone-800">We sent a verification link to<br />{currentUser?.email || 'your email address'}.</p>
+        <p className="mt-6 text-base font-bold text-stone-900">Don&apos;t see it? <span style={{ color: LINK_BLUE }}>Check your SPAM folder.</span></p>
+        {error && <p className={errorClass}>{error}</p>}
+        {message && <div className="mx-auto mt-6 max-w-xl rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>}
+        <button onClick={handleVerified} disabled={checking || authLoading} className="mt-8 w-full max-w-xl cursor-pointer rounded-md bg-primary-600 px-4 py-4 text-base font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60">{checking ? 'Checking...' : "I've verified"}</button>
+        <button onClick={handleResend} disabled={resending || cooldownRemaining > 0} className="mt-4 w-full max-w-xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-4 text-base font-semibold text-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">{resending ? 'Sending...' : cooldownRemaining > 0 ? `Resend email in ${cooldownRemaining}s` : 'Resend email'}</button>
+        <button onClick={() => logout()} className="mt-4 w-full max-w-xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-4 text-base font-semibold text-stone-900 hover:bg-stone-50">Use another account</button>
+      </section>
+    </AuthShell>
+  );
+};
+
 export const ForgotPassword: React.FC = () => {
   const { resetPassword } = useAuth();
   const navigate = useNavigate();
@@ -183,9 +243,7 @@ export const ForgotPassword: React.FC = () => {
 
   useEffect(() => {
     if (cooldownRemaining <= 0) return undefined;
-    const timer = window.setInterval(() => {
-      setCooldownRemaining((seconds) => Math.max(0, seconds - 1));
-    }, 1000);
+    const timer = window.setInterval(() => setCooldownRemaining((seconds) => Math.max(0, seconds - 1)), 1000);
     return () => window.clearInterval(timer);
   }, [cooldownRemaining]);
 
@@ -211,6 +269,7 @@ export const ForgotPassword: React.FC = () => {
           <h1 className="mt-10 text-4xl font-bold leading-tight text-stone-900 sm:text-5xl">Check your email to continue.</h1>
           <p className="mx-auto mt-6 max-w-md text-xl font-semibold leading-snug text-stone-800">We sent password reset instructions to<br />{sentEmail}.</p>
           <p className="mt-8 text-2xl font-bold text-stone-900">Don&apos;t see the email? <span style={{ color: LINK_BLUE }}>Check your SPAM folder.</span></p>
+          {error && <p className={errorClass}>{error}</p>}
           <button onClick={() => sendReset()} disabled={loading || cooldownRemaining > 0} className="mt-8 w-full max-w-xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-4 text-base font-semibold text-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">{loading ? 'Resending...' : cooldownRemaining > 0 ? `Resend email in ${cooldownRemaining}s` : 'Resend email'}</button>
           <button onClick={() => navigate('/login')} className="mt-4 w-full max-w-xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-4 text-base font-semibold text-stone-900 hover:bg-stone-50">Go back</button>
         </section>
@@ -241,7 +300,7 @@ export const Register: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && currentUser) navigate('/browse', { replace: true });
+    if (!authLoading && currentUser) navigate(currentUser.emailVerified ? '/browse' : '/verify-email', { replace: true });
   }, [authLoading, currentUser, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -249,7 +308,10 @@ export const Register: React.FC = () => {
     if (password !== confirmPassword) { setError('Passwords do not match'); return; }
     if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
     setLoading(true);
-    try { await register(email, password, displayName, ''); navigate('/browse', { replace: true }); }
+    try {
+      await register(email, password, displayName, '');
+      navigate('/verify-email', { replace: true });
+    }
     catch (err: any) { setError(getAuthErrorMessage(err, 'Failed to create account')); }
     finally { setLoading(false); }
   };
