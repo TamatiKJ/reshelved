@@ -51,9 +51,81 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   font-weight: 700;
 }
 
+h1, h2, h3, h4, h5 {
+  letter-spacing: -0.035em;
+}
+
+h1 {
+  font-size: 44px !important;
+  line-height: 1.02 !important;
+}
+
+h2 {
+  font-size: 36px !important;
+  line-height: 1.06 !important;
+}
+
+h3 {
+  font-size: 30px !important;
+  line-height: 1.08 !important;
+}
+
+h4 {
+  font-size: 24px !important;
+  line-height: 1.15 !important;
+}
+
+h5 {
+  font-size: 20px !important;
+  line-height: 1.2 !important;
+}
+
 body {
   @apply bg-stone-50 text-stone-800 antialiased;
   min-height: 100vh;
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.body-text {
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.body-text-sm {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+@media (min-width: 768px) {
+  h1 {
+    font-size: 72px !important;
+  }
+
+  h2 {
+    font-size: 48px !important;
+  }
+
+  h3 {
+    font-size: 40px !important;
+  }
+
+  h4 {
+    font-size: 30px !important;
+  }
+
+  h5 {
+    font-size: 24px !important;
+  }
+
+  body,
+  .body-text {
+    font-size: 18px;
+  }
+
+  .body-text-sm {
+    font-size: 16px;
+  }
 }
 
 img,
@@ -233,8 +305,6 @@ button[title="List"]::before { content: "\f03a"; }
   }
 }
 
-main section h3 { font-size: 15px; line-height: 1.35; }
-
 main aside section,
 main aside section p,
 main aside section input,
@@ -386,7 +456,7 @@ a[aria-label^="Share on"]:hover {
     height: 36px !important;
     min-width: 36px !important;
     align-items: center !important;
-    justify-content: center !important;
+    justify-content: center;
     color: #111827 !important;
     border: 0 !important;
     background: transparent !important;
