@@ -11,7 +11,7 @@ import {
   updateProfile,
   setPersistence,
   browserLocalPersistence,
-  User
+  type User
 } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -310,30 +310,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
 
     const completeIfMounted = async (user: User | null) => {
       if (cancelled) return;
       await completeAuthenticatedSession(user);
     };
 
+    const startAuthListener = () => {
+      unsubscribe = onAuthStateChanged(auth, async (user) => {
+        await completeIfMounted(user);
+      });
+    };
+
     getRedirectResult(auth)
       .then(async (result) => {
         if (result?.user) {
           await completeIfMounted(result.user);
+          return;
         }
+        startAuthListener();
       })
       .catch((err) => {
         console.error('Google redirect sign-in failed:', err);
-        setLoading(false);
+        startAuthListener();
       });
-
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      await completeIfMounted(user);
-    });
 
     return () => {
       cancelled = true;
-      unsub();
+      unsubscribe?.();
     };
   }, []);
 
