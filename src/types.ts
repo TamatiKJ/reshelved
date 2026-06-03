@@ -1,3 +1,7 @@
+export const CONDITIONS = ['New', 'Like New', 'Good', 'Fair', 'Poor'] as const;
+
+export type ListingCondition = typeof CONDITIONS[number];
+
 export interface UserProfile {
   uid: string;
   displayName: string;
@@ -24,7 +28,7 @@ export interface Listing {
   title: string;
   author: string;
   description: string;
-  condition: 'New' | 'Like New' | 'Good' | 'Fair' | 'Poor';
+  condition: ListingCondition;
   category: string;
   categoryId?: string;
   categoryName?: string;
