@@ -71,7 +71,7 @@ const DesktopStep = ({ step, active, onClick }: { step: Step; active: boolean; o
     <div className="grid gap-5 sm:grid-cols-[56px_1fr] sm:items-start">
       <StepIcon icon={step.icon} active={active} />
       <div>
-        <h3 className="font-[Work_Sans] text-[20px] font-black leading-7 text-stone-950">{step.title}</h3>
+        <h3 className="font-[Work_Sans] text-2xl font-black leading-tight text-stone-950 sm:text-3xl">{step.title}</h3>
         <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600">{step.description}</p>
       </div>
     </div>
@@ -83,7 +83,7 @@ const MobileAccordionItem = ({ step, open, onToggle }: { step: Step; open: boole
     <button type="button" onClick={onToggle} className="flex w-full cursor-pointer items-center justify-between gap-4 px-5 py-4 text-left">
       <div className="flex items-center gap-4">
         <StepIcon icon={step.icon} active={open} />
-        <h3 className="font-[Work_Sans] text-[18px] font-black leading-6 text-stone-950">{step.title}</h3>
+        <h3 className="font-[Work_Sans] text-2xl font-black leading-tight text-stone-950 sm:text-3xl">{step.title}</h3>
       </div>
       <i className={`las ${open ? 'la-angle-up' : 'la-angle-down'} text-lg text-stone-600`} />
     </button>
