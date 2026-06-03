@@ -6,6 +6,7 @@ const LINK_BLUE = '#1665CC';
 const RESEND_COOLDOWN_SECONDS = 60;
 const PENDING_SIGNUP_EMAIL_KEY = 'reshelved:pendingSignUpEmail';
 const PENDING_SIGNUP_NAME_KEY = 'reshelved:pendingSignUpName';
+const EMAIL_LINK_VERIFIED_KEY = 'reshelved:emailLinkVerified';
 const inputClass = 'w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
 const passwordInputClass = 'w-full rounded-md border border-stone-300 px-3 py-2.5 pr-10 text-sm outline-none transition focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
 const labelClass = 'text-sm font-bold text-stone-800';
@@ -17,12 +18,23 @@ const clearPendingSignUp = () => {
   window.localStorage.removeItem(PENDING_SIGNUP_EMAIL_KEY);
   window.localStorage.removeItem(PENDING_SIGNUP_NAME_KEY);
 };
+const hasVerifiedEmailLink = (email: string) => {
+  try {
+    const raw = window.localStorage.getItem(EMAIL_LINK_VERIFIED_KEY);
+    if (!raw || !email) return false;
+    const parsed = JSON.parse(raw) as { email?: string; verifiedAt?: number };
+    return parsed.email === email && Number(parsed.verifiedAt || 0) > 0;
+  } catch {
+    return false;
+  }
+};
 
 const getAuthErrorMessage = (error: any, fallback: string) => {
   switch (error?.code) {
     case 'auth/email-already-in-use': return 'This email is already registered. Please log in instead.';
     case 'auth/invalid-email': return 'Please enter a valid email address.';
     case 'auth/weak-password': return 'Password must be at least 6 characters.';
+    case 'auth/requires-recent-login': return 'This session expired. Request a new verification link and try again.';
     case 'auth/too-many-requests': return 'Too many attempts. Please wait a moment and try again.';
     case 'auth/popup-blocked': return 'Allow pop-ups in your browser, then try Google sign-in again.';
     case 'auth/user-not-found':
@@ -135,12 +147,24 @@ const EmailLinkSentScreen: React.FC<{ email: string; onResend: () => Promise<voi
   const [message, setMessage] = useState('');
   const [resending, setResending] = useState(false);
   const [cooldownRemaining, setCooldownRemaining] = useState(RESEND_COOLDOWN_SECONDS);
+  const [verified, setVerified] = useState(hasVerifiedEmailLink(email));
 
   useEffect(() => {
     if (cooldownRemaining <= 0) return undefined;
     const timer = window.setInterval(() => setCooldownRemaining((seconds) => Math.max(0, seconds - 1)), 1000);
     return () => window.clearInterval(timer);
   }, [cooldownRemaining]);
+
+  useEffect(() => {
+    const checkVerified = () => setVerified(hasVerifiedEmailLink(email));
+    const timer = window.setInterval(checkVerified, 1000);
+    window.addEventListener('storage', checkVerified);
+    checkVerified();
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('storage', checkVerified);
+    };
+  }, [email]);
 
   const resend = async () => {
     if (cooldownRemaining > 0) return;
@@ -162,14 +186,14 @@ const EmailLinkSentScreen: React.FC<{ email: string; onResend: () => Promise<voi
     <div className="min-h-screen bg-white flex flex-col">
       <main className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:py-14">
         <section className="w-full max-w-3xl px-4 text-center">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center text-primary-600"><i className="las la-envelope text-7xl" /></div>
-          <h1 className="mt-8 text-4xl font-black leading-tight tracking-tight text-stone-950 sm:text-6xl">Verify your email to create your account.</h1>
-          <p className="mx-auto mt-8 max-w-md text-xl font-bold leading-snug text-stone-800">We sent a secure sign-up link to<br />{email}.</p>
-          <p className="mt-10 text-lg font-bold" style={{ color: LINK_BLUE }}>Check your spam folder if the email is missing.</p>
+          <div className="mx-auto flex h-20 w-20 items-center justify-center text-primary-600"><i className={`las ${verified ? 'la-check-circle' : 'la-envelope'} text-7xl`} /></div>
+          <h1 className="mt-8 text-4xl font-black leading-tight tracking-tight text-stone-950 sm:text-6xl">{verified ? 'Email verified.' : 'Verify your email to create your account.'}</h1>
+          <p className="mx-auto mt-8 max-w-md text-xl font-bold leading-snug text-stone-800">{verified ? 'Your email has been verified. Continue in the tab that opened from your email to set your password.' : <>We sent a secure sign-up link to<br />{email}.</>}</p>
+          {!verified && <p className="mt-10 text-lg font-bold" style={{ color: LINK_BLUE }}>Check your spam folder if the email is missing.</p>}
           {error && <p className={errorClass}>{error}</p>}
           {message && <div className="mx-auto mt-6 max-w-xl rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>}
-          <button onClick={resend} disabled={resending || cooldownRemaining > 0} className="mt-10 w-full max-w-2xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-5 text-lg font-bold text-stone-950 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">{resending ? 'Sending...' : cooldownRemaining > 0 ? `Resend verification link in ${cooldownRemaining}s` : 'Resend verification link'}</button>
-          <button onClick={onChangeEmail} className="mt-8 block w-full cursor-pointer text-lg font-bold text-stone-800 hover:underline">Change email address</button>
+          {!verified && <button onClick={resend} disabled={resending || cooldownRemaining > 0} className="mt-10 w-full max-w-2xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-5 text-lg font-bold text-stone-950 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">{resending ? 'Sending...' : cooldownRemaining > 0 ? `Resend verification link in ${cooldownRemaining}s` : 'Resend verification link'}</button>}
+          {verified ? <button onClick={() => window.location.assign('/set-password')} className="mt-10 w-full max-w-2xl cursor-pointer rounded-md bg-primary-600 px-4 py-5 text-lg font-bold text-white hover:bg-primary-700">Set your password</button> : <button onClick={onChangeEmail} className="mt-8 block w-full cursor-pointer text-lg font-bold text-stone-800 hover:underline">Change email address</button>}
         </section>
       </main>
       <AuthFooter />
@@ -231,7 +255,7 @@ export const VerifyEmail: React.FC = () => {
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && currentUser?.emailVerified) navigate('/browse', { replace: true });
+    if (!authLoading && currentUser?.emailVerified) navigate('/set-password', { replace: true });
     if (!authLoading && !currentUser && !pendingEmail) navigate('/login', { replace: true });
   }, [authLoading, currentUser, pendingEmail, navigate]);
 
@@ -240,7 +264,7 @@ export const VerifyEmail: React.FC = () => {
     try {
       const user = await refreshAuthUser();
       if (user?.emailVerified) {
-        navigate('/browse', { replace: true });
+        navigate('/set-password', { replace: true });
         return;
       }
       setError('Open the secure link in your email to finish signing up.');
@@ -263,6 +287,51 @@ export const VerifyEmail: React.FC = () => {
         {error && <p className={errorClass}>{error}</p>}
         <button onClick={handleVerified} disabled={checking || authLoading} className="mt-8 w-full max-w-xl cursor-pointer rounded-md bg-primary-600 px-4 py-4 text-base font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60">{checking ? 'Checking...' : "I've verified"}</button>
         <button onClick={() => logout()} className="mt-4 w-full max-w-xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-4 text-base font-semibold text-stone-900 hover:bg-stone-50">Use another account</button>
+      </section>
+    </AuthShell>
+  );
+};
+
+export const SetPassword: React.FC = () => {
+  const { currentUser, loading: authLoading, setAccountPassword } = useAuth();
+  const navigate = useNavigate();
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !currentUser) navigate('/login', { replace: true });
+    if (!authLoading && currentUser && !currentUser.emailVerified) navigate('/verify-email', { replace: true });
+  }, [authLoading, currentUser, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
+    setSaving(true);
+    try {
+      await setAccountPassword(password);
+      window.localStorage.removeItem(EMAIL_LINK_VERIFIED_KEY);
+      navigate('/browse', { replace: true });
+    } catch (err: any) {
+      setError(getAuthErrorMessage(err, 'Could not set your password.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <AuthShell>
+      <section className="w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
+        <div className="text-center"><AuthLogo /><h1 className="mt-7 text-xl font-semibold text-stone-950">Set your password</h1><p className="mt-2 text-sm text-stone-500">Your email is verified. Create a password to finish setting up your account.</p></div>
+        {error && <p className={errorClass}>{error}</p>}
+        <form onSubmit={handleSubmit} className="mt-7 space-y-4">
+          <div><label className={`mb-1 block ${labelClass}`}>Password</label><PasswordField value={password} onChange={setPassword} autoComplete="new-password" /></div>
+          <div><label className={`mb-1 block ${labelClass}`}>Confirm password</label><PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" /></div>
+          <button type="submit" disabled={saving || authLoading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{saving ? 'Saving...' : 'Set password and continue'}</button>
+        </form>
       </section>
     </AuthShell>
   );
@@ -336,7 +405,7 @@ export const Register: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && currentUser) navigate(currentUser.emailVerified ? '/browse' : '/verify-email', { replace: true });
+    if (!authLoading && currentUser) navigate(currentUser.emailVerified ? '/set-password' : '/verify-email', { replace: true });
   }, [authLoading, currentUser, navigate]);
 
   const sendSignUpLink = async () => {
