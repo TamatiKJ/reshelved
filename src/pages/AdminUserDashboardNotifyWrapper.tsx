@@ -9,6 +9,11 @@ import './AdminUserDashboardNotifyWrapper.css';
 type Step = 'form' | 'confirm';
 type Target = 'all' | 'specific';
 
+type RestorePrompt = {
+  listingId: string;
+  title: string;
+} | null;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DELETE_USER_BUTTON_CLASS = 'admin-inline-delete-user';
 const RESTORE_LISTING_BUTTON_CLASS = 'admin-inline-restore-listing';
@@ -26,6 +31,8 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
   const [message, setMessage] = useState('');
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [sending, setSending] = useState(false);
+  const [restorePrompt, setRestorePrompt] = useState<RestorePrompt>(null);
+  const [restoring, setRestoring] = useState(false);
   const listingFiltersInitialized = useRef(false);
 
   const loadUsers = useCallback(async () => {
@@ -110,6 +117,7 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
   const restoreListing = useCallback(async (listingId: string) => {
     if (!userProfile?.isAdmin || !listingId) return;
 
+    setRestoring(true);
     try {
       const settingsSnap = await getDoc(doc(db, 'platform', 'settings')).catch(() => null);
       const listingDays = Math.max(1, Math.min(45, Number(settingsSnap?.exists() ? settingsSnap.data().listingDays : 10) || 10));
@@ -120,11 +128,14 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
         expiresAt: now + listingDays * DAY_MS,
         restoredAt: now,
       });
+      setRestorePrompt(null);
       window.alert(`Listing restored for ${listingDays} days.`);
       window.location.reload();
     } catch (error) {
       console.error(error);
       window.alert('Listing could not be restored. Check Firestore rules.');
+    } finally {
+      setRestoring(false);
     }
   }, [userProfile?.isAdmin]);
 
@@ -218,7 +229,19 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
         const statusText = cells[7]?.textContent?.toLowerCase() || '';
         const actionsCell = cells[cells.length - 1];
         const listingId = listingLink?.getAttribute('href')?.split('/listing/')[1]?.split(/[/?#]/)[0];
+        const listingTitle = listingLink?.textContent?.trim() || 'this listing';
         if (!listingId || !actionsCell || !statusText.includes('inactive') || actionsCell.querySelector(`.${RESTORE_LISTING_BUTTON_CLASS}`)) return;
+
+        const switchButton = actionsCell.querySelector<HTMLButtonElement>('button.relative.h-6.w-11');
+        if (switchButton && switchButton.dataset.restoreHandled !== 'true') {
+          switchButton.dataset.restoreHandled = 'true';
+          switchButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            (event as any).stopImmediatePropagation?.();
+            setRestorePrompt({ listingId, title: listingTitle });
+          }, true);
+        }
 
         const button = document.createElement('button');
         button.type = 'button';
@@ -227,7 +250,7 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
         button.addEventListener('click', (event) => {
           event.preventDefault();
           event.stopPropagation();
-          restoreListing(listingId);
+          setRestorePrompt({ listingId, title: listingTitle });
         });
         actionsCell.querySelector('div')?.appendChild(button);
       });
@@ -244,7 +267,7 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
       timers.forEach((timer) => window.clearTimeout(timer));
       document.removeEventListener('click', runSoon, true);
     };
-  }, [deleteUserData, restoreListing, userProfile?.isAdmin, userProfile?.uid, users]);
+  }, [deleteUserData, userProfile?.isAdmin, userProfile?.uid, users]);
 
   const adminCount = users.filter((user) => user.isAdmin).length;
   const eligibleUsers = useMemo(() => excludeAdmins ? users.filter((user) => !user.isAdmin) : users, [excludeAdmins, users]);
@@ -296,6 +319,21 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
   return (
     <>
       <AdminUserDashboardStyled />
+      {restorePrompt && (
+        <div className="send-update-backdrop" onClick={() => !restoring && setRestorePrompt(null)}>
+          <section className="send-update-card restore-listing-card" onClick={(event) => event.stopPropagation()}>
+            <div className="send-update-body">
+              <div className="restore-listing-icon"><i className="las la-redo-alt" /></div>
+              <h5>Restore this listing?</h5>
+              <p>{restorePrompt.title} is inactive. Restoring it will turn the switch back on and give it a fresh expiry date using the current listing duration setting.</p>
+              <div className="send-update-actions">
+                <button type="button" disabled={restoring} className="primary" onClick={() => restoreListing(restorePrompt.listingId)}>{restoring ? 'Restoring...' : 'Yes, restore it'}</button>
+                <button type="button" disabled={restoring} className="secondary" onClick={() => setRestorePrompt(null)}>No, keep inactive</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
       {open && (
         <div className="send-update-backdrop" onClick={() => !sending && setOpen(false)}>
           <section className="send-update-card" onClick={(event) => event.stopPropagation()}>
