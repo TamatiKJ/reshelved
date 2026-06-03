@@ -1,0 +1,115 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn()
+        && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && (
+          request.auth.token.admin == true
+          || (
+            firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+            && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true
+          )
+        );
+    }
+
+    function hasUploadResource() {
+      return request.resource != null;
+    }
+
+    function isImage() {
+      return hasUploadResource()
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    function isSvg() {
+      return hasUploadResource()
+        && request.resource.contentType == 'image/svg+xml';
+    }
+
+    function isUnder5MB() {
+      return hasUploadResource()
+        && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    function isUnder2MB() {
+      return hasUploadResource()
+        && request.resource.size < 2 * 1024 * 1024;
+    }
+
+    function isSafeImageUpload() {
+      return isImage()
+        && isUnder5MB();
+    }
+
+    function isSafeFaviconUpload() {
+      return isUnder2MB()
+        && (isImage() || isSvg());
+    }
+
+    function isConversationParticipant(conversationId) {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/conversations/$(conversationId))
+        && request.auth.uid in firestore.get(/databases/(default)/documents/conversations/$(conversationId)).data.participants;
+    }
+
+    match /messages/{conversationId}/{messageId}/{fileName} {
+      allow read: if isConversationParticipant(conversationId) || isAdmin();
+
+      allow create, update: if isConversationParticipant(conversationId)
+        && isSafeImageUpload();
+
+      allow delete: if isConversationParticipant(conversationId) || isAdmin();
+    }
+
+    match /listings/{userId}/{fileName} {
+      allow read: if true;
+
+      allow create, update: if isOwner(userId)
+        && isSafeImageUpload();
+
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /users/{userId}/{fileName} {
+      allow read: if true;
+
+      allow create, update: if isOwner(userId)
+        && isSafeImageUpload();
+
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /blog/featured/{fileName} {
+      allow read: if true;
+
+      allow create, update: if isAdmin()
+        && isSafeImageUpload();
+
+      allow delete: if isAdmin();
+    }
+
+    match /platform/favicon/{fileName} {
+      allow read: if true;
+
+      allow create, update: if isAdmin()
+        && isSafeFaviconUpload();
+
+      allow delete: if isAdmin();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

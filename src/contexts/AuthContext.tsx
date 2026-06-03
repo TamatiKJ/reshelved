@@ -3,7 +3,8 @@ import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   sendPasswordResetEmail,
   signOut,
@@ -252,10 +253,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await setPersistence(auth, browserSessionPersistence);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    const cred = await signInWithPopup(auth, provider);
-    const profile = await ensureUserProfile(cred.user);
-    setCurrentUser(cred.user);
-    setUserProfile(profile);
+    await signInWithRedirect(auth, provider);
   };
 
   const resetPassword = async (email: string) => {
@@ -272,6 +270,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (!result?.user) return;
+        const profile = await ensureUserProfile(result.user);
+        setCurrentUser(result.user);
+        setUserProfile(profile);
+      })
+      .catch((err) => {
+        console.error('Google redirect sign-in failed:', err);
+      });
+
     const unsub = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setLoading(false);

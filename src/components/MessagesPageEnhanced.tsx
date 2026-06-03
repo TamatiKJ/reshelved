@@ -59,13 +59,13 @@ const panelClass = [
   'sm:h-[calc(100vh-120px)] sm:min-h-[540px] sm:rounded-[24px]'
 ].join(' ');
 
-const inputClass = [
-  'min-w-0 flex-1 bg-transparent text-sm outline-none',
-  'placeholder:text-stone-400'
+const messageMenuClass = [
+  'absolute top-full z-40 mt-2 w-48 overflow-hidden rounded-xl',
+  'border border-stone-200 bg-white py-1 text-stone-700 shadow-xl'
 ].join(' ');
 
-const isSameDay = (a: number, b: number) => (
-  new Date(a).toDateString() === new Date(b).toDateString()
+const isSameDay = (first: number, second: number) => (
+  new Date(first).toDateString() === new Date(second).toDateString()
 );
 
 const formatDayLabel = (timestamp: number) => {
@@ -117,7 +117,28 @@ const getReminderKey = (uid: string, conversationId: string) => (
   `reshelved.ratingReminder.${uid}.${conversationId}`
 );
 
-const MessagesPage: React.FC = () => {
+const Avatar: React.FC<{
+  photoURL: string;
+  name: string;
+  className?: string;
+}> = ({ photoURL, name, className = 'h-11 w-11' }) => (
+  photoURL ? (
+    <img
+      src={photoURL}
+      alt={name}
+      className={`${className} shrink-0 rounded-full object-cover`}
+    />
+  ) : (
+    <span
+      className={`${className} flex shrink-0 items-center justify-center
+        rounded-full bg-[#FFF4E2] text-sm font-bold text-primary-700`}
+    >
+      {name[0]?.toUpperCase() || 'U'}
+    </span>
+  )
+);
+
+const MessagesPageEnhanced: React.FC = () => {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
   const { currentUser, userProfile, refreshProfile } = useAuth();
@@ -163,10 +184,6 @@ const MessagesPage: React.FC = () => {
     participantMeta[getOtherParticipantId(conversation)]?.photoURL
     || conversation.participantPhotos?.[getOtherParticipantId(conversation)]
     || ''
-  );
-
-  const getOtherParticipantInitial = (conversation: Conversation) => (
-    getOtherParticipantName(conversation)[0]?.toUpperCase() || 'U'
   );
 
   const getOtherParticipantLocation = (conversation: Conversation) => (
@@ -248,7 +265,7 @@ const MessagesPage: React.FC = () => {
         });
         const visible = loaded
           .filter((conversation) => !conversation.hiddenFor?.includes(currentUser.uid))
-          .sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+          .sort((first, second) => second.lastMessageAt - first.lastMessageAt);
         setConversations(visible);
         setSelectedConv(
           conversationId
@@ -291,7 +308,7 @@ const MessagesPage: React.FC = () => {
         snapshot.forEach((item) => {
           loaded.push({ id: item.id, ...item.data() } as Message);
         });
-        loaded.sort((a, b) => a.createdAt - b.createdAt);
+        loaded.sort((first, second) => first.createdAt - second.createdAt);
         setMessages(loaded);
         requestAnimationFrame(() => {
           const pane = messagesPaneRef.current;
@@ -617,7 +634,6 @@ const MessagesPage: React.FC = () => {
       String(remindAt)
     );
     setRatingSnoozedUntil(remindAt);
-    setError('We will remind you to rate this swap tomorrow.');
   };
 
   const handleSend = async (event: React.FormEvent) => {
@@ -829,7 +845,9 @@ const MessagesPage: React.FC = () => {
 
   const selectedPhoto = selectedConv ? getOtherParticipantPhoto(selectedConv) : '';
   const selectedName = selectedConv ? getOtherParticipantName(selectedConv) : '';
-  const selectedInitial = selectedConv ? getOtherParticipantInitial(selectedConv) : 'U';
+  const selectedProfilePath = otherParticipantId
+    ? `/user/${otherParticipantId}`
+    : '/messages';
 
   return (
     <div className="mx-auto h-full max-w-[1240px] px-0 py-0 sm:px-5 sm:py-5">
@@ -851,7 +869,7 @@ const MessagesPage: React.FC = () => {
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder="Search conversations..."
-                  className={inputClass}
+                  className="min-w-0 flex-1 bg-transparent text-sm outline-none"
                 />
               </div>
             </div>
@@ -883,13 +901,7 @@ const MessagesPage: React.FC = () => {
                     to={`/messages/${conversation.id}`}
                     className={`mb-2 flex items-center gap-3 rounded-xl p-3 transition ${selected ? 'bg-white shadow-sm' : 'hover:bg-white/70'}`}
                   >
-                    {photo ? (
-                      <img src={photo} alt="" className="h-11 w-11 rounded-full object-cover" />
-                    ) : (
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white font-bold">
-                        {getOtherParticipantInitial(conversation)}
-                      </span>
-                    )}
+                    <Avatar photoURL={photo} name={getOtherParticipantName(conversation)} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <span className="truncate text-sm font-bold text-stone-950">
@@ -925,15 +937,20 @@ const MessagesPage: React.FC = () => {
                   <Link to="/messages" className="sm:hidden">
                     <i className="las la-angle-left text-2xl" />
                   </Link>
-                  {selectedPhoto ? (
-                    <img src={selectedPhoto} alt="" className="h-11 w-11 rounded-full object-cover" />
-                  ) : (
-                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FFF4E2] font-bold text-primary-700">
-                      {selectedInitial}
-                    </span>
-                  )}
+                  <Link
+                    to={selectedProfilePath}
+                    className="rounded-full transition hover:opacity-80"
+                    aria-label={`View ${selectedName}'s profile`}
+                  >
+                    <Avatar photoURL={selectedPhoto} name={selectedName} />
+                  </Link>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-bold text-stone-950">{selectedName}</p>
+                    <Link
+                      to={selectedProfilePath}
+                      className="block truncate font-bold text-stone-950 hover:underline"
+                    >
+                      {selectedName}
+                    </Link>
                     <p className="truncate text-xs text-stone-500">
                       {otherMeta?.location || 'Location not set'}
                       {otherMeta?.reviewCount ? ` · ★ ${otherMeta.avgRating.toFixed(1)}` : ''}
@@ -1019,7 +1036,17 @@ const MessagesPage: React.FC = () => {
                   {visibleMessages.map((message, index) => {
                     const isMe = message.senderId === currentUser.uid;
                     const previous = visibleMessages[index - 1];
-                    const showDay = !previous || !isSameDay(message.createdAt, previous.createdAt);
+                    const showDay = !previous
+                      || !isSameDay(message.createdAt, previous.createdAt);
+                    const recipientIds = selectedConv.participants.filter(
+                      (id) => id !== currentUser.uid
+                    );
+                    const isDelivered = recipientIds.every((id) => (
+                      message.deliveredTo?.includes(id)
+                    ));
+                    const isRead = recipientIds.every((id) => (
+                      message.readBy?.includes(id)
+                    ));
                     const canDeleteEveryone = isMe
                       && !message.deleted
                       && Date.now() - message.createdAt <= DELETE_EVERYONE_WINDOW_MS;
@@ -1039,7 +1066,9 @@ const MessagesPage: React.FC = () => {
                             onTouchMove={cancelLongPress}
                             onTouchEnd={cancelLongPress}
                             onPointerDown={(event) => {
-                              if (event.pointerType !== 'mouse') startLongPress(message, event);
+                              if (event.pointerType !== 'mouse') {
+                                startLongPress(message, event);
+                              }
                             }}
                             onPointerUp={cancelLongPress}
                             onContextMenu={(event) => {
@@ -1069,7 +1098,9 @@ const MessagesPage: React.FC = () => {
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
-                                setMessageMenuId(messageMenuId === message.id ? null : message.id);
+                                setMessageMenuId(
+                                  messageMenuId === message.id ? null : message.id
+                                );
                               }}
                               className={`absolute top-1 hidden h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white text-stone-600 shadow-sm md:flex ${isMe ? '-left-10' : '-right-10'}`}
                               aria-label="Message actions"
@@ -1077,7 +1108,7 @@ const MessagesPage: React.FC = () => {
                               <i className="las la-angle-down" />
                             </button>
                             {messageMenuId === message.id && (
-                              <div className="absolute right-0 top-full z-40 mt-2 w-48 rounded-xl border border-stone-200 bg-white py-1 text-stone-700 shadow-xl">
+                              <div className={`${messageMenuClass} ${isMe ? 'right-full mr-2' : 'left-full ml-2'}`}>
                                 <button onClick={() => copyMessage(message)} className="block w-full px-3 py-2 text-left text-sm">
                                   Copy
                                 </button>
@@ -1091,9 +1122,15 @@ const MessagesPage: React.FC = () => {
                                 )}
                               </div>
                             )}
-                            <p className={`mt-1 text-right text-[11px] ${isMe ? 'text-white/75' : 'text-stone-500'}`}>
-                              {formatMessageTime(message.createdAt)}
-                            </p>
+                            <div className={`mt-1 flex items-center justify-end gap-1 text-[11px] ${isMe ? 'text-white/75' : 'text-stone-500'}`}>
+                              <span>{formatMessageTime(message.createdAt)}</span>
+                              {isMe && (
+                                <i
+                                  title={isRead ? 'Read' : isDelivered ? 'Delivered' : 'Sent'}
+                                  className={`las ${isRead || isDelivered ? 'la-check-double' : 'la-check'} ${isRead ? 'text-blue-200' : ''}`}
+                                />
+                              )}
+                            </div>
                           </div>
                         </div>
                       </React.Fragment>
@@ -1113,6 +1150,7 @@ const MessagesPage: React.FC = () => {
                         }}
                         disabled={sending || messagingBlocked}
                         className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white disabled:opacity-50"
+                        aria-label="Attach"
                       >
                         <i className="las la-paperclip text-xl" />
                       </button>
@@ -1138,6 +1176,7 @@ const MessagesPage: React.FC = () => {
                       type="submit"
                       disabled={!newMessage.trim() || sending || messagingBlocked}
                       className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-primary-600 text-white disabled:opacity-50"
+                      aria-label="Send message"
                     >
                       <i className="las la-paper-plane text-lg" />
                     </button>
@@ -1189,4 +1228,4 @@ const MessagesPage: React.FC = () => {
   );
 };
 
-export default MessagesPage;
+export default MessagesPageEnhanced;
