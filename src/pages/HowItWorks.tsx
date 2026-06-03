@@ -192,7 +192,7 @@ const ProcessSection = () => (
                 {step.number}
               </div>
               <div>
-                <h3 className="font-[Work_Sans] text-xl font-black text-white">{step.title}</h3>
+                <h3 className="font-[Work_Sans] text-4xl font-black leading-tight tracking-[-0.03em] text-white sm:text-5xl lg:text-6xl">{step.title}</h3>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">{step.description}</p>
               </div>
             </div>
