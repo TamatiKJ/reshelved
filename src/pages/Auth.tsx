@@ -22,7 +22,7 @@ const getAuthErrorMessage = (error: any, fallback: string) => {
   }
 };
 
-const AuthLogo: React.FC<{ className?: string }> = ({ className = 'h-8 w-auto' }) => (
+const AuthLogo: React.FC<{ className?: string }> = ({ className = 'h-5 w-auto' }) => (
   <Link to="/" className="inline-flex items-center justify-center" aria-label="Reshelved home">
     <img src="/reshelved-logo.svg" alt="Reshelved" className={className} />
   </Link>
@@ -70,7 +70,7 @@ const AuthSplitCard: React.FC<{ title: string; subtitle: string; children: React
   <AuthShell showLegal={false}>
     <section className="grid min-h-[600px] w-full max-w-[1024px] overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm md:grid-cols-[1.08fr_1fr]">
       <aside className="hidden flex-col items-center justify-between bg-[#FFF4E2] px-10 py-[68px] md:flex">
-        <AuthLogo className="h-10 w-auto" />
+        <AuthLogo className="h-6 w-auto" />
         <p className="text-center text-base leading-7 text-stone-700">Find affordable books and swap with readers near you.</p>
       </aside>
       <div className="flex items-center justify-center px-7 py-10 sm:px-12 md:px-14">
