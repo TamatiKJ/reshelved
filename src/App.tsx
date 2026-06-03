@@ -9,7 +9,7 @@ import MobileBottomNav from './components/MobileBottomNav';
 import Home from './pages/Home';
 import Browse from './pages/Browse';
 import HowItWorks from './pages/HowItWorks';
-import { Login, Register, ForgotPassword, VerifyEmail } from './pages/Auth';
+import { Login, Register, ForgotPassword, VerifyEmail, SetPassword } from './pages/Auth';
 import CreateListing from './pages/CreateListing';
 import EditListing from './pages/EditListing';
 import ListingDetail from './pages/ListingDetail';
@@ -235,6 +235,7 @@ const AppContent: React.FC = () => {
         <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
         <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPassword /></PublicOnlyRoute>} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/set-password" element={<SetPassword />} />
         <Route
           path="*"
           element={
