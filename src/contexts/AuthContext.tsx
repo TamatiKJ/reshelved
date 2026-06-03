@@ -163,7 +163,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const adminStatus = await getIsAdminFromClaims(user, true);
     const authCreatedAt = getAuthCreatedAt(user);
     const isGoogleUser = user.providerData.some((provider) => provider.providerId === 'google.com');
-    const nextStatus = statusOverride || (isGoogleUser ? 'complete' : undefined);
+    const hasPendingEmailSignup = Boolean(window.localStorage.getItem(SIGNUP_SESSION_ID_KEY));
+    const shouldCompleteExistingPasswordUser = !statusOverride && !isGoogleUser && user.emailVerified && !hasPendingEmailSignup;
+    const nextStatus = statusOverride || (isGoogleUser || shouldCompleteExistingPasswordUser ? 'complete' : undefined);
 
     if (snap.exists()) {
       const existingProfile = snap.data() as UserProfile;
@@ -295,11 +297,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async (email: string, password: string) => {
+    clearPendingSignUp();
     await setPersistence(auth, browserLocalPersistence);
     const cred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
     await cred.user.reload().catch(() => undefined);
     setCurrentUser(cred.user);
-    const profile = await ensureUserProfile(cred.user);
+    const profile = await ensureUserProfile(cred.user, undefined, '', 'complete');
     setUserProfile(profile);
   };
 
