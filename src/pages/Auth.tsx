@@ -235,7 +235,7 @@ const EmailVerificationFlow: React.FC<{ email: string; sessionId: string; onRese
   };
 
   const status = userProfile?.onboardingStatus || session?.onboardingStatus || 'pending';
-  const passwordRequired = Boolean(currentUser?.emailVerified) && status !== 'complete';
+  const passwordRequired = status === 'password_required';
   const completed = status === 'complete';
 
   return (
@@ -342,7 +342,7 @@ export const SetPassword: React.FC = () => {
 
   useEffect(() => {
     if (!authLoading && !currentUser) navigate('/login', { replace: true });
-    if (!authLoading && currentUser && !currentUser.emailVerified) navigate('/auth/verify', { replace: true });
+    if (!authLoading && currentUser && userProfile?.onboardingStatus !== 'password_required' && userProfile?.onboardingStatus !== 'complete') navigate('/auth/verify', { replace: true });
     if (!authLoading && userProfile?.onboardingStatus === 'complete') navigate('/browse', { replace: true });
   }, [authLoading, currentUser, userProfile?.onboardingStatus, navigate]);
 
