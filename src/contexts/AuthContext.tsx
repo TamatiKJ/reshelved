@@ -87,30 +87,35 @@ const getAuthCreatedAt = (user: User) => {
   return Number.isFinite(createdAt) && createdAt > 0 ? createdAt : Date.now();
 };
 
-const isVerifiedAuthUser = (user: User) => user.emailVerified === true;
+const isGoogleAuthUser = (user: User) => user.providerData.some((provider) => provider.providerId === 'google.com');
+const isVerifiedAuthUser = (user: User) => user.emailVerified === true || isGoogleAuthUser(user);
 
 const getInitialOnboardingStatus = (user: User, isGoogleUser = false): UserProfile['onboardingStatus'] => {
   if (isGoogleUser) return 'complete';
   return user.emailVerified ? 'password_required' : 'pending';
 };
 
-const buildUserProfile = (user: User, displayName?: string, location = '', isAdmin = false, onboardingStatus?: UserProfile['onboardingStatus']): UserProfile => ({
-  uid: user.uid,
-  displayName: displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
-  email: user.email || '',
-  photoURL: user.photoURL || '',
-  location,
-  phone: '',
-  bio: '',
-  isAdmin,
-  flagged: false,
-  flagCount: 0,
-  createdAt: getAuthCreatedAt(user),
-  onboardingStatus: onboardingStatus || getInitialOnboardingStatus(user),
-  online: true,
-  lastSeen: Date.now(),
-  deactivated: false
-});
+const buildUserProfile = (user: User, displayName?: string, location = '', isAdmin = false, onboardingStatus?: UserProfile['onboardingStatus']): UserProfile => {
+  const isGoogleUser = isGoogleAuthUser(user);
+  return {
+    uid: user.uid,
+    displayName: displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
+    email: user.email || '',
+    emailVerified: isVerifiedAuthUser(user),
+    photoURL: user.photoURL || '',
+    location,
+    phone: '',
+    bio: '',
+    isAdmin,
+    flagged: false,
+    flagCount: 0,
+    createdAt: getAuthCreatedAt(user),
+    onboardingStatus: onboardingStatus || getInitialOnboardingStatus(user, isGoogleUser),
+    online: true,
+    lastSeen: Date.now(),
+    deactivated: false
+  };
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -162,7 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const snap = await getDoc(userRef);
     const adminStatus = await getIsAdminFromClaims(user, true);
     const authCreatedAt = getAuthCreatedAt(user);
-    const isGoogleUser = user.providerData.some((provider) => provider.providerId === 'google.com');
+    const isGoogleUser = isGoogleAuthUser(user);
     const hasPendingEmailSignup = Boolean(window.localStorage.getItem(SIGNUP_SESSION_ID_KEY));
     const shouldCompleteExistingPasswordUser = !statusOverride && !isGoogleUser && user.emailVerified && !hasPendingEmailSignup;
     const nextStatus = statusOverride || (isGoogleUser || shouldCompleteExistingPasswordUser ? 'complete' : undefined);
@@ -174,6 +179,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         uid: existingProfile.uid || user.uid,
         displayName: displayName || existingProfile.displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
         email: user.email || existingProfile.email || '',
+        emailVerified: isVerifiedAuthUser(user) || existingProfile.emailVerified === true,
         photoURL: existingProfile.photoURL || user.photoURL || '',
         location: existingProfile.location || location || '',
         createdAt: existingProfile.createdAt || authCreatedAt,
@@ -191,11 +197,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUserProfile(normalizedProfile);
 
-      if (isVerifiedAuthUser(user)) {
+      if (isVerifiedAuthUser(user) || normalizedProfile.onboardingStatus === 'complete') {
         await setDoc(userRef, {
           uid: normalizedProfile.uid,
           displayName: normalizedProfile.displayName,
           email: normalizedProfile.email,
+          emailVerified: normalizedProfile.emailVerified === true,
           photoURL: normalizedProfile.photoURL,
           location: normalizedProfile.location,
           createdAt: normalizedProfile.createdAt,
@@ -229,21 +236,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profile = snap.data() as UserProfile;
         const adminStatus = await getIsAdminFromClaims(auth.currentUser, true);
         const authCreatedAt = auth.currentUser?.uid === uid ? getAuthCreatedAt(auth.currentUser) : 0;
+        const isGoogleUser = auth.currentUser ? isGoogleAuthUser(auth.currentUser) : false;
         const normalizedProfile: UserProfile = {
           ...profile,
           email: auth.currentUser?.email || profile.email || '',
+          emailVerified: profile.emailVerified === true || Boolean(auth.currentUser && isVerifiedAuthUser(auth.currentUser)),
           location: profile.location || '',
           createdAt: profile.createdAt || authCreatedAt || Date.now(),
           isAdmin: adminStatus,
-          onboardingStatus: profile.onboardingStatus || (auth.currentUser?.emailVerified ? 'complete' : 'pending')
+          onboardingStatus: isGoogleUser ? 'complete' : profile.onboardingStatus || (auth.currentUser?.emailVerified ? 'complete' : 'pending')
         };
         setUserProfile(normalizedProfile);
 
-        if (auth.currentUser?.uid === uid && isVerifiedAuthUser(auth.currentUser)) {
+        if (auth.currentUser?.uid === uid && (isVerifiedAuthUser(auth.currentUser) || normalizedProfile.onboardingStatus === 'complete')) {
           syncPublicProfile(normalizedProfile).catch((err) => console.error('Public profile sync failed:', err));
           syncConversationProfile(normalizedProfile).catch((err) => console.error('Conversation avatar sync failed:', err));
           await setDoc(doc(db, 'users', uid), {
             email: normalizedProfile.email,
+            emailVerified: normalizedProfile.emailVerified === true,
             location: normalizedProfile.location,
             createdAt: normalizedProfile.createdAt,
             isAdmin: normalizedProfile.isAdmin,
@@ -469,7 +479,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    if (!currentUser || !currentUser.emailVerified || userProfile?.onboardingStatus !== 'complete') return;
+    if (!currentUser || !isVerifiedAuthUser(currentUser) || userProfile?.onboardingStatus !== 'complete') return;
 
     updatePresence(currentUser.uid, true).catch((err) => console.error('Error updating presence:', err));
     const interval = window.setInterval(() => {
