@@ -10,7 +10,7 @@ import {
   signOut,
   updateProfile,
   setPersistence,
-  browserSessionPersistence,
+  browserLocalPersistence,
   User
 } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
@@ -227,7 +227,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanName = displayName.trim();
     const cleanLocation = location.trim();
 
-    await setPersistence(auth, browserSessionPersistence);
+    await setPersistence(auth, browserLocalPersistence);
     const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
     await updateProfile(cred.user, { displayName: cleanName });
     const adminStatus = await getIsAdminFromClaims(cred.user, true);
@@ -257,7 +257,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async (email: string, password: string) => {
-    await setPersistence(auth, browserSessionPersistence);
+    await setPersistence(auth, browserLocalPersistence);
     const cred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
     await cred.user.reload().catch(() => undefined);
     setCurrentUser(cred.user);
@@ -266,7 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithGoogle = async () => {
-    await setPersistence(auth, browserSessionPersistence);
+    await setPersistence(auth, browserLocalPersistence);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     await signInWithRedirect(auth, provider);
@@ -285,34 +285,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUserProfile(null);
   };
 
+  const completeAuthenticatedSession = async (user: User | null) => {
+    if (!user) {
+      setCurrentUser(null);
+      setUserProfile(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await user.reload().catch(() => undefined);
+      const profile = await ensureUserProfile(user);
+      setCurrentUser(user);
+      setUserProfile(profile);
+    } catch (err) {
+      console.error('Error completing authenticated session:', err);
+      setCurrentUser(null);
+      setUserProfile(null);
+      await signOut(auth).catch(() => undefined);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
+    let cancelled = false;
+
+    const completeIfMounted = async (user: User | null) => {
+      if (cancelled) return;
+      await completeAuthenticatedSession(user);
+    };
+
     getRedirectResult(auth)
       .then(async (result) => {
-        if (!result?.user) return;
-        await result.user.reload().catch(() => undefined);
-        const profile = await ensureUserProfile(result.user);
-        setCurrentUser(result.user);
-        setUserProfile(profile);
+        if (result?.user) {
+          await completeIfMounted(result.user);
+        }
       })
       .catch((err) => {
         console.error('Google redirect sign-in failed:', err);
+        setLoading(false);
       });
 
     const unsub = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      setLoading(false);
-
-      if (user) {
-        await user.reload().catch(() => undefined);
-        setUserProfile(buildUserProfile(user));
-        ensureUserProfile(user).catch((err) => {
-          console.error('Error syncing user profile:', err);
-        });
-      } else {
-        setUserProfile(null);
-      }
+      await completeIfMounted(user);
     });
-    return unsub;
+
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, []);
 
   useEffect(() => {
