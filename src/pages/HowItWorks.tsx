@@ -147,7 +147,7 @@ const BenefitsSection = () => (
                 <p className="font-[Inter] text-[14px] font-bold uppercase tracking-normal text-primary-600">
                   {section.label}
                 </p>
-                <h3 className="mt-4 max-w-xl font-[Work_Sans] text-3xl font-black leading-tight tracking-[-0.03em] text-stone-950 sm:text-5xl">
+                <h3 className="mt-4 max-w-2xl font-[Work_Sans] text-4xl font-black leading-tight tracking-[-0.03em] text-stone-950 sm:text-5xl lg:text-6xl">
                   {section.title}
                 </h3>
                 <p className="mt-7 max-w-2xl text-base leading-7 text-stone-600">
