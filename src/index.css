@@ -97,13 +97,19 @@ body {
   line-height: 1.6;
 }
 
+input,
+select,
+textarea {
+  font-size: 14px !important;
+}
+
 @media (min-width: 768px) {
   h1 {
     font-size: 72px !important;
   }
 
   h2 {
-    font-size: 48px !important;
+    font-size: 60px !important;
   }
 
   h3 {
@@ -125,6 +131,12 @@ body {
 
   .body-text-sm {
     font-size: 16px;
+  }
+
+  button,
+  a.inline-flex {
+    font-size: 14px !important;
+    font-weight: 700 !important;
   }
 }
 
