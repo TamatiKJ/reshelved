@@ -60,11 +60,11 @@ const AuthLogo: React.FC<{ className?: string }> = ({ className = 'h-5 w-auto' }
 );
 
 const GoogleIcon: React.FC = () => (
-  <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-    <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z" />
-    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.06L5.84 9.9C6.71 7.31 9.14 5.38 12 5.38z" />
+  <svg className="h-5 w-5 shrink-0" viewBox="0 0 18 18" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#4285F4" d="M17.64 9.20455c0-.63818-.05727-1.25273-.16364-1.84364H9v3.48182h4.84364c-.20864 1.125-.84273 2.07818-1.79636 2.71636v2.25818h2.90818C16.65818 14.25273 17.64 11.94545 17.64 9.20455z" />
+    <path fill="#34A853" d="M9 18c2.43 0 4.46727-.80591 5.95636-2.18273l-2.90818-2.25818c-.80591.54-1.83727.85909-3.04818.85909-2.34409 0-4.32818-1.58273-5.03591-3.70909H.95727v2.33182C2.43818 15.98318 5.48182 18 9 18z" />
+    <path fill="#FBBC05" d="M3.96409 10.70909c-.18-.54-.28227-1.11682-.28227-1.70909s.10227-1.16909.28227-1.70909V4.95909H.95727C.34773 6.17318 0 7.54818 0 9s.34773 2.82682.95727 4.04091l3.00682-2.33182z" />
+    <path fill="#EA4335" d="M9 3.58182c1.32136 0 2.50773.45409 3.44045 1.34636l2.58136-2.58136C13.46318.89182 11.42591 0 9 0 5.48182 0 2.43818 2.01682.95727 4.95909l3.00682 2.33182C4.67182 5.16455 6.65591 3.58182 9 3.58182z" />
   </svg>
 );
 
@@ -142,7 +142,7 @@ const GoogleAuthButton: React.FC<{ label: string; disabled?: boolean; onError: (
   return (
     <button type="button" onClick={handleGoogleAuth} disabled={disabled || googleLoading} className="mt-8 flex w-full cursor-pointer items-center justify-center gap-3 rounded-md border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-900 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">
       <GoogleIcon />
-      {googleLoading ? 'Redirecting to Google...' : label}
+      {googleLoading ? 'Opening Google...' : label}
     </button>
   );
 };
