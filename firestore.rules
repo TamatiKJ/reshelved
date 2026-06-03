@@ -19,6 +19,12 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(userId));
     }
 
+    function hasCompletedOnboarding() {
+      return signedIn()
+        && userDocExists(request.auth.uid)
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.onboardingStatus == "complete";
+    }
+
     function isAdmin() {
       return signedIn()
         && hasVerifiedEmail()
@@ -41,7 +47,10 @@ service cloud.firestore {
     }
 
     function canUsePlatform() {
-      return signedIn() && hasVerifiedEmail() && !isBanned(request.auth.uid);
+      return signedIn()
+        && hasVerifiedEmail()
+        && hasCompletedOnboarding()
+        && !isBanned(request.auth.uid);
     }
 
     function validBlogStatus() {
@@ -388,8 +397,86 @@ service cloud.firestore {
         && request.auth.uid != request.resource.data.userId;
     }
 
+    function validPendingSignupCreate(sessionId) {
+      return request.resource.data.keys().hasOnly([
+          "sessionId",
+          "email",
+          "displayName",
+          "location",
+          "onboardingStatus",
+          "createdAt",
+          "updatedAt",
+          "lastSentAt",
+          "resendCount"
+        ])
+        && request.resource.data.sessionId == sessionId
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 3
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() > 0
+        && request.resource.data.displayName.size() <= 120
+        && request.resource.data.location is string
+        && request.resource.data.onboardingStatus == "pending"
+        && request.resource.data.createdAt is number
+        && request.resource.data.updatedAt is number
+        && request.resource.data.lastSentAt is number;
+    }
+
+    function validPendingSignupResend(sessionId) {
+      return resource.data.onboardingStatus == "pending"
+        && request.resource.data.sessionId == sessionId
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.displayName == resource.data.displayName
+        && request.resource.data.location == resource.data.location
+        && request.resource.data.onboardingStatus == "pending"
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt is number
+        && request.resource.data.lastSentAt is number
+        && (!request.resource.data.keys().hasAny(["resendCount"]) || request.resource.data.resendCount is number)
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "updatedAt",
+          "lastSentAt",
+          "resendCount"
+        ]);
+    }
+
+    function validPendingSignupVerifiedUpdate() {
+      return hasVerifiedEmail()
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.onboardingStatus == "password_required"
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.verifiedAt is number
+        && request.resource.data.updatedAt is number
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "onboardingStatus",
+          "verifiedAt",
+          "updatedAt",
+          "uid"
+        ]);
+    }
+
+    function validPendingSignupCompleteUpdate() {
+      return hasVerifiedEmail()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.onboardingStatus == "complete"
+        && request.resource.data.completedAt is number
+        && request.resource.data.updatedAt is number
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "onboardingStatus",
+          "completedAt",
+          "updatedAt",
+          "uid"
+        ]);
+    }
+
     match /users/{userId} {
-      allow create: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.onboardingStatus in ["password_required", "complete", "pending"];
+
       allow read: if isOwner(userId) || isAdmin();
 
       allow update: if isAdmin()
@@ -405,17 +492,50 @@ service cloud.firestore {
             "updatedAt",
             "lastSeen",
             "blockedUsers",
-            "online"
+            "online",
+            "onboardingStatus",
+            "email",
+            "createdAt",
+            "isAdmin",
+            "deactivated"
           ])
+          && (
+            request.resource.data.onboardingStatus == resource.data.onboardingStatus
+            || (
+              resource.data.onboardingStatus in ["pending", "password_required"]
+              && request.resource.data.onboardingStatus in ["password_required", "complete"]
+            )
+          )
         );
+
+      allow delete: if isAdmin();
+    }
+
+    match /pendingSignups/{sessionId} {
+      allow create: if validPendingSignupCreate(sessionId);
+
+      allow read: if isAdmin()
+        || (
+          resource.data.createdAt is number
+          && resource.data.createdAt >= request.time.toMillis() - 3600000
+        )
+        || (
+          signedIn()
+          && resource.data.email == request.auth.token.email
+        );
+
+      allow update: if isAdmin()
+        || validPendingSignupResend(sessionId)
+        || validPendingSignupVerifiedUpdate()
+        || validPendingSignupCompleteUpdate();
 
       allow delete: if isAdmin();
     }
 
     match /publicProfiles/{userId} {
       allow read: if true;
-      allow create, update: if (isOwner(userId) && hasVerifiedEmail()) || isAdmin();
-      allow delete: if (isOwner(userId) && hasVerifiedEmail()) || isAdmin();
+      allow create, update: if (isOwner(userId) && canUsePlatform()) || isAdmin();
+      allow delete: if (isOwner(userId) && canUsePlatform()) || isAdmin();
     }
 
     match /listings/{listingId} {
