@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { addDoc, collection, getDocs } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import AdminUserDashboardStyled from './AdminUserDashboardStyled';
@@ -8,6 +8,10 @@ import './AdminUserDashboardNotifyWrapper.css';
 
 type Step = 'form' | 'confirm';
 type Target = 'all' | 'specific';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const DELETE_USER_BUTTON_CLASS = 'admin-inline-delete-user';
+const RESTORE_LISTING_BUTTON_CLASS = 'admin-inline-restore-listing';
 
 const AdminUserDashboardNotifyWrapper: React.FC = () => {
   const { userProfile } = useAuth() as any;
@@ -49,6 +53,83 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
     setSelectedUserId('');
     setSearch('');
     loadUsers();
+  }, [loadUsers, userProfile?.isAdmin]);
+
+  const deleteDocsWhere = useCallback(async (collectionName: string, field: string, value: string, operator: '==' | 'array-contains' = '==') => {
+    const snap = await getDocs(query(collection(db, collectionName), where(field, operator, value))).catch(() => null);
+    if (!snap) return;
+    await Promise.all(snap.docs.map((item) => deleteDoc(doc(db, collectionName, item.id)).catch(() => undefined)));
+  }, []);
+
+  const deleteUserConversations = useCallback(async (userId: string) => {
+    const conversationSnap = await getDocs(query(collection(db, 'conversations'), where('participants', 'array-contains', userId))).catch(() => null);
+    if (!conversationSnap) return;
+
+    await Promise.all(conversationSnap.docs.map(async (conversation) => {
+      const messageSnap = await getDocs(query(collection(db, 'messages'), where('conversationId', '==', conversation.id))).catch(() => null);
+      if (messageSnap) await Promise.all(messageSnap.docs.map((messageDoc) => deleteDoc(doc(db, 'messages', messageDoc.id)).catch(() => undefined)));
+      await deleteDoc(doc(db, 'conversations', conversation.id)).catch(() => undefined);
+    }));
+  }, []);
+
+  const deleteUserData = useCallback(async (targetUser: UserProfile) => {
+    if (!userProfile?.isAdmin || !targetUser?.uid) return;
+    if (targetUser.uid === userProfile.uid) {
+      window.alert('You cannot delete your own admin account from here.');
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete ${targetUser.displayName || targetUser.email || 'this user'} and their app data? This removes their Firestore data, listings, messages, reports, ratings, notifications, and public profile. Firebase Auth account deletion still needs a Cloud Function or Admin SDK.`);
+    if (!confirmed) return;
+
+    try {
+      const userId = targetUser.uid;
+      await Promise.all([
+        deleteDocsWhere('listings', 'userId', userId),
+        deleteDocsWhere('notifications', 'userId', userId),
+        deleteDocsWhere('ratings', 'fromUserId', userId),
+        deleteDocsWhere('ratings', 'toUserId', userId),
+        deleteDocsWhere('reports', 'reporterId', userId),
+        deleteDocsWhere('reports', 'targetId', userId),
+        deleteDocsWhere('contacts', 'userId', userId),
+        deleteDocsWhere('contacts', 'sellerId', userId),
+        deleteDocsWhere('messages', 'senderId', userId),
+        deleteDocsWhere('messages', 'recipientId', userId),
+        deleteUserConversations(userId),
+        deleteDoc(doc(db, 'publicProfiles', userId)).catch(() => undefined),
+      ]);
+      await deleteDoc(doc(db, 'users', userId));
+      window.alert('User app data deleted. Firebase Auth account deletion still needs backend admin code.');
+      window.location.reload();
+    } catch (error) {
+      console.error(error);
+      window.alert('User could not be deleted. Check Firestore rules.');
+    }
+  }, [deleteDocsWhere, deleteUserConversations, userProfile?.isAdmin, userProfile?.uid]);
+
+  const restoreListing = useCallback(async (listingId: string) => {
+    if (!userProfile?.isAdmin || !listingId) return;
+
+    try {
+      const settingsSnap = await getDoc(doc(db, 'platform', 'settings')).catch(() => null);
+      const listingDays = Math.max(1, Math.min(45, Number(settingsSnap?.exists() ? settingsSnap.data().listingDays : 10) || 10));
+      const now = Date.now();
+      await updateDoc(doc(db, 'listings', listingId), {
+        active: true,
+        listingDays,
+        expiresAt: now + listingDays * DAY_MS,
+        restoredAt: now,
+      });
+      window.alert(`Listing restored for ${listingDays} days.`);
+      window.location.reload();
+    } catch (error) {
+      console.error(error);
+      window.alert('Listing could not be restored. Check Firestore rules.');
+    }
+  }, [userProfile?.isAdmin]);
+
+  useEffect(() => {
+    if (userProfile?.isAdmin) loadUsers();
   }, [loadUsers, userProfile?.isAdmin]);
 
   useEffect(() => {
@@ -101,6 +182,69 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
       document.removeEventListener('click', runSoon, true);
     };
   }, []);
+
+  useEffect(() => {
+    const hydrateAdminActions = () => {
+      if (!userProfile?.isAdmin) return;
+
+      const panels = Array.from(document.querySelectorAll<HTMLElement>('.admin-tiktok-shell section'));
+      const usersPanel = panels.find((section) => section.querySelector('h3')?.textContent?.trim() === 'Users');
+      usersPanel?.querySelectorAll<HTMLTableRowElement>('tbody tr').forEach((row) => {
+        const cells = Array.from(row.querySelectorAll<HTMLTableCellElement>('td'));
+        const email = cells[1]?.textContent?.trim();
+        const actionsCell = cells[cells.length - 1];
+        if (!email || !actionsCell || actionsCell.querySelector(`.${DELETE_USER_BUTTON_CLASS}`)) return;
+
+        const targetUser = users.find((item) => item.email === email);
+        if (!targetUser || targetUser.uid === userProfile.uid) return;
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `${DELETE_USER_BUTTON_CLASS} cursor-pointer rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-bold text-red-700 hover:bg-red-50`;
+        button.title = 'Delete user and app data';
+        button.innerHTML = '<i class="las la-trash-alt text-base"></i>';
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          deleteUserData(targetUser);
+        });
+        actionsCell.querySelector('div')?.appendChild(button);
+      });
+
+      const listingsPanel = panels.find((section) => section.querySelector('h3')?.textContent?.trim() === 'Listings');
+      listingsPanel?.querySelectorAll<HTMLTableRowElement>('tbody tr').forEach((row) => {
+        const cells = Array.from(row.querySelectorAll<HTMLTableCellElement>('td'));
+        const listingLink = row.querySelector<HTMLAnchorElement>('a[href^="/listing/"]');
+        const statusText = cells[7]?.textContent?.toLowerCase() || '';
+        const actionsCell = cells[cells.length - 1];
+        const listingId = listingLink?.getAttribute('href')?.split('/listing/')[1]?.split(/[/?#]/)[0];
+        if (!listingId || !actionsCell || !statusText.includes('inactive') || actionsCell.querySelector(`.${RESTORE_LISTING_BUTTON_CLASS}`)) return;
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `${RESTORE_LISTING_BUTTON_CLASS} cursor-pointer rounded-lg border border-[#1665CC]/30 px-3 py-1.5 text-xs font-bold text-[#1665CC] hover:bg-[#1665CC]/5`;
+        button.textContent = 'Restore';
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          restoreListing(listingId);
+        });
+        actionsCell.querySelector('div')?.appendChild(button);
+      });
+    };
+
+    const runSoon = () => window.setTimeout(hydrateAdminActions, 80);
+    const observer = new MutationObserver(runSoon);
+    observer.observe(document.body, { childList: true, subtree: true });
+    const timers = [0, 300, 900, 1800].map((delay) => window.setTimeout(hydrateAdminActions, delay));
+    document.addEventListener('click', runSoon, true);
+
+    return () => {
+      observer.disconnect();
+      timers.forEach((timer) => window.clearTimeout(timer));
+      document.removeEventListener('click', runSoon, true);
+    };
+  }, [deleteUserData, restoreListing, userProfile?.isAdmin, userProfile?.uid, users]);
 
   const adminCount = users.filter((user) => user.isAdmin).length;
   const eligibleUsers = useMemo(() => excludeAdmins ? users.filter((user) => !user.isAdmin) : users, [excludeAdmins, users]);
