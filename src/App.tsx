@@ -202,7 +202,7 @@ const VerifyEmailRoute: React.FC = () => {
   if (loading || (currentUser && !userProfile)) return <LoadingScreen />;
   if (!currentUser) return <VerifyEmail />;
   if (userProfile?.onboardingStatus === 'complete') return <Navigate to="/browse" replace />;
-  if (currentUser.emailVerified && userProfile?.onboardingStatus === 'password_required') return <VerifyEmail />;
+  if (userProfile?.onboardingStatus === 'password_required') return <VerifyEmail />;
   return <Navigate to="/login" replace />;
 };
 
