@@ -165,7 +165,7 @@ const Home: React.FC = () => {
               {showingSearch ? `Search results for "${search.trim()}"` : 'Latest Listings'}
             </h5>
             {!showingSearch && (
-              <Link to="/browse" className="text-sm font-semibold text-primary-600 hover:text-primary-700">
+              <Link to="/browse" className="text-sm font-semibold text-[#1665CC] hover:text-[#0f4fa3]">
                 View all
               </Link>
             )}
