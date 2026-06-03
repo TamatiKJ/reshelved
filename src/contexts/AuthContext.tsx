@@ -212,7 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const newProfile = buildUserProfile(user, displayName, location, adminStatus, nextStatus);
     await setDoc(userRef, newProfile, { merge: true });
-    await syncPublicProfile(newProfile);
+    syncPublicProfile(newProfile).catch((err) => console.error('Public profile sync failed:', err));
     setUserProfile(newProfile);
     return newProfile;
   };
@@ -304,6 +304,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithGoogle = async () => {
+    clearPendingSignUp();
     await setPersistence(auth, browserLocalPersistence);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
@@ -386,10 +387,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     await cred.user.reload().catch(() => undefined);
     await cred.user.getIdToken(true).catch(() => undefined);
-    const profile = await ensureUserProfile(cred.user, displayName, location, 'password_required');
+    const sessionCompleted = session?.onboardingStatus === 'complete';
+    const profile = await ensureUserProfile(cred.user, displayName, location, sessionCompleted ? 'complete' : 'password_required');
     await setDoc(doc(db, 'pendingSignups', sessionId), {
-      onboardingStatus: 'password_required',
-      verifiedAt: Date.now(),
+      onboardingStatus: sessionCompleted ? 'complete' : 'password_required',
+      verifiedAt: session?.verifiedAt || Date.now(),
       updatedAt: Date.now(),
       uid: cred.user.uid
     }, { merge: true });
