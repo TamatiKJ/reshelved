@@ -75,7 +75,7 @@ const ReviewAuthorNameSync: React.FC = () => {
   const syncingRef = useRef(false);
 
   const syncCurrentUserReviews = async (forcedName?: string) => {
-    if (!currentUser?.uid || syncingRef.current || !currentUser.emailVerified) return;
+    if (!currentUser?.uid || syncingRef.current || !currentUser.emailVerified || userProfile?.onboardingStatus !== 'complete') return;
     const nextName = normalizeReviewAuthorName(forcedName || userProfile?.displayName, userProfile?.deactivated);
     syncingRef.current = true;
     try {
@@ -93,12 +93,12 @@ const ReviewAuthorNameSync: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!currentUser?.uid || !currentUser.emailVerified || !userProfile) return;
+    if (!currentUser?.uid || !currentUser.emailVerified || userProfile?.onboardingStatus !== 'complete') return;
     syncCurrentUserReviews();
-  }, [currentUser?.uid, currentUser?.emailVerified, userProfile?.displayName, userProfile?.deactivated]);
+  }, [currentUser?.uid, currentUser?.emailVerified, userProfile?.onboardingStatus, userProfile?.displayName, userProfile?.deactivated]);
 
   useEffect(() => {
-    if (!currentUser?.uid || !currentUser.emailVerified) return undefined;
+    if (!currentUser?.uid || !currentUser.emailVerified || userProfile?.onboardingStatus !== 'complete') return undefined;
 
     const handleDeleteClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -110,7 +110,7 @@ const ReviewAuthorNameSync: React.FC = () => {
 
     document.addEventListener('click', handleDeleteClick, true);
     return () => document.removeEventListener('click', handleDeleteClick, true);
-  }, [currentUser?.uid, currentUser?.emailVerified, userProfile?.displayName]);
+  }, [currentUser?.uid, currentUser?.emailVerified, userProfile?.onboardingStatus, userProfile?.displayName]);
 
   return null;
 };
@@ -183,17 +183,17 @@ const LoadingScreen: React.FC = () => (
 );
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, loading } = useAuth();
+  const { currentUser, userProfile, loading } = useAuth();
   if (loading) return <LoadingScreen />;
   if (!currentUser) return <Navigate to="/login" replace />;
-  if (!currentUser.emailVerified) return <Navigate to="/verify-email" replace />;
+  if (!currentUser.emailVerified || userProfile?.onboardingStatus !== 'complete') return <Navigate to="/auth/verify" replace />;
   return <>{children}</>;
 };
 
 const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, loading } = useAuth();
+  const { currentUser, userProfile, loading } = useAuth();
   if (loading) return <LoadingScreen />;
-  if (currentUser) return <Navigate to={currentUser.emailVerified ? '/browse' : '/verify-email'} replace />;
+  if (currentUser) return <Navigate to={currentUser.emailVerified && userProfile?.onboardingStatus === 'complete' ? '/browse' : '/auth/verify'} replace />;
   return <>{children}</>;
 };
 
@@ -201,11 +201,12 @@ const AppContent: React.FC = () => {
   const { currentUser, loading, userProfile } = useAuth();
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
-  const isAdminEnabled = isAdminRoute && Boolean(userProfile?.isAdmin) && Boolean(currentUser?.emailVerified);
+  const isFullyOnboarded = Boolean(currentUser?.emailVerified && userProfile?.onboardingStatus === 'complete');
+  const isAdminEnabled = isAdminRoute && Boolean(userProfile?.isAdmin) && isFullyOnboarded;
   const isMessagesRoute = location.pathname.startsWith('/messages');
   const isOpenChatRoute = /^\/messages\/[^/]+/.test(location.pathname);
   const hideMobileBottomNav = isAdminRoute || isOpenChatRoute || (location.pathname.startsWith('/listing/') && location.pathname.endsWith('/edit'));
-  const shouldShowMobileBottomNav = Boolean(currentUser?.emailVerified) && !hideMobileBottomNav;
+  const shouldShowMobileBottomNav = isFullyOnboarded && !hideMobileBottomNav;
   const pageScopeClass = getPageScopeClass(location.pathname);
 
   if (loading) {
@@ -234,7 +235,8 @@ const AppContent: React.FC = () => {
         <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
         <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
         <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPassword /></PublicOnlyRoute>} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/auth/verify" element={<VerifyEmail />} />
+        <Route path="/verify-email" element={<Navigate to="/auth/verify" replace />} />
         <Route path="/set-password" element={<SetPassword />} />
         <Route
           path="*"
