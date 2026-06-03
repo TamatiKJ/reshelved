@@ -334,9 +334,9 @@ const Home: React.FC = () => {
       <section className="bg-white pt-10 sm:pt-16 pb-[220px] sm:pb-[340px]">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-3xl mx-auto">
-            <h4 className="text-stone-950">
+            <h3 className="text-stone-950">
               Find your next read faster
-            </h4>
+            </h3>
           </div>
 
           <div className="relative mt-10 mb-10 sm:mb-0 -mx-4 sm:mx-0">
