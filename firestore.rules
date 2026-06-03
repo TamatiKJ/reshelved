@@ -7,6 +7,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function hasVerifiedEmail() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+
     function isOwner(userId) {
       return signedIn() && request.auth.uid == userId;
     }
@@ -17,6 +21,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return signedIn()
+        && hasVerifiedEmail()
         && (
           request.auth.token.admin == true
           || (
@@ -36,7 +41,7 @@ service cloud.firestore {
     }
 
     function canUsePlatform() {
-      return signedIn() && !isBanned(request.auth.uid);
+      return signedIn() && hasVerifiedEmail() && !isBanned(request.auth.uid);
     }
 
     function validBlogStatus() {
@@ -390,6 +395,7 @@ service cloud.firestore {
       allow update: if isAdmin()
         || (
           isOwner(userId)
+          && hasVerifiedEmail()
           && request.resource.data.diff(resource.data).changedKeys().hasOnly([
             "displayName",
             "bio",
@@ -408,8 +414,8 @@ service cloud.firestore {
 
     match /publicProfiles/{userId} {
       allow read: if true;
-      allow create, update: if isOwner(userId) || isAdmin();
-      allow delete: if isOwner(userId) || isAdmin();
+      allow create, update: if (isOwner(userId) && hasVerifiedEmail()) || isAdmin();
+      allow delete: if (isOwner(userId) && hasVerifiedEmail()) || isAdmin();
     }
 
     match /listings/{listingId} {
@@ -421,7 +427,7 @@ service cloud.firestore {
         || isListingReportFlagUpdate()
         || isAdminListingUpdate();
 
-      allow delete: if signedIn()
+      allow delete: if canUsePlatform()
         && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
