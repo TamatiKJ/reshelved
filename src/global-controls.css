@@ -45,14 +45,12 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* Listing image remove buttons: always visible and aligned with the uploaded reference. */
-.page-create-listing button[disabled].absolute.right-2.top-2,
 .page-create-listing button.absolute.right-2.top-2,
-.page-listing-detail button[disabled].absolute.right-2.top-2,
 .page-listing-detail button.absolute.right-2.top-2 {
   width: 32px !important;
   height: 32px !important;
   border-radius: 9999px !important;
-  background: #D54215 !important;
+  background: #111111 !important;
   color: transparent !important;
   opacity: 1 !important;
   border: 2px solid #ffffff !important;
@@ -72,6 +70,12 @@ input[type="range"]::-moz-range-thumb {
 
 .page-create-listing button.absolute.right-2.top-2:hover,
 .page-listing-detail button.absolute.right-2.top-2:hover {
-  background: #B53811 !important;
+  background: #000000 !important;
   transform: scale(1.04);
+}
+
+.page-create-listing button.absolute.right-2.top-2:disabled,
+.page-listing-detail button.absolute.right-2.top-2:disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
 }
