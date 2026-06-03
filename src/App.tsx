@@ -186,14 +186,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const { currentUser, userProfile, loading } = useAuth();
   if (loading || (currentUser && !userProfile)) return <LoadingScreen />;
   if (!currentUser) return <Navigate to="/login" replace />;
-  if (!currentUser.emailVerified || userProfile?.onboardingStatus !== 'complete') return <Navigate to="/auth/verify" replace />;
+  if (userProfile?.onboardingStatus !== 'complete') return <Navigate to="/auth/verify" replace />;
   return <>{children}</>;
 };
 
 const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, userProfile, loading } = useAuth();
   if (loading || (currentUser && !userProfile)) return <LoadingScreen />;
-  if (currentUser) return <Navigate to={currentUser.emailVerified && userProfile?.onboardingStatus === 'complete' ? '/browse' : '/auth/verify'} replace />;
+  if (currentUser) return <Navigate to={userProfile?.onboardingStatus === 'complete' ? '/browse' : '/auth/verify'} replace />;
   return <>{children}</>;
 };
 
@@ -201,7 +201,7 @@ const VerifyEmailRoute: React.FC = () => {
   const { currentUser, userProfile, loading } = useAuth();
   if (loading || (currentUser && !userProfile)) return <LoadingScreen />;
   if (!currentUser) return <VerifyEmail />;
-  if (currentUser.emailVerified && userProfile?.onboardingStatus === 'complete') return <Navigate to="/browse" replace />;
+  if (userProfile?.onboardingStatus === 'complete') return <Navigate to="/browse" replace />;
   if (currentUser.emailVerified && userProfile?.onboardingStatus === 'password_required') return <VerifyEmail />;
   return <Navigate to="/login" replace />;
 };
@@ -210,7 +210,7 @@ const AppContent: React.FC = () => {
   const { currentUser, loading, userProfile } = useAuth();
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
-  const isFullyOnboarded = Boolean(currentUser?.emailVerified && userProfile?.onboardingStatus === 'complete');
+  const isFullyOnboarded = Boolean(currentUser && userProfile?.onboardingStatus === 'complete');
   const isAdminEnabled = isAdminRoute && Boolean(userProfile?.isAdmin) && isFullyOnboarded;
   const isMessagesRoute = location.pathname.startsWith('/messages');
   const isOpenChatRoute = /^\/messages\/[^/]+/.test(location.pathname);
