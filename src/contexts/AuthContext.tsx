@@ -3,7 +3,6 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithRedirect,
-  signInWithPopup,
   getRedirectResult,
   GoogleAuthProvider,
   sendPasswordResetEmail,
@@ -26,6 +25,7 @@ const SIGNUP_SESSION_ID_KEY = 'reshelved:signupSessionId';
 const PENDING_SIGNUP_EMAIL_KEY = 'reshelved:pendingSignUpEmail';
 const PENDING_SIGNUP_NAME_KEY = 'reshelved:pendingSignUpName';
 const PENDING_SIGNUP_LOCATION_KEY = 'reshelved:pendingSignUpLocation';
+const GOOGLE_AUTH_PENDING_KEY = 'reshelved:googleAuthPending';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -71,6 +71,10 @@ const clearPendingSignUp = () => {
   window.localStorage.removeItem(PENDING_SIGNUP_NAME_KEY);
   window.localStorage.removeItem(PENDING_SIGNUP_LOCATION_KEY);
 };
+
+const markGoogleAuthPending = () => window.sessionStorage.setItem(GOOGLE_AUTH_PENDING_KEY, 'true');
+const clearGoogleAuthPending = () => window.sessionStorage.removeItem(GOOGLE_AUTH_PENDING_KEY);
+const hasGoogleAuthPending = () => window.sessionStorage.getItem(GOOGLE_AUTH_PENDING_KEY) === 'true';
 
 const getIsAdminFromClaims = async (user: User | null, forceRefresh = false) => {
   if (!user) return false;
@@ -290,6 +294,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const sessionId = existingSessionId || generateSessionId();
     const now = Date.now();
 
+    clearGoogleAuthPending();
     await setPersistence(auth, browserLocalPersistence);
     await setDoc(doc(db, 'pendingSignups', sessionId), {
       sessionId,
@@ -309,6 +314,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     clearPendingSignUp();
+    clearGoogleAuthPending();
     await setPersistence(auth, browserLocalPersistence);
     const cred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
     await cred.user.reload().catch(() => undefined);
@@ -322,18 +328,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await setPersistence(auth, browserLocalPersistence);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-
-    try {
-      const cred = await signInWithPopup(auth, provider);
-      await cred.user.reload().catch(() => undefined);
-      const profile = await ensureUserProfile(cred.user, undefined, '', 'complete');
-      setCurrentUser(cred.user);
-      setUserProfile(profile);
-    } catch (err: any) {
-      const canUseRedirect = ['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/operation-not-supported-in-this-environment'].includes(err?.code);
-      if (!canUseRedirect) throw err;
-      await signInWithRedirect(auth, provider);
-    }
+    markGoogleAuthPending();
+    await signInWithRedirect(auth, provider);
   };
 
   const sendVerificationEmail = async () => {
@@ -350,7 +346,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await auth.currentUser.reload();
     await auth.currentUser.getIdToken(true).catch(() => undefined);
     setCurrentUser(auth.currentUser);
-    if (auth.currentUser.emailVerified) {
+    if (isVerifiedAuthUser(auth.currentUser)) {
       await ensureUserProfile(auth.currentUser).catch((err) => console.error('Profile sync after verification failed:', err));
     }
     return auth.currentUser;
@@ -370,6 +366,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }, { merge: true }).catch((err) => console.error('Pending signup completion failed:', err));
     }
     clearPendingSignUp();
+    clearGoogleAuthPending();
     setCurrentUser(auth.currentUser);
     setUserProfile(completedProfile);
   };
@@ -379,7 +376,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    if (auth.currentUser && auth.currentUser.emailVerified) {
+    clearGoogleAuthPending();
+    if (auth.currentUser && isVerifiedAuthUser(auth.currentUser)) {
       await updatePresence(auth.currentUser.uid, false).catch((err) => console.error('Error updating presence:', err));
     }
     await signOut(auth);
@@ -390,6 +388,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const completeEmailLinkSignIn = async () => {
     if (!isSignInWithEmailLink(auth, window.location.href)) return false;
 
+    clearGoogleAuthPending();
     const sessionId = getCurrentSessionId();
     const pendingEmail = window.localStorage.getItem(PENDING_SIGNUP_EMAIL_KEY) || getEmailFromContinueUrl();
     const pendingName = window.localStorage.getItem(PENDING_SIGNUP_NAME_KEY) || '';
@@ -427,6 +426,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  const completeGoogleSession = async (user: User) => {
+    clearPendingSignUp();
+    await user.reload().catch(() => undefined);
+    await user.getIdToken(true).catch(() => undefined);
+    const profile = await ensureUserProfile(user, undefined, '', 'complete');
+    clearGoogleAuthPending();
+    setCurrentUser(user);
+    setUserProfile(profile);
+    return profile;
+  };
+
   const completeAuthenticatedSession = async (user: User | null) => {
     if (!user) {
       setCurrentUser(null);
@@ -436,15 +446,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      await user.reload().catch(() => undefined);
-      const profile = await ensureUserProfile(user);
-      setCurrentUser(user);
-      setUserProfile(profile);
-    } catch (err) {
+      if (hasGoogleAuthPending() || isGoogleAuthUser(user)) {
+        await completeGoogleSession(user);
+      } else {
+        await user.reload().catch(() => undefined);
+        const profile = await ensureUserProfile(user);
+        setCurrentUser(user);
+        setUserProfile(profile);
+      }
+    } catch (err: any) {
       console.error('Error completing authenticated session:', err);
-      setCurrentUser(null);
-      setUserProfile(null);
-      await signOut(auth).catch(() => undefined);
+      if (String(err?.message || '').includes('banned')) {
+        setCurrentUser(null);
+        setUserProfile(null);
+        await signOut(auth).catch(() => undefined);
+      } else {
+        const adminStatus = await getIsAdminFromClaims(user, true);
+        const fallbackStatus = hasGoogleAuthPending() || isGoogleAuthUser(user) ? 'complete' : undefined;
+        setCurrentUser(user);
+        setUserProfile(buildUserProfile(user, undefined, '', adminStatus, fallbackStatus));
+      }
     } finally {
       setLoading(false);
     }
@@ -473,8 +494,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         const result = await getRedirectResult(auth);
         if (result?.user) {
-          await ensureUserProfile(result.user, undefined, '', 'complete');
-          await completeIfMounted(result.user);
+          await completeGoogleSession(result.user);
+          setLoading(false);
+          return;
+        }
+        if (auth.currentUser && hasGoogleAuthPending()) {
+          await completeGoogleSession(auth.currentUser);
+          setLoading(false);
           return;
         }
         startAuthListener();
