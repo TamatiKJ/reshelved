@@ -1,32 +1,39 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import { db } from '../firebase';
 
 const LINK_BLUE = '#1665CC';
 const RESEND_COOLDOWN_SECONDS = 60;
+const SIGNUP_SESSION_ID_KEY = 'reshelved:signupSessionId';
 const PENDING_SIGNUP_EMAIL_KEY = 'reshelved:pendingSignUpEmail';
 const PENDING_SIGNUP_NAME_KEY = 'reshelved:pendingSignUpName';
-const EMAIL_LINK_VERIFIED_KEY = 'reshelved:emailLinkVerified';
 const inputClass = 'w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
 const passwordInputClass = 'w-full rounded-md border border-stone-300 px-3 py-2.5 pr-10 text-sm outline-none transition focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
 const labelClass = 'text-sm font-bold text-stone-800';
 const errorClass = 'mt-6 text-sm font-medium text-red-600';
 
+type PendingSignup = {
+  sessionId?: string;
+  email?: string;
+  displayName?: string;
+  onboardingStatus?: 'pending' | 'password_required' | 'complete' | 'expired';
+  createdAt?: number;
+  updatedAt?: number;
+  verifiedAt?: number;
+  completedAt?: number;
+  uid?: string;
+};
+
 const getPendingSignUpEmail = () => window.localStorage.getItem(PENDING_SIGNUP_EMAIL_KEY) || '';
 const getPendingSignUpName = () => window.localStorage.getItem(PENDING_SIGNUP_NAME_KEY) || '';
+const getStoredSessionId = () => window.localStorage.getItem(SIGNUP_SESSION_ID_KEY) || '';
+const getSessionIdFromUrl = () => new URLSearchParams(window.location.search).get('sessionId') || '';
 const clearPendingSignUp = () => {
+  window.localStorage.removeItem(SIGNUP_SESSION_ID_KEY);
   window.localStorage.removeItem(PENDING_SIGNUP_EMAIL_KEY);
   window.localStorage.removeItem(PENDING_SIGNUP_NAME_KEY);
-};
-const hasVerifiedEmailLink = (email: string) => {
-  try {
-    const raw = window.localStorage.getItem(EMAIL_LINK_VERIFIED_KEY);
-    if (!raw || !email) return false;
-    const parsed = JSON.parse(raw) as { email?: string; verifiedAt?: number };
-    return parsed.email === email && Number(parsed.verifiedAt || 0) > 0;
-  } catch {
-    return false;
-  }
 };
 
 const getAuthErrorMessage = (error: any, fallback: string) => {
@@ -34,6 +41,8 @@ const getAuthErrorMessage = (error: any, fallback: string) => {
     case 'auth/email-already-in-use': return 'This email is already registered. Please log in instead.';
     case 'auth/invalid-email': return 'Please enter a valid email address.';
     case 'auth/weak-password': return 'Password must be at least 6 characters.';
+    case 'auth/expired-action-code': return 'This verification link has expired. Request a new link.';
+    case 'auth/invalid-action-code': return 'This verification link is invalid or has already been used. Request a new link.';
     case 'auth/requires-recent-login': return 'This session expired. Request a new verification link and try again.';
     case 'auth/too-many-requests': return 'Too many attempts. Please wait a moment and try again.';
     case 'auth/popup-blocked': return 'Allow pop-ups in your browser, then try Google sign-in again.';
@@ -55,15 +64,15 @@ const GoogleIcon: React.FC = () => (
     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
     <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z" />
-    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.31 9.14 5.38 12 5.38z" />
+    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.06L5.84 9.9C6.71 7.31 9.14 5.38 12 5.38z" />
   </svg>
 );
 
-const PasswordField: React.FC<{ id?: string; value: string; onChange: (value: string) => void; autoComplete: string; required?: boolean; placeholder?: string; }> = ({ id, value, onChange, autoComplete, required = true, placeholder }) => {
+const PasswordField: React.FC<{ value: string; onChange: (value: string) => void; autoComplete: string; required?: boolean; placeholder?: string }> = ({ value, onChange, autoComplete, required = true, placeholder }) => {
   const [visible, setVisible] = useState(false);
   return (
     <div className="relative">
-      <input id={id} type={visible ? 'text' : 'password'} required={required} value={value} onChange={(e) => onChange(e.target.value)} className={passwordInputClass} autoComplete={autoComplete} placeholder={placeholder} />
+      <input type={visible ? 'text' : 'password'} required={required} value={value} onChange={(e) => onChange(e.target.value)} className={passwordInputClass} autoComplete={autoComplete} placeholder={placeholder} />
       <button type="button" onClick={() => setVisible((current) => !current)} className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-stone-500 hover:bg-stone-100 hover:text-stone-800" aria-label={visible ? 'Hide password' : 'Show password'}>
         <i className={`las ${visible ? 'la-eye-slash' : 'la-eye'} text-xl`} />
       </button>
@@ -90,8 +99,8 @@ const LegalAgreement: React.FC<{ className?: string }> = ({ className = 'mt-6 ma
   </p>
 );
 
-const AuthShell: React.FC<{ children: React.ReactNode; showLegal?: boolean }> = ({ children, showLegal = true }) => (
-  <div className="min-h-screen bg-stone-50 flex flex-col">
+const AuthShell: React.FC<{ children: React.ReactNode; showLegal?: boolean; white?: boolean }> = ({ children, showLegal = true, white = false }) => (
+  <div className={`min-h-screen flex flex-col ${white ? 'bg-white' : 'bg-stone-50'}`}>
     <main className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:py-14">{children}{showLegal && <LegalAgreement />}</main>
     <AuthFooter />
   </div>
@@ -126,12 +135,8 @@ const GoogleAuthButton: React.FC<{ label: string; disabled?: boolean; onError: (
   const handleGoogleAuth = async () => {
     onError('');
     setGoogleLoading(true);
-    try {
-      await loginWithGoogle();
-    } catch (err: any) {
-      setGoogleLoading(false);
-      onError(getAuthErrorMessage(err, 'Google sign-in failed. Please try again.'));
-    }
+    try { await loginWithGoogle(); }
+    catch (err: any) { setGoogleLoading(false); onError(getAuthErrorMessage(err, 'Google sign-in failed. Please try again.')); }
   };
 
   return (
@@ -142,12 +147,61 @@ const GoogleAuthButton: React.FC<{ label: string; disabled?: boolean; onError: (
   );
 };
 
-const EmailLinkSentScreen: React.FC<{ email: string; onResend: () => Promise<void>; onChangeEmail: () => void }> = ({ email, onResend, onChangeEmail }) => {
+const SetPasswordForm: React.FC<{ sessionId?: string; compact?: boolean }> = ({ sessionId, compact = false }) => {
+  const { setAccountPassword, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
+    setSaving(true);
+    try {
+      await setAccountPassword(password, sessionId);
+      navigate('/browse', { replace: true });
+    } catch (err: any) {
+      setError(getAuthErrorMessage(err, 'Could not set your password.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className={`${compact ? 'mx-auto mt-8 w-full max-w-md' : 'w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9'}`}>
+      <div className="text-center">
+        {!compact && <AuthLogo />}
+        <h1 className={`${compact ? 'text-3xl sm:text-4xl' : 'mt-7 text-xl'} font-bold text-stone-950`}>Email verified.</h1>
+        <p className="mt-2 text-sm text-stone-500">Create your password to finish setting up your account.</p>
+      </div>
+      {error && <p className={errorClass}>{error}</p>}
+      <form onSubmit={handleSubmit} className="mt-7 space-y-4 text-left">
+        <div><label className={`mb-1 block ${labelClass}`}>Password</label><PasswordField value={password} onChange={setPassword} autoComplete="new-password" /></div>
+        <div><label className={`mb-1 block ${labelClass}`}>Confirm password</label><PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" /></div>
+        <button type="submit" disabled={saving || authLoading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{saving ? 'Saving...' : 'Set password and continue'}</button>
+      </form>
+    </section>
+  );
+};
+
+const EmailVerificationFlow: React.FC<{ email: string; sessionId: string; onResend: () => Promise<string>; onChangeEmail: () => void }> = ({ email, sessionId, onResend, onChangeEmail }) => {
+  const { currentUser, userProfile } = useAuth();
+  const [session, setSession] = useState<PendingSignup | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [resending, setResending] = useState(false);
   const [cooldownRemaining, setCooldownRemaining] = useState(RESEND_COOLDOWN_SECONDS);
-  const [verified, setVerified] = useState(hasVerifiedEmailLink(email));
+
+  useEffect(() => {
+    if (!sessionId) return undefined;
+    return onSnapshot(doc(db, 'pendingSignups', sessionId), (snapshot) => {
+      setSession(snapshot.exists() ? snapshot.data() as PendingSignup : null);
+    }, (err) => setError(getAuthErrorMessage(err, 'Could not read verification status.')));
+  }, [sessionId]);
 
   useEffect(() => {
     if (cooldownRemaining <= 0) return undefined;
@@ -155,54 +209,47 @@ const EmailLinkSentScreen: React.FC<{ email: string; onResend: () => Promise<voi
     return () => window.clearInterval(timer);
   }, [cooldownRemaining]);
 
-  useEffect(() => {
-    const checkVerified = () => setVerified(hasVerifiedEmailLink(email));
-    const timer = window.setInterval(checkVerified, 1000);
-    window.addEventListener('storage', checkVerified);
-    checkVerified();
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener('storage', checkVerified);
-    };
-  }, [email]);
-
   const resend = async () => {
     if (cooldownRemaining > 0) return;
-    setError('');
-    setMessage('');
-    setResending(true);
+    setError(''); setMessage(''); setResending(true);
     try {
       await onResend();
       setMessage('Verification link sent again.');
       setCooldownRemaining(RESEND_COOLDOWN_SECONDS);
-    } catch (err: any) {
-      setError(getAuthErrorMessage(err, 'Could not resend the verification link.'));
-    } finally {
-      setResending(false);
-    }
+    } catch (err: any) { setError(getAuthErrorMessage(err, 'Could not resend the verification link.')); }
+    finally { setResending(false); }
   };
 
+  const status = userProfile?.onboardingStatus || session?.onboardingStatus || 'pending';
+  const passwordRequired = Boolean(currentUser?.emailVerified) && status !== 'complete';
+  const completed = status === 'complete';
+
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <main className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:py-14">
-        <section className="w-full max-w-3xl px-4 text-center">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center text-primary-600"><i className={`las ${verified ? 'la-check-circle' : 'la-envelope'} text-7xl`} /></div>
-          <h1 className="mt-8 text-4xl font-black leading-tight tracking-tight text-stone-950 sm:text-6xl">{verified ? 'Email verified.' : 'Verify your email to create your account.'}</h1>
-          <p className="mx-auto mt-8 max-w-md text-xl font-bold leading-snug text-stone-800">{verified ? 'Your email has been verified. Continue in the tab that opened from your email to set your password.' : <>We sent a secure sign-up link to<br />{email}.</>}</p>
-          {!verified && <p className="mt-10 text-lg font-bold" style={{ color: LINK_BLUE }}>Check your spam folder if the email is missing.</p>}
+    <AuthShell showLegal={false} white>
+      <section className="w-full max-w-3xl px-4 text-center">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center text-primary-600"><i className={`las ${passwordRequired || completed ? 'la-check-circle' : 'la-envelope'} text-7xl`} /></div>
+        {!passwordRequired && !completed && <>
+          <h1 className="mt-8 text-4xl font-black leading-tight tracking-tight text-stone-950 sm:text-6xl">Verify your email to create your account.</h1>
+          <p className="mx-auto mt-8 max-w-md text-xl font-bold leading-snug text-stone-800">We sent a secure sign-up link to<br />{email}.</p>
+          <p className="mt-10 text-lg font-bold" style={{ color: LINK_BLUE }}>Check your spam folder if the email is missing.</p>
           {error && <p className={errorClass}>{error}</p>}
           {message && <div className="mx-auto mt-6 max-w-xl rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>}
-          {!verified && <button onClick={resend} disabled={resending || cooldownRemaining > 0} className="mt-10 w-full max-w-2xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-5 text-lg font-bold text-stone-950 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">{resending ? 'Sending...' : cooldownRemaining > 0 ? `Resend verification link in ${cooldownRemaining}s` : 'Resend verification link'}</button>}
-          {verified ? <button onClick={() => window.location.assign('/set-password')} className="mt-10 w-full max-w-2xl cursor-pointer rounded-md bg-primary-600 px-4 py-5 text-lg font-bold text-white hover:bg-primary-700">Set your password</button> : <button onClick={onChangeEmail} className="mt-8 block w-full cursor-pointer text-lg font-bold text-stone-800 hover:underline">Change email address</button>}
-        </section>
-      </main>
-      <AuthFooter />
-    </div>
+          <button onClick={resend} disabled={resending || cooldownRemaining > 0} className="mt-10 w-full max-w-2xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-5 text-lg font-bold text-stone-950 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">{resending ? 'Sending...' : cooldownRemaining > 0 ? `Resend verification link in ${cooldownRemaining}s` : 'Resend verification link'}</button>
+          <button onClick={onChangeEmail} className="mt-8 block w-full cursor-pointer text-lg font-bold text-stone-800 hover:underline">Change email address</button>
+        </>}
+        {passwordRequired && <SetPasswordForm sessionId={sessionId} compact />}
+        {completed && <>
+          <h1 className="mt-8 text-4xl font-black leading-tight tracking-tight text-stone-950 sm:text-6xl">Account complete.</h1>
+          <p className="mx-auto mt-8 max-w-md text-xl font-bold leading-snug text-stone-800">You can now log in and use Reshelved.</p>
+          <Link to="/login" className="mt-10 inline-flex w-full max-w-2xl items-center justify-center rounded-md bg-primary-600 px-4 py-5 text-lg font-bold text-white hover:bg-primary-700">Go to login</Link>
+        </>}
+      </section>
+    </AuthShell>
   );
 };
 
 export const Login: React.FC = () => {
-  const { login, resetPassword, currentUser, loading: authLoading } = useAuth();
+  const { login, resetPassword, currentUser, userProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -212,8 +259,8 @@ export const Login: React.FC = () => {
   const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && currentUser) navigate(currentUser.emailVerified ? '/browse' : '/verify-email', { replace: true });
-  }, [authLoading, currentUser, navigate]);
+    if (!authLoading && currentUser) navigate(userProfile?.onboardingStatus === 'complete' ? '/browse' : '/auth/verify', { replace: true });
+  }, [authLoading, currentUser, userProfile?.onboardingStatus, navigate]);
 
   const handlePasswordReset = async () => {
     setError(''); setMessage('');
@@ -248,93 +295,44 @@ export const Login: React.FC = () => {
 };
 
 export const VerifyEmail: React.FC = () => {
-  const { currentUser, loading: authLoading, sendVerificationEmail, refreshAuthUser, logout } = useAuth();
+  const { currentUser, userProfile, loading: authLoading, sendVerificationEmail } = useAuth();
   const navigate = useNavigate();
-  const pendingEmail = getPendingSignUpEmail();
+  const sessionId = useMemo(() => getSessionIdFromUrl() || getStoredSessionId(), []);
+  const [session, setSession] = useState<PendingSignup | null>(null);
   const [error, setError] = useState('');
-  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && currentUser?.emailVerified) navigate('/set-password', { replace: true });
-    if (!authLoading && !currentUser && !pendingEmail) navigate('/login', { replace: true });
-  }, [authLoading, currentUser, pendingEmail, navigate]);
+    if (!sessionId) return undefined;
+    window.localStorage.setItem(SIGNUP_SESSION_ID_KEY, sessionId);
+    return onSnapshot(doc(db, 'pendingSignups', sessionId), (snapshot) => {
+      setSession(snapshot.exists() ? snapshot.data() as PendingSignup : null);
+    }, (err) => setError(getAuthErrorMessage(err, 'Could not read verification status.')));
+  }, [sessionId]);
 
-  const handleVerified = async () => {
-    setError(''); setChecking(true);
-    try {
-      const user = await refreshAuthUser();
-      if (user?.emailVerified) {
-        navigate('/set-password', { replace: true });
-        return;
-      }
-      setError('Open the secure link in your email to finish signing up.');
-    } catch (err: any) { setError(getAuthErrorMessage(err, 'Could not check verification status.')); }
-    finally { setChecking(false); }
-  };
+  useEffect(() => {
+    if (!authLoading && userProfile?.onboardingStatus === 'complete') navigate('/browse', { replace: true });
+  }, [authLoading, userProfile?.onboardingStatus, navigate]);
 
-  if (pendingEmail) {
-    return <EmailLinkSentScreen email={pendingEmail} onResend={sendVerificationEmail} onChangeEmail={() => { clearPendingSignUp(); navigate('/register', { replace: true }); }} />;
-  }
+  const email = session?.email || getPendingSignUpEmail() || currentUser?.email || '';
 
-  return (
-    <AuthShell showLegal={false}>
-      <section className="w-full max-w-2xl px-4 text-center">
-        <AuthLogo className="mx-auto h-7 w-auto" />
-        <div className="mx-auto mt-10 flex h-28 w-28 items-center justify-center rounded-3xl border-4 border-stone-500 text-primary-600"><i className="las la-envelope-open-text text-6xl" /></div>
-        <h1 className="mt-8 text-4xl font-bold leading-tight text-stone-900 sm:text-5xl">Check your email.</h1>
-        <p className="mx-auto mt-5 max-w-md text-lg font-semibold leading-snug text-stone-800">Open the secure link sent to<br />{currentUser?.email || 'your email address'}.</p>
-        <p className="mt-6 text-base font-bold text-stone-900">Don&apos;t see it? <span style={{ color: LINK_BLUE }}>Check your spam folder.</span></p>
-        {error && <p className={errorClass}>{error}</p>}
-        <button onClick={handleVerified} disabled={checking || authLoading} className="mt-8 w-full max-w-xl cursor-pointer rounded-md bg-primary-600 px-4 py-4 text-base font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60">{checking ? 'Checking...' : "I've verified"}</button>
-        <button onClick={() => logout()} className="mt-4 w-full max-w-xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-4 text-base font-semibold text-stone-900 hover:bg-stone-50">Use another account</button>
-      </section>
-    </AuthShell>
-  );
+  if (authLoading) return <AuthShell showLegal={false} white><p className="text-stone-500">Loading...</p></AuthShell>;
+  if (!sessionId && !currentUser) return <AuthShell showLegal={false} white><section className="text-center"><h1 className="text-3xl font-bold text-stone-950">Verification link missing.</h1><p className="mt-4 text-stone-600">Request a new link to continue.</p><Link to="/register" className="mt-8 inline-flex rounded-md bg-primary-600 px-6 py-3 font-bold text-white">Request new link</Link></section></AuthShell>;
+
+  return <EmailVerificationFlow email={email || 'your email'} sessionId={sessionId} onResend={sendVerificationEmail} onChangeEmail={() => { clearPendingSignUp(); navigate('/register', { replace: true }); }} />;
 };
 
 export const SetPassword: React.FC = () => {
-  const { currentUser, loading: authLoading, setAccountPassword } = useAuth();
+  const { currentUser, userProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
+  const sessionId = getStoredSessionId();
 
   useEffect(() => {
     if (!authLoading && !currentUser) navigate('/login', { replace: true });
-    if (!authLoading && currentUser && !currentUser.emailVerified) navigate('/verify-email', { replace: true });
-  }, [authLoading, currentUser, navigate]);
+    if (!authLoading && currentUser && !currentUser.emailVerified) navigate('/auth/verify', { replace: true });
+    if (!authLoading && userProfile?.onboardingStatus === 'complete') navigate('/browse', { replace: true });
+  }, [authLoading, currentUser, userProfile?.onboardingStatus, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
-    if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
-    setSaving(true);
-    try {
-      await setAccountPassword(password);
-      window.localStorage.removeItem(EMAIL_LINK_VERIFIED_KEY);
-      navigate('/browse', { replace: true });
-    } catch (err: any) {
-      setError(getAuthErrorMessage(err, 'Could not set your password.'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <AuthShell>
-      <section className="w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
-        <div className="text-center"><AuthLogo /><h1 className="mt-7 text-xl font-semibold text-stone-950">Set your password</h1><p className="mt-2 text-sm text-stone-500">Your email is verified. Create a password to finish setting up your account.</p></div>
-        {error && <p className={errorClass}>{error}</p>}
-        <form onSubmit={handleSubmit} className="mt-7 space-y-4">
-          <div><label className={`mb-1 block ${labelClass}`}>Password</label><PasswordField value={password} onChange={setPassword} autoComplete="new-password" /></div>
-          <div><label className={`mb-1 block ${labelClass}`}>Confirm password</label><PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" /></div>
-          <button type="submit" disabled={saving || authLoading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{saving ? 'Saving...' : 'Set password and continue'}</button>
-        </form>
-      </section>
-    </AuthShell>
-  );
+  return <AuthShell><SetPasswordForm sessionId={sessionId} /></AuthShell>;
 };
 
 export const ForgotPassword: React.FC = () => {
@@ -358,11 +356,7 @@ export const ForgotPassword: React.FC = () => {
     if (cooldownRemaining > 0) return;
     if (!email.trim()) { setError('Enter your email address first.'); return; }
     setLoading(true);
-    try {
-      await resetPassword(email);
-      setSentEmail(email.trim().toLowerCase());
-      setCooldownRemaining(RESEND_COOLDOWN_SECONDS);
-    }
+    try { await resetPassword(email); setSentEmail(email.trim().toLowerCase()); setCooldownRemaining(RESEND_COOLDOWN_SECONDS); }
     catch (err: any) { setError(getAuthErrorMessage(err, 'Failed to send password reset email')); }
     finally { setLoading(false); }
   };
@@ -396,17 +390,17 @@ export const ForgotPassword: React.FC = () => {
 };
 
 export const Register: React.FC = () => {
-  const { register, currentUser, loading: authLoading } = useAuth();
+  const { register, currentUser, userProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState(getPendingSignUpName());
   const [email, setEmail] = useState(getPendingSignUpEmail());
-  const [sentEmail, setSentEmail] = useState(getPendingSignUpEmail());
+  const [sessionId, setSessionId] = useState(getStoredSessionId());
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && currentUser) navigate(currentUser.emailVerified ? '/set-password' : '/verify-email', { replace: true });
-  }, [authLoading, currentUser, navigate]);
+    if (!authLoading && currentUser) navigate(userProfile?.onboardingStatus === 'complete' ? '/browse' : `/auth/verify${sessionId ? `?sessionId=${sessionId}` : ''}`, { replace: true });
+  }, [authLoading, currentUser, userProfile?.onboardingStatus, sessionId, navigate]);
 
   const sendSignUpLink = async () => {
     setError('');
@@ -414,8 +408,8 @@ export const Register: React.FC = () => {
     if (!email.trim()) { setError('Enter your email address.'); return; }
     setLoading(true);
     try {
-      await register(email, displayName, '');
-      setSentEmail(email.trim().toLowerCase());
+      const nextSessionId = await register(email, displayName, '', sessionId || undefined);
+      setSessionId(nextSessionId);
     }
     catch (err: any) { setError(getAuthErrorMessage(err, 'Failed to send verification link.')); }
     finally { setLoading(false); }
@@ -426,8 +420,8 @@ export const Register: React.FC = () => {
     await sendSignUpLink();
   };
 
-  if (sentEmail) {
-    return <EmailLinkSentScreen email={sentEmail} onResend={sendSignUpLink} onChangeEmail={() => { clearPendingSignUp(); setSentEmail(''); setError(''); }} />;
+  if (sessionId) {
+    return <EmailVerificationFlow email={email || getPendingSignUpEmail()} sessionId={sessionId} onResend={sendSignUpLink} onChangeEmail={() => { clearPendingSignUp(); setSessionId(''); setError(''); }} />;
   }
 
   return (
