@@ -3,6 +3,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithRedirect,
+  signInWithPopup,
   getRedirectResult,
   GoogleAuthProvider,
   sendPasswordResetEmail,
@@ -72,9 +73,9 @@ const clearPendingSignUp = () => {
   window.localStorage.removeItem(PENDING_SIGNUP_LOCATION_KEY);
 };
 
-const markGoogleAuthPending = () => window.sessionStorage.setItem(GOOGLE_AUTH_PENDING_KEY, 'true');
-const clearGoogleAuthPending = () => window.sessionStorage.removeItem(GOOGLE_AUTH_PENDING_KEY);
-const hasGoogleAuthPending = () => window.sessionStorage.getItem(GOOGLE_AUTH_PENDING_KEY) === 'true';
+const markGoogleAuthPending = () => window.localStorage.setItem(GOOGLE_AUTH_PENDING_KEY, 'true');
+const clearGoogleAuthPending = () => window.localStorage.removeItem(GOOGLE_AUTH_PENDING_KEY);
+const hasGoogleAuthPending = () => window.localStorage.getItem(GOOGLE_AUTH_PENDING_KEY) === 'true';
 
 const getIsAdminFromClaims = async (user: User | null, forceRefresh = false) => {
   if (!user) return false;
@@ -329,7 +330,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     markGoogleAuthPending();
-    await signInWithRedirect(auth, provider);
+
+    try {
+      const cred = await signInWithPopup(auth, provider);
+      await completeGoogleSession(cred.user);
+    } catch (err: any) {
+      const shouldRedirect = ['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/operation-not-supported-in-this-environment'].includes(err?.code);
+      if (!shouldRedirect) {
+        clearGoogleAuthPending();
+        throw err;
+      }
+      await signInWithRedirect(auth, provider);
+    }
   };
 
   const sendVerificationEmail = async () => {
