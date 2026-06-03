@@ -65,7 +65,7 @@ const benefitSections = [
     imagePosition: 'right',
   },
   {
-    label: 'Find Yours',
+    label: 'Find a Book',
     title: 'Look for the books you actually want to read',
     body: 'Once books are listed, you can search for what you need by title, author, category, condition, price, exchange type, or location. Reshelved helps you avoid scattered posts and random groups by showing organized book listings from readers near you, so you can find better options faster and spend less.',
     imageSrc: '/how-it-works/how it works 2.webp',
@@ -132,7 +132,16 @@ const HeroVisual = () => (
 const BenefitsSection = () => (
   <section className="bg-white py-16 sm:py-24">
     <div className="mx-auto max-w-7xl px-4 sm:px-6">
-      <div className="space-y-20 sm:space-y-24">
+      <div className="mx-auto max-w-4xl text-center">
+        <h2 className="font-[Work_Sans] text-4xl font-black leading-tight tracking-[-0.03em] text-stone-950 sm:text-6xl">
+          Swap Books, Read More, Spend Less
+        </h2>
+        <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
+          Reshelved helps you find cheaper second-hand books in Nairobi, so you can reach your reading goals without stretching your budget.
+        </p>
+      </div>
+
+      <div className="mt-16 space-y-20 sm:mt-20 sm:space-y-24">
         {benefitSections.map((section) => {
           const imageFirst = section.imagePosition === 'left';
 
@@ -142,9 +151,9 @@ const BenefitsSection = () => (
                 <p className="font-[Inter] text-[14px] font-bold uppercase tracking-normal text-primary-600">
                   {section.label}
                 </p>
-                <h2 className="mt-4 max-w-xl font-[Work_Sans] text-3xl font-black leading-tight tracking-[-0.03em] text-stone-950 sm:text-5xl">
+                <h3 className="mt-4 max-w-xl font-[Work_Sans] text-3xl font-black leading-tight tracking-[-0.03em] text-stone-950 sm:text-5xl">
                   {section.title}
-                </h2>
+                </h3>
                 <p className="mt-7 max-w-2xl text-base leading-7 text-stone-600">
                   {section.body}
                 </p>
