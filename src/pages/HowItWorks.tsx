@@ -192,7 +192,7 @@ const ProcessSection = () => (
                 {step.number}
               </div>
               <div>
-                <h3 className="font-[Work_Sans] text-4xl font-black leading-tight tracking-[-0.03em] text-white sm:text-5xl lg:text-6xl">{step.title}</h3>
+                <h5 className="font-[Work_Sans] text-white">{step.title}</h5>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">{step.description}</p>
               </div>
             </div>
@@ -226,7 +226,7 @@ const PlatformFeaturesSection = () => (
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white">
                 <i className="las la-check text-base" />
               </span>
-              <h3 className="font-[Work_Sans] text-[17px] font-black leading-6 text-stone-950">{feature.title}</h3>
+              <h5 className="text-stone-950">{feature.title}</h5>
             </div>
             <p className="mt-3 text-base leading-7 text-stone-600">{feature.description}</p>
           </article>
