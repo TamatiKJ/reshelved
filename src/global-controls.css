@@ -43,3 +43,35 @@ input[type="range"]::-moz-range-thumb {
   border: 3px solid var(--rs-color-focus);
   box-shadow: 0 2px 8px rgba(0, 0, 0, .16);
 }
+
+/* Listing image remove buttons: always visible and aligned with the uploaded reference. */
+.page-create-listing button[disabled].absolute.right-2.top-2,
+.page-create-listing button.absolute.right-2.top-2,
+.page-listing-detail button[disabled].absolute.right-2.top-2,
+.page-listing-detail button.absolute.right-2.top-2 {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 9999px !important;
+  background: #D54215 !important;
+  color: transparent !important;
+  opacity: 1 !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28) !important;
+  z-index: 10 !important;
+}
+
+.page-create-listing button.absolute.right-2.top-2::before,
+.page-listing-detail button.absolute.right-2.top-2::before {
+  content: "×" !important;
+  color: #ffffff !important;
+  font-size: 24px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  transform: translateY(-1px);
+}
+
+.page-create-listing button.absolute.right-2.top-2:hover,
+.page-listing-detail button.absolute.right-2.top-2:hover {
+  background: #B53811 !important;
+  transform: scale(1.04);
+}
