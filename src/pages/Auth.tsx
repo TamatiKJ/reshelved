@@ -14,6 +14,7 @@ const getAuthErrorMessage = (error: any, fallback: string) => {
     case 'auth/email-already-in-use': return 'This email is already registered. Please log in instead.';
     case 'auth/invalid-email': return 'Please enter a valid email address.';
     case 'auth/weak-password': return 'Password must be at least 6 characters.';
+    case 'auth/popup-blocked': return 'Allow pop-ups in your browser, then try Google sign-in again.';
     case 'auth/user-not-found':
     case 'auth/wrong-password':
     case 'auth/invalid-credential': return 'Invalid email or password.';
@@ -65,6 +66,34 @@ const AuthShell: React.FC<{ children: React.ReactNode; showLegal?: boolean }> = 
   </div>
 );
 
+const GoogleAuthButton: React.FC<{ label: string; disabled?: boolean; onError: (message: string) => void }> = ({ label, disabled, onError }) => {
+  const { loginWithGoogle } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleAuth = async () => {
+    onError('');
+    setGoogleLoading(true);
+    try {
+      await loginWithGoogle();
+    } catch (err: any) {
+      setGoogleLoading(false);
+      onError(getAuthErrorMessage(err, 'Google sign-in failed. Please try again.'));
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleGoogleAuth}
+      disabled={disabled || googleLoading}
+      className="mt-7 flex w-full cursor-pointer items-center justify-center gap-3 rounded-md border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-900 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      <span className="flex h-5 w-5 items-center justify-center rounded-full border border-stone-200 text-xs font-bold text-stone-700">G</span>
+      {googleLoading ? 'Redirecting to Google...' : label}
+    </button>
+  );
+};
+
 export const Login: React.FC = () => {
   const { login, resetPassword, currentUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -101,7 +130,9 @@ export const Login: React.FC = () => {
         <div className="text-center"><AuthLogo /><h1 className="mt-7 text-xl font-semibold text-stone-950">Log in to Reshelved</h1></div>
         {error && <p className={errorClass}>{error}</p>}
         {message && <div className="mt-6 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>}
-        <form onSubmit={handleSubmit} className="mt-7 space-y-4">
+        <GoogleAuthButton label="Continue with Google" disabled={loading || authLoading} onError={setError} />
+        <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.16em] text-stone-400"><span className="h-px flex-1 bg-stone-200" />or<span className="h-px flex-1 bg-stone-200" /></div>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div><div className="mb-1 flex items-center justify-between gap-3"><label className={labelClass}>Email</label></div><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" /></div>
           <div><div className="mb-1 flex items-center justify-between gap-3"><label className={labelClass}>Password</label><button type="button" onClick={handlePasswordReset} disabled={resetLoading} className="cursor-pointer text-xs font-medium hover:underline disabled:cursor-not-allowed disabled:opacity-60" style={{ color: LINK_BLUE }}>{resetLoading ? 'Sending...' : 'Forgot password?'}</button></div><PasswordField value={password} onChange={setPassword} autoComplete="current-password" /></div>
           <button type="submit" disabled={loading || authLoading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Logging in...' : 'Log in'}</button>
@@ -200,7 +231,9 @@ export const Register: React.FC = () => {
       <section className="w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
         <div className="text-center"><AuthLogo /><h1 className="mt-7 text-xl font-semibold text-stone-950">Create your Reshelved account</h1><p className="mt-2 text-sm text-stone-500">Continue with Google or create an account using email.</p></div>
         {error && <p className={errorClass}>{error}</p>}
-        <form onSubmit={handleSubmit} className="mt-7 space-y-4">
+        <GoogleAuthButton label="Sign up with Google" disabled={loading || authLoading} onError={setError} />
+        <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.16em] text-stone-400"><span className="h-px flex-1 bg-stone-200" />or<span className="h-px flex-1 bg-stone-200" /></div>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div><label className={`mb-1 block ${labelClass}`}>Full name</label><input type="text" required value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputClass} autoComplete="name" /></div>
           <div><label className={`mb-1 block ${labelClass}`}>Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" /></div>
           <div><label className={`mb-1 block ${labelClass}`}>Password</label><PasswordField value={password} onChange={setPassword} autoComplete="new-password" /></div>
