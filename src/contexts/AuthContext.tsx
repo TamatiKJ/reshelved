@@ -6,6 +6,7 @@ import {
   signInWithRedirect,
   getRedirectResult,
   GoogleAuthProvider,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signOut,
   updateProfile,
@@ -24,6 +25,8 @@ interface AuthContextType {
   register: (email: string, password: string, displayName: string, location?: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  sendVerificationEmail: () => Promise<void>;
+  refreshAuthUser: () => Promise<User | null>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -49,15 +52,12 @@ const getAuthCreatedAt = (user: User) => {
   return Number.isFinite(createdAt) && createdAt > 0 ? createdAt : Date.now();
 };
 
-const isGoogleUser = (user: User) => user.providerData.some((provider) => provider.providerId === 'google.com');
-
-const getEmailVerifiedStatus = (user: User) => user.emailVerified || isGoogleUser(user);
+const isVerifiedAuthUser = (user: User) => user.emailVerified === true;
 
 const buildUserProfile = (user: User, displayName?: string, location = '', isAdmin = false): UserProfile => ({
   uid: user.uid,
   displayName: displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
   email: user.email || '',
-  emailVerified: getEmailVerifiedStatus(user),
   photoURL: user.photoURL || '',
   location,
   phone: '',
@@ -119,7 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const snap = await getDoc(userRef);
     const adminStatus = await getIsAdminFromClaims(user, true);
     const authCreatedAt = getAuthCreatedAt(user);
-    const emailVerified = getEmailVerifiedStatus(user);
+    const canWriteVerifiedProfile = isVerifiedAuthUser(user);
 
     if (snap.exists()) {
       const existingProfile = snap.data() as UserProfile;
@@ -128,7 +128,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         uid: existingProfile.uid || user.uid,
         displayName: existingProfile.displayName || displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
         email: user.email || existingProfile.email || '',
-        emailVerified,
         photoURL: existingProfile.photoURL || user.photoURL || '',
         location: existingProfile.location || location || '',
         createdAt: existingProfile.createdAt || authCreatedAt,
@@ -144,27 +143,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setUserProfile(normalizedProfile);
-      await setDoc(userRef, {
-        uid: normalizedProfile.uid,
-        displayName: normalizedProfile.displayName,
-        email: normalizedProfile.email,
-        emailVerified: normalizedProfile.emailVerified,
-        photoURL: normalizedProfile.photoURL,
-        location: normalizedProfile.location,
-        createdAt: normalizedProfile.createdAt,
-        isAdmin: normalizedProfile.isAdmin,
-        online: true,
-        lastSeen: normalizedProfile.lastSeen,
-        deactivated: normalizedProfile.deactivated
-      }, { merge: true });
-      syncPublicProfile(normalizedProfile).catch((err) => console.error('Public profile sync failed:', err));
-      syncConversationProfile(normalizedProfile).catch((err) => console.error('Conversation avatar sync failed:', err));
+
+      if (canWriteVerifiedProfile) {
+        await setDoc(userRef, {
+          uid: normalizedProfile.uid,
+          displayName: normalizedProfile.displayName,
+          email: normalizedProfile.email,
+          photoURL: normalizedProfile.photoURL,
+          location: normalizedProfile.location,
+          createdAt: normalizedProfile.createdAt,
+          isAdmin: normalizedProfile.isAdmin,
+          online: true,
+          lastSeen: normalizedProfile.lastSeen,
+          deactivated: normalizedProfile.deactivated
+        }, { merge: true });
+        syncPublicProfile(normalizedProfile).catch((err) => console.error('Public profile sync failed:', err));
+        syncConversationProfile(normalizedProfile).catch((err) => console.error('Conversation avatar sync failed:', err));
+      }
+
       return normalizedProfile;
     }
 
     const newProfile = buildUserProfile(user, displayName, location, adminStatus);
     await setDoc(userRef, newProfile, { merge: true });
-    await syncPublicProfile(newProfile);
+    if (canWriteVerifiedProfile) await syncPublicProfile(newProfile);
     setUserProfile(newProfile);
     return newProfile;
   };
@@ -179,27 +181,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profile = snap.data() as UserProfile;
         const adminStatus = await getIsAdminFromClaims(auth.currentUser, true);
         const authCreatedAt = auth.currentUser?.uid === uid ? getAuthCreatedAt(auth.currentUser) : 0;
-        const emailVerified = auth.currentUser?.uid === uid ? getEmailVerifiedStatus(auth.currentUser) : profile.emailVerified || false;
         const normalizedProfile = {
           ...profile,
           email: auth.currentUser?.email || profile.email || '',
-          emailVerified,
           location: profile.location || '',
           createdAt: profile.createdAt || authCreatedAt || Date.now(),
           isAdmin: adminStatus
         };
         setUserProfile(normalizedProfile);
-        syncPublicProfile(normalizedProfile).catch((err) => console.error('Public profile sync failed:', err));
-        syncConversationProfile(normalizedProfile).catch((err) => console.error('Conversation avatar sync failed:', err));
-        await setDoc(doc(db, 'users', uid), {
-          email: normalizedProfile.email,
-          emailVerified: normalizedProfile.emailVerified,
-          location: normalizedProfile.location,
-          createdAt: normalizedProfile.createdAt,
-          isAdmin: normalizedProfile.isAdmin,
-          online: true,
-          lastSeen: Date.now()
-        }, { merge: true });
+
+        if (auth.currentUser?.uid === uid && isVerifiedAuthUser(auth.currentUser)) {
+          syncPublicProfile(normalizedProfile).catch((err) => console.error('Public profile sync failed:', err));
+          syncConversationProfile(normalizedProfile).catch((err) => console.error('Conversation avatar sync failed:', err));
+          await setDoc(doc(db, 'users', uid), {
+            email: normalizedProfile.email,
+            location: normalizedProfile.location,
+            createdAt: normalizedProfile.createdAt,
+            isAdmin: normalizedProfile.isAdmin,
+            online: true,
+            lastSeen: Date.now()
+          }, { merge: true });
+        }
       } else if (auth.currentUser) {
         ensureUserProfile(auth.currentUser).catch((err) => console.error('Error syncing missing profile:', err));
       } else {
@@ -232,26 +234,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await updateProfile(cred.user, { displayName: cleanName });
     const adminStatus = await getIsAdminFromClaims(cred.user, true);
 
-    const profile: UserProfile = {
-      uid: cred.user.uid,
-      displayName: cleanName,
-      email: cleanEmail,
-      emailVerified: getEmailVerifiedStatus(cred.user),
-      photoURL: cred.user.photoURL || '',
-      bio: '',
-      location: cleanLocation,
-      phone: '',
-      isAdmin: adminStatus,
-      flagged: false,
-      flagCount: 0,
-      createdAt: getAuthCreatedAt(cred.user),
-      online: true,
-      lastSeen: Date.now(),
-      deactivated: false
-    };
+    const profile = buildUserProfile(cred.user, cleanName, cleanLocation, adminStatus);
 
     await setDoc(doc(db, 'users', cred.user.uid), profile, { merge: true });
-    await syncPublicProfile(profile);
+    await sendEmailVerification(cred.user).catch((err) => console.error('Verification email failed to send:', err));
     setCurrentUser(cred.user);
     setUserProfile(profile);
   };
@@ -272,12 +258,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await signInWithRedirect(auth, provider);
   };
 
+  const sendVerificationEmail = async () => {
+    if (!auth.currentUser) throw new Error('You must be logged in to verify your email.');
+    await sendEmailVerification(auth.currentUser);
+  };
+
+  const refreshAuthUser = async () => {
+    if (!auth.currentUser) return null;
+    await auth.currentUser.reload();
+    await auth.currentUser.getIdToken(true).catch(() => undefined);
+    setCurrentUser(auth.currentUser);
+    if (auth.currentUser.emailVerified) {
+      await ensureUserProfile(auth.currentUser).catch((err) => console.error('Profile sync after verification failed:', err));
+    }
+    return auth.currentUser;
+  };
+
   const resetPassword = async (email: string) => {
     await sendPasswordResetEmail(auth, email.trim().toLowerCase());
   };
 
   const logout = async () => {
-    if (auth.currentUser) {
+    if (auth.currentUser && auth.currentUser.emailVerified) {
       await updatePresence(auth.currentUser.uid, false).catch((err) => console.error('Error updating presence:', err));
     }
     await signOut(auth);
@@ -343,7 +345,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !currentUser.emailVerified) return;
 
     updatePresence(currentUser.uid, true).catch((err) => console.error('Error updating presence:', err));
     const interval = window.setInterval(() => {
@@ -367,7 +369,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentUser]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, userProfile, loading, register, login, loginWithGoogle, resetPassword, logout, refreshProfile }}>
+    <AuthContext.Provider value={{ currentUser, userProfile, loading, register, login, loginWithGoogle, sendVerificationEmail, refreshAuthUser, resetPassword, logout, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
