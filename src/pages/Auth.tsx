@@ -22,9 +22,9 @@ const getAuthErrorMessage = (error: any, fallback: string) => {
   }
 };
 
-const AuthLogo: React.FC = () => (
+const AuthLogo: React.FC<{ className?: string }> = ({ className = 'h-8 w-auto' }) => (
   <Link to="/" className="inline-flex items-center justify-center" aria-label="Reshelved home">
-    <img src="/reshelved-logo.svg" alt="Reshelved" className="h-8 w-auto" />
+    <img src="/reshelved-logo.svg" alt="Reshelved" className={className} />
   </Link>
 );
 
@@ -53,8 +53,8 @@ const AuthFooter: React.FC = () => (
   </footer>
 );
 
-const LegalAgreement: React.FC = () => (
-  <p className="mt-6 max-w-md px-3 text-center text-[13px] leading-relaxed text-stone-600 sm:text-[14px]">
+const LegalAgreement: React.FC<{ className?: string }> = ({ className = 'mt-6 max-w-md px-3 text-center text-[13px] leading-relaxed text-stone-600 sm:text-[14px]' }) => (
+  <p className={className}>
     By continuing, I agree to Reshelved&apos;s <Link to="/terms" className="underline underline-offset-2 hover:text-stone-900">terms</Link>, <Link to="/privacy-policy" className="underline underline-offset-2 hover:text-stone-900">privacy policy</Link>, and <Link to="/cookies" className="underline underline-offset-2 hover:text-stone-900">cookie policy</Link>.
   </p>
 );
@@ -64,6 +64,28 @@ const AuthShell: React.FC<{ children: React.ReactNode; showLegal?: boolean }> = 
     <main className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:py-14">{children}{showLegal && <LegalAgreement />}</main>
     <AuthFooter />
   </div>
+);
+
+const AuthSplitCard: React.FC<{ title: string; subtitle: string; children: React.ReactNode }> = ({ title, subtitle, children }) => (
+  <AuthShell showLegal={false}>
+    <section className="grid min-h-[600px] w-full max-w-[1024px] overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm md:grid-cols-[1.08fr_1fr]">
+      <aside className="hidden flex-col items-center justify-between bg-[#FFF4E2] px-10 py-[68px] md:flex">
+        <AuthLogo className="h-10 w-auto" />
+        <p className="text-center text-base leading-7 text-stone-700">Find affordable books and swap with readers near you.</p>
+      </aside>
+      <div className="flex items-center justify-center px-7 py-10 sm:px-12 md:px-14">
+        <div className="w-full max-w-[388px]">
+          <div className="text-center">
+            <div className="mb-7 md:hidden"><AuthLogo /></div>
+            <h1 className="text-2xl font-bold tracking-tight text-stone-950">{title}</h1>
+            <p className="mt-3 text-sm text-stone-500">{subtitle}</p>
+          </div>
+          {children}
+          <LegalAgreement className="mx-auto mt-8 max-w-[360px] text-center text-[13px] leading-relaxed text-stone-600" />
+        </div>
+      </div>
+    </section>
+  </AuthShell>
 );
 
 const GoogleAuthButton: React.FC<{ label: string; disabled?: boolean; onError: (message: string) => void }> = ({ label, disabled, onError }) => {
@@ -86,9 +108,9 @@ const GoogleAuthButton: React.FC<{ label: string; disabled?: boolean; onError: (
       type="button"
       onClick={handleGoogleAuth}
       disabled={disabled || googleLoading}
-      className="mt-7 flex w-full cursor-pointer items-center justify-center gap-3 rounded-md border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-900 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
+      className="mt-8 flex w-full cursor-pointer items-center justify-center gap-3 rounded-md border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-900 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      <span className="flex h-5 w-5 items-center justify-center rounded-full border border-stone-200 text-xs font-bold text-stone-700">G</span>
+      <span className="text-lg leading-none" aria-hidden="true">G</span>
       {googleLoading ? 'Redirecting to Google...' : label}
     </button>
   );
@@ -125,21 +147,18 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <AuthShell>
-      <section className="w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
-        <div className="text-center"><AuthLogo /><h1 className="mt-7 text-xl font-semibold text-stone-950">Log in to Reshelved</h1></div>
-        {error && <p className={errorClass}>{error}</p>}
-        {message && <div className="mt-6 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>}
-        <GoogleAuthButton label="Continue with Google" disabled={loading || authLoading} onError={setError} />
-        <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.16em] text-stone-400"><span className="h-px flex-1 bg-stone-200" />or<span className="h-px flex-1 bg-stone-200" /></div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div><div className="mb-1 flex items-center justify-between gap-3"><label className={labelClass}>Email</label></div><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" /></div>
-          <div><div className="mb-1 flex items-center justify-between gap-3"><label className={labelClass}>Password</label><button type="button" onClick={handlePasswordReset} disabled={resetLoading} className="cursor-pointer text-xs font-medium hover:underline disabled:cursor-not-allowed disabled:opacity-60" style={{ color: LINK_BLUE }}>{resetLoading ? 'Sending...' : 'Forgot password?'}</button></div><PasswordField value={password} onChange={setPassword} autoComplete="current-password" /></div>
-          <button type="submit" disabled={loading || authLoading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Logging in...' : 'Log in'}</button>
-        </form>
-        <p className="mt-6 text-center text-sm text-stone-600">Don&apos;t have an account? <Link to="/register" className="font-semibold hover:underline" style={{ color: LINK_BLUE }}>Sign up</Link></p>
-      </section>
-    </AuthShell>
+    <AuthSplitCard title="Welcome back" subtitle="Log in to continue using Reshelved.">
+      {error && <p className={errorClass}>{error}</p>}
+      {message && <div className="mt-6 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>}
+      <GoogleAuthButton label="Continue with Google" disabled={loading || authLoading} onError={setError} />
+      <div className="my-7 flex items-center gap-5 text-sm text-stone-400"><span className="h-px flex-1 bg-stone-200" />or<span className="h-px flex-1 bg-stone-200" /></div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div><div className="mb-1 flex items-center justify-between gap-3"><label className={labelClass}>Email</label></div><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" placeholder="Email" /></div>
+        <div><div className="mb-1 flex items-center justify-between gap-3"><label className={labelClass}>Password</label></div><PasswordField value={password} onChange={setPassword} autoComplete="current-password" placeholder="Password" /><button type="button" onClick={handlePasswordReset} disabled={resetLoading} className="mt-2 cursor-pointer text-sm font-semibold hover:underline disabled:cursor-not-allowed disabled:opacity-60" style={{ color: LINK_BLUE }}>{resetLoading ? 'Sending...' : 'Forgot password?'}</button></div>
+        <button type="submit" disabled={loading || authLoading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Logging in...' : 'Log in'}</button>
+      </form>
+      <p className="mt-6 text-center text-sm text-stone-600">Don&apos;t have an account? <Link to="/register" className="font-semibold hover:underline" style={{ color: LINK_BLUE }}>Sign up</Link></p>
+    </AuthSplitCard>
   );
 };
 
@@ -227,21 +246,18 @@ export const Register: React.FC = () => {
   };
 
   return (
-    <AuthShell>
-      <section className="w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9">
-        <div className="text-center"><AuthLogo /><h1 className="mt-7 text-xl font-semibold text-stone-950">Create your Reshelved account</h1><p className="mt-2 text-sm text-stone-500">Continue with Google or create an account using email.</p></div>
-        {error && <p className={errorClass}>{error}</p>}
-        <GoogleAuthButton label="Sign up with Google" disabled={loading || authLoading} onError={setError} />
-        <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.16em] text-stone-400"><span className="h-px flex-1 bg-stone-200" />or<span className="h-px flex-1 bg-stone-200" /></div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div><label className={`mb-1 block ${labelClass}`}>Full name</label><input type="text" required value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputClass} autoComplete="name" /></div>
-          <div><label className={`mb-1 block ${labelClass}`}>Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" /></div>
-          <div><label className={`mb-1 block ${labelClass}`}>Password</label><PasswordField value={password} onChange={setPassword} autoComplete="new-password" /></div>
-          <div><label className={`mb-1 block ${labelClass}`}>Confirm password</label><PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" /></div>
-          <button type="submit" disabled={loading || authLoading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Creating account...' : 'Create account'}</button>
-        </form>
-        <p className="mt-6 text-center text-sm text-stone-600">Already have an account? <Link to="/login" className="font-semibold hover:underline" style={{ color: LINK_BLUE }}>Log in</Link></p>
-      </section>
-    </AuthShell>
+    <AuthSplitCard title="Create your account" subtitle="Join Reshelved and start finding books near you.">
+      {error && <p className={errorClass}>{error}</p>}
+      <GoogleAuthButton label="Sign up with Google" disabled={loading || authLoading} onError={setError} />
+      <div className="my-7 flex items-center gap-5 text-sm text-stone-400"><span className="h-px flex-1 bg-stone-200" />or<span className="h-px flex-1 bg-stone-200" /></div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div><label className={`mb-1 block ${labelClass}`}>Full name</label><input type="text" required value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputClass} autoComplete="name" /></div>
+        <div><label className={`mb-1 block ${labelClass}`}>Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" /></div>
+        <div><label className={`mb-1 block ${labelClass}`}>Password</label><PasswordField value={password} onChange={setPassword} autoComplete="new-password" /></div>
+        <div><label className={`mb-1 block ${labelClass}`}>Confirm password</label><PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" /></div>
+        <button type="submit" disabled={loading || authLoading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Creating account...' : 'Create account'}</button>
+      </form>
+      <p className="mt-6 text-center text-sm text-stone-600">Already have an account? <Link to="/login" className="font-semibold hover:underline" style={{ color: LINK_BLUE }}>Log in</Link></p>
+    </AuthSplitCard>
   );
 };
