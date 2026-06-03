@@ -10,6 +10,7 @@ import {
   signInWithEmailLink,
   isSignInWithEmailLink,
   signOut,
+  updatePassword,
   updateProfile,
   setPersistence,
   browserLocalPersistence,
@@ -23,6 +24,7 @@ import type { UserProfile } from '../types';
 const PENDING_SIGNUP_EMAIL_KEY = 'reshelved:pendingSignUpEmail';
 const PENDING_SIGNUP_NAME_KEY = 'reshelved:pendingSignUpName';
 const PENDING_SIGNUP_LOCATION_KEY = 'reshelved:pendingSignUpLocation';
+const EMAIL_LINK_VERIFIED_KEY = 'reshelved:emailLinkVerified';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -33,6 +35,7 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<void>;
   sendVerificationEmail: () => Promise<void>;
   refreshAuthUser: () => Promise<User | null>;
+  setAccountPassword: (password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -42,8 +45,8 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export const useAuth = () => useContext(AuthContext);
 
-const getSignInLinkSettings = (): ActionCodeSettings => ({
-  url: `${window.location.origin}/register`,
+const getSignInLinkSettings = (email: string): ActionCodeSettings => ({
+  url: `${window.location.origin}/register?email=${encodeURIComponent(email.trim().toLowerCase())}`,
   handleCodeInApp: true
 });
 
@@ -57,6 +60,12 @@ const clearPendingSignUp = () => {
   window.localStorage.removeItem(PENDING_SIGNUP_EMAIL_KEY);
   window.localStorage.removeItem(PENDING_SIGNUP_NAME_KEY);
   window.localStorage.removeItem(PENDING_SIGNUP_LOCATION_KEY);
+};
+
+const getEmailFromContinueUrl = () => new URLSearchParams(window.location.search).get('email')?.trim().toLowerCase() || '';
+
+const markEmailLinkVerified = (email: string) => {
+  window.localStorage.setItem(EMAIL_LINK_VERIFIED_KEY, JSON.stringify({ email, verifiedAt: Date.now() }));
 };
 
 const getIsAdminFromClaims = async (user: User | null, forceRefresh = false) => {
@@ -254,7 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     await setPersistence(auth, browserLocalPersistence);
     savePendingSignUp(cleanEmail, cleanName, cleanLocation);
-    await sendSignInLinkToEmail(auth, cleanEmail, getSignInLinkSettings());
+    await sendSignInLinkToEmail(auth, cleanEmail, getSignInLinkSettings(cleanEmail));
   };
 
   const login = async (email: string, password: string) => {
@@ -292,6 +301,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return auth.currentUser;
   };
 
+  const setAccountPassword = async (password: string) => {
+    if (!auth.currentUser) throw new Error('You must be signed in to set a password.');
+    await updatePassword(auth.currentUser, password);
+    await auth.currentUser.getIdToken(true).catch(() => undefined);
+    setCurrentUser(auth.currentUser);
+  };
+
   const resetPassword = async (email: string) => {
     await sendPasswordResetEmail(auth, email.trim().toLowerCase());
   };
@@ -308,7 +324,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const completeEmailLinkSignIn = async () => {
     if (!isSignInWithEmailLink(auth, window.location.href)) return false;
 
-    const pendingEmail = window.localStorage.getItem(PENDING_SIGNUP_EMAIL_KEY) || '';
+    const pendingEmail = window.localStorage.getItem(PENDING_SIGNUP_EMAIL_KEY) || getEmailFromContinueUrl();
     const pendingName = window.localStorage.getItem(PENDING_SIGNUP_NAME_KEY) || '';
     const pendingLocation = window.localStorage.getItem(PENDING_SIGNUP_LOCATION_KEY) || '';
 
@@ -327,8 +343,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const profile = await ensureUserProfile(cred.user, pendingName, pendingLocation);
     setCurrentUser(cred.user);
     setUserProfile(profile);
+    markEmailLinkVerified(pendingEmail);
     clearPendingSignUp();
-    window.history.replaceState({}, document.title, '/browse');
+    window.history.replaceState({}, document.title, '/set-password');
     return true;
   };
 
@@ -419,7 +436,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentUser]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, userProfile, loading, register, login, loginWithGoogle, sendVerificationEmail, refreshAuthUser, resetPassword, logout, refreshProfile }}>
+    <AuthContext.Provider value={{ currentUser, userProfile, loading, register, login, loginWithGoogle, sendVerificationEmail, refreshAuthUser, setAccountPassword, resetPassword, logout, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
