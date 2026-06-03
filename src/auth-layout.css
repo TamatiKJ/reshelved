@@ -1,0 +1,5 @@
+@media (min-width: 1024px) {
+  main > section[class*="lg:grid-cols"] > aside {
+    padding-top: 4.5rem;
+  }
+}

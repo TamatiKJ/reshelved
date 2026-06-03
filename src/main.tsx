@@ -12,6 +12,7 @@ import "./messages.css";
 import "./admin.css";
 import "./admin-actions.css";
 import "./responsive.css";
+import "./auth-layout.css";
 import App from "./App";
 import { enforceWebpUploadCompression } from "./utils/enforceWebpUploadCompression";
 import { enableSwapCompletionEnhancements } from "./utils/swapCompletionEnhancements";

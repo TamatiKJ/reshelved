@@ -1,5 +1,6 @@
-import { arrayRemove, arrayUnion, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { arrayRemove, arrayUnion, doc, getDoc, setDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../firebase';
 import type { Listing } from '../types';
 import { parseListingDoc } from './listingValidation';
 
@@ -25,7 +26,8 @@ export const getListingSellerPhoto = async (sellerId: string, fallbackPhoto = ''
 };
 
 export const removeListingById = async (listingId: string): Promise<void> => {
-  await deleteDoc(doc(db, 'listings', listingId));
+  const deleteListingPermanently = httpsCallable<{ listingId: string }, { deleted: boolean }>(functions, 'deleteListingPermanently');
+  await deleteListingPermanently({ listingId });
 };
 
 export const toggleListingBookmark = async ({ userId, listingId, isBookmarked }: { userId: string; listingId: string; isBookmarked: boolean }): Promise<void> => {
