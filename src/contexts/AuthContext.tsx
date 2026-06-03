@@ -3,7 +3,6 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithRedirect,
-  signInWithPopup,
   getRedirectResult,
   GoogleAuthProvider,
   sendPasswordResetEmail,
@@ -330,18 +329,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     markGoogleAuthPending();
-
-    try {
-      const cred = await signInWithPopup(auth, provider);
-      await completeGoogleSession(cred.user);
-    } catch (err: any) {
-      const shouldRedirect = ['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/operation-not-supported-in-this-environment'].includes(err?.code);
-      if (!shouldRedirect) {
-        clearGoogleAuthPending();
-        throw err;
-      }
-      await signInWithRedirect(auth, provider);
-    }
+    await signInWithRedirect(auth, provider);
   };
 
   const sendVerificationEmail = async () => {
