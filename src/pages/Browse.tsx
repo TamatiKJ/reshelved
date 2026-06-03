@@ -115,8 +115,8 @@ const Browse: React.FC = () => {
             <span className="font-semibold text-stone-900">Browse</span>
           </nav>
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-            <div className="max-w-2xl">
-              <h1 className="text-3xl sm:text-5xl font-bold text-stone-950">Find free & affordable books near you</h1>
+            <div className="w-full">
+              <h1 className="w-full text-3xl sm:text-5xl font-bold text-stone-950">Find free & affordable books near you</h1>
               <p className="text-stone-600 mt-4 text-lg">Search by title, author, genre, condition, and location.</p>
             </div>
               {currentUser ? (
@@ -191,7 +191,7 @@ const Browse: React.FC = () => {
       </div>
 
       <section id="browse-results" className="max-w-7xl mx-auto px-4 sm:px-6 py-8 scroll-mt-24">
-        <h2 className="text-xl font-bold text-stone-900 mb-6">{filtered.length} {filtered.length === 1 ? 'Book' : 'Books'} Available</h2>
+        <p className="body-text mb-6 font-bold text-stone-900">{filtered.length} {filtered.length === 1 ? 'Book' : 'Books'} Available</p>
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">{[...Array(12)].map((_, i) => <div key={i} className="bg-white rounded-2xl border border-stone-200 overflow-hidden animate-pulse"><div className="aspect-[4/3] bg-stone-200" /><div className="p-4 space-y-3"><div className="h-4 bg-stone-200 rounded w-3/4" /><div className="h-3 bg-stone-100 rounded w-1/2" /></div></div>)}</div>
         ) : filtered.length === 0 ? (
