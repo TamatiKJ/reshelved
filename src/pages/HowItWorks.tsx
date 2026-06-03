@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import HowItWorksScroller from '../components/HowItWorksScroller';
 
 const processSteps = [
   {
@@ -56,6 +55,33 @@ const platformFeatures = [
   },
 ];
 
+const benefitSections = [
+  {
+    label: 'Start Swapping',
+    title: 'Post the books you want to swap, sell, or give away',
+    body: 'Start by listing the books sitting on your shelf. Add the title, author, photos, condition, exchange type, and your Nairobi location. You also choose where you are comfortable meeting, so nearby readers know what you have and how the exchange can happen before they message you.',
+    imageSrc: '/how-it-works/how it works 1.webp',
+    imageAlt: 'Reshelved listing creation preview',
+    imagePosition: 'right',
+  },
+  {
+    label: 'Find Yours',
+    title: 'Look for the books you actually want to read',
+    body: 'Once books are listed, you can search for what you need by title, author, category, condition, price, exchange type, or location. Reshelved helps you avoid scattered posts and random groups by showing organized book listings from readers near you, so you can find better options faster and spend less.',
+    imageSrc: '/how-it-works/how it works 2.webp',
+    imageAlt: 'Reshelved book search preview',
+    imagePosition: 'left',
+  },
+  {
+    label: 'Make the Exchange',
+    title: 'Message the owner, agree, and meet safely',
+    body: 'When you find the right book, message the owner inside Reshelved. Ask questions, confirm the condition, agree on whether you are swapping, buying, or receiving it for free, then meet at the selected location. After the exchange, leave a quick rating so other readers know who they can trust.',
+    imageSrc: '/how-it-works/how it works 3.webp',
+    imageAlt: 'Reshelved messaging and exchange preview',
+    imagePosition: 'right',
+  },
+] as const;
+
 const faqs = [
   {
     question: 'Where can I buy cheap second-hand books in Nairobi?',
@@ -97,10 +123,47 @@ const faqs = [
 
 const HeroVisual = () => (
   <img
-    src="/how it works hero image.webp"
+    src="/how-it-works/how it works hero image.webp"
     alt="Reshelved book exchange illustration"
     className="block h-auto w-full object-contain object-bottom"
   />
+);
+
+const BenefitsSection = () => (
+  <section className="bg-white py-16 sm:py-24">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <div className="space-y-20 sm:space-y-24">
+        {benefitSections.map((section) => {
+          const imageFirst = section.imagePosition === 'left';
+
+          return (
+            <article key={section.title} className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+              <div className={`${imageFirst ? 'lg:order-2' : 'lg:order-1'}`}>
+                <p className="font-[Inter] text-[14px] font-bold uppercase tracking-normal text-primary-600">
+                  {section.label}
+                </p>
+                <h2 className="mt-4 max-w-xl font-[Work_Sans] text-3xl font-black leading-tight tracking-[-0.03em] text-stone-950 sm:text-5xl">
+                  {section.title}
+                </h2>
+                <p className="mt-7 max-w-2xl text-base leading-7 text-stone-600">
+                  {section.body}
+                </p>
+              </div>
+
+              <div className={`${imageFirst ? 'lg:order-1' : 'lg:order-2'}`}>
+                <img
+                  src={section.imageSrc}
+                  alt={section.imageAlt}
+                  className="mx-auto block h-auto w-full max-w-[560px] object-contain"
+                  loading="lazy"
+                />
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  </section>
 );
 
 const ProcessSection = () => (
@@ -266,7 +329,7 @@ const HowItWorks: React.FC = () => {
         </div>
       </section>
 
-      <HowItWorksScroller />
+      <BenefitsSection />
       <ProcessSection />
       <PlatformFeaturesSection />
 
