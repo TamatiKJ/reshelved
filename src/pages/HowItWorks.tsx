@@ -4,25 +4,21 @@ import { Link } from 'react-router-dom';
 const processSteps = [
   {
     number: '1',
-    icon: 'la-user-plus',
     title: 'Create your free account',
     description: 'Sign up so you can save books, list your own books, message other readers, and manage your exchanges from one place.',
   },
   {
     number: '2',
-    icon: 'la-search',
     title: 'Find books near you',
     description: 'Search by title, author, category, condition, price, exchange type, and Nairobi location instead of scrolling through scattered posts.',
   },
   {
     number: '3',
-    icon: 'la-clipboard-check',
     title: 'Check the listing details',
     description: 'Review the book photos, condition, seller details, location, price, and whether the owner wants to sell, swap, or donate.',
   },
   {
     number: '4',
-    icon: 'la-comments',
     title: 'Message and arrange the exchange',
     description: 'Use the in-app chat to ask questions, agree on terms, and arrange a safe handover directly with the book owner.',
   },
