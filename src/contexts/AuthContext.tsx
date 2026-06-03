@@ -27,6 +27,11 @@ const PENDING_SIGNUP_NAME_KEY = 'reshelved:pendingSignUpName';
 const PENDING_SIGNUP_LOCATION_KEY = 'reshelved:pendingSignUpLocation';
 const GOOGLE_AUTH_PENDING_KEY = 'reshelved:googleAuthPending';
 
+// How long a password_required session stays valid before we expire it.
+// If someone clicks the email link and then disappears for longer than this,
+// they'll need to restart signup instead of seeing a stuck verify screen.
+const PENDING_SIGNUP_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
+
 interface AuthContextType {
   currentUser: User | null;
   userProfile: UserProfile | null;
@@ -72,9 +77,14 @@ const clearPendingSignUp = () => {
   window.localStorage.removeItem(PENDING_SIGNUP_LOCATION_KEY);
 };
 
-const markGoogleAuthPending = () => window.localStorage.setItem(GOOGLE_AUTH_PENDING_KEY, 'true');
-const clearGoogleAuthPending = () => window.localStorage.removeItem(GOOGLE_AUTH_PENDING_KEY);
-const hasGoogleAuthPending = () => window.localStorage.getItem(GOOGLE_AUTH_PENDING_KEY) === 'true';
+const markGoogleAuthPending = () => window.sessionStorage.setItem(GOOGLE_AUTH_PENDING_KEY, 'true');
+// FIX 1: clearGoogleAuthPending is now only called AFTER a Google session is
+// successfully completed (inside completeGoogleSession). It was previously also
+// called at the top of completeEmailLinkSignIn(), which ran on every page load
+// before getRedirectResult() had a chance to fire, wiping the flag and causing
+// the Google redirect user to land back on the login screen.
+const clearGoogleAuthPending = () => window.sessionStorage.removeItem(GOOGLE_AUTH_PENDING_KEY);
+const hasGoogleAuthPending = () => window.sessionStorage.getItem(GOOGLE_AUTH_PENDING_KEY) === 'true';
 
 const getIsAdminFromClaims = async (user: User | null, forceRefresh = false) => {
   if (!user) return false;
@@ -120,6 +130,24 @@ const buildUserProfile = (user: User, displayName?: string, location = '', isAdm
     lastSeen: Date.now(),
     deactivated: false
   };
+};
+
+// FIX 2: Check whether the pendingSignups Firestore doc is older than
+// PENDING_SIGNUP_EXPIRY_MS. Returns true (expired) if the doc is missing,
+// has no timestamp, or was last updated more than 1 hour ago.
+const isPendingSignupExpired = async (sessionId: string): Promise<boolean> => {
+  if (!sessionId) return true;
+  try {
+    const snap = await getDoc(doc(db, 'pendingSignups', sessionId));
+    if (!snap.exists()) return true;
+    const data = snap.data();
+    const updatedAt = data.updatedAt || data.createdAt || 0;
+    return Date.now() - updatedAt > PENDING_SIGNUP_EXPIRY_MS;
+  } catch {
+    // If we can't read Firestore, treat as expired to avoid permanently
+    // locking the user on the verify screen.
+    return true;
+  }
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -179,6 +207,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (snap.exists()) {
       const existingProfile = snap.data() as UserProfile;
+
+      // FIX 3: If the stored status is password_required and we have no
+      // override forcing it to stay that way, check whether the session has
+      // expired. Example: user clicks the email link, closes the tab, comes
+      // back 90 minutes later. Without this check they'd see the set-password
+      // screen forever with no way out. If expired, sign them out and clear
+      // local state so they can restart the signup flow cleanly.
+      if (
+        existingProfile.onboardingStatus === 'password_required' &&
+        !statusOverride
+      ) {
+        const sessionId = window.localStorage.getItem(SIGNUP_SESSION_ID_KEY) || '';
+        const expired = await isPendingSignupExpired(sessionId);
+        if (expired) {
+          clearPendingSignUp();
+          await signOut(auth);
+          throw new Error('SESSION_EXPIRED');
+        }
+      }
+
       const normalizedProfile: UserProfile = {
         ...existingProfile,
         uid: existingProfile.uid || user.uid,
@@ -242,6 +290,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const adminStatus = await getIsAdminFromClaims(auth.currentUser, true);
         const authCreatedAt = auth.currentUser?.uid === uid ? getAuthCreatedAt(auth.currentUser) : 0;
         const isGoogleUser = auth.currentUser ? isGoogleAuthUser(auth.currentUser) : false;
+
+        // FIX 4: Mirror the expiry check in fetchProfile too. fetchProfile sets
+        // userProfile directly from Firestore, bypassing ensureUserProfile, so
+        // without this check it would also restore a stale password_required
+        // status on page load.
+        if (profile.onboardingStatus === 'password_required') {
+          const sessionId = window.localStorage.getItem(SIGNUP_SESSION_ID_KEY) || '';
+          const expired = await isPendingSignupExpired(sessionId);
+          if (expired) {
+            clearPendingSignUp();
+            await signOut(auth);
+            setCurrentUser(null);
+            setUserProfile(null);
+            return;
+          }
+        }
+
         const normalizedProfile: UserProfile = {
           ...profile,
           email: auth.currentUser?.email || profile.email || '',
@@ -388,7 +453,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const completeEmailLinkSignIn = async () => {
     if (!isSignInWithEmailLink(auth, window.location.href)) return false;
 
-    clearGoogleAuthPending();
+    // FIX 5: Removed clearGoogleAuthPending() from here. This function runs on
+    // every page load (including after a Google redirect), so calling it here
+    // was wiping the pending flag before getRedirectResult() had a chance to
+    // run, causing Google-authed users to land back on the login screen.
+    // clearGoogleAuthPending() now only runs inside completeGoogleSession().
+
     const sessionId = getCurrentSessionId();
     const pendingEmail = window.localStorage.getItem(PENDING_SIGNUP_EMAIL_KEY) || getEmailFromContinueUrl();
     const pendingName = window.localStorage.getItem(PENDING_SIGNUP_NAME_KEY) || '';
@@ -431,6 +501,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await user.reload().catch(() => undefined);
     await user.getIdToken(true).catch(() => undefined);
     const profile = await ensureUserProfile(user, undefined, '', 'complete');
+    // clearGoogleAuthPending lives here and ONLY here so it fires after a
+    // successful Google session, not prematurely on every page load.
     clearGoogleAuthPending();
     setCurrentUser(user);
     setUserProfile(profile);
@@ -446,6 +518,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
+      // FIX 6: Check isGoogleAuthUser(user) directly here, not just
+      // hasGoogleAuthPending(). When getRedirectResult() returns null (slow
+      // connections, browser quirks) the auth listener fires with the already-
+      // signed-in Google user, but hasGoogleAuthPending() was already cleared
+      // by the premature call in the old completeEmailLinkSignIn(). Checking
+      // the provider list on the user object is the reliable source of truth.
       if (hasGoogleAuthPending() || isGoogleAuthUser(user)) {
         await completeGoogleSession(user);
       } else {
@@ -455,11 +533,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserProfile(profile);
       }
     } catch (err: any) {
+      const message = String(err?.message || '');
       console.error('Error completing authenticated session:', err);
-      if (String(err?.message || '').includes('banned')) {
+
+      if (message.includes('banned')) {
         setCurrentUser(null);
         setUserProfile(null);
         await signOut(auth).catch(() => undefined);
+      } else if (message === 'SESSION_EXPIRED') {
+        // ensureUserProfile already called signOut and clearPendingSignUp.
+        // Just clear React state here; the router/Auth.tsx will redirect to
+        // /auth once currentUser is null.
+        setCurrentUser(null);
+        setUserProfile(null);
       } else {
         const adminStatus = await getIsAdminFromClaims(user, true);
         const fallbackStatus = hasGoogleAuthPending() || isGoogleAuthUser(user) ? 'complete' : undefined;
@@ -482,7 +568,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const startAuthListener = () => {
       unsubscribe = onAuthStateChanged(auth, async (user) => {
-        await completeIfMounted(user);
+        // FIX 7: If onAuthStateChanged fires with a Google user (which happens
+        // when getRedirectResult() returns null but the session is already
+        // persisted), run completeGoogleSession directly. This handles the race
+        // where the redirect result resolves after the auth listener fires.
+        if (user && isGoogleAuthUser(user)) {
+          if (cancelled) return;
+          try {
+            await completeGoogleSession(user);
+          } catch (err: any) {
+            console.error('Google session completion failed in auth listener:', err);
+            const adminStatus = await getIsAdminFromClaims(user, true);
+            if (!cancelled) {
+              setCurrentUser(user);
+              setUserProfile(buildUserProfile(user, undefined, '', adminStatus, 'complete'));
+            }
+          } finally {
+            if (!cancelled) setLoading(false);
+          }
+        } else {
+          await completeIfMounted(user);
+        }
       });
     };
 
