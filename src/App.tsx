@@ -184,7 +184,7 @@ const LoadingScreen: React.FC = () => (
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, userProfile, loading } = useAuth();
-  if (loading) return <LoadingScreen />;
+  if (loading || (currentUser && !userProfile)) return <LoadingScreen />;
   if (!currentUser) return <Navigate to="/login" replace />;
   if (!currentUser.emailVerified || userProfile?.onboardingStatus !== 'complete') return <Navigate to="/auth/verify" replace />;
   return <>{children}</>;
@@ -192,9 +192,18 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, userProfile, loading } = useAuth();
-  if (loading) return <LoadingScreen />;
+  if (loading || (currentUser && !userProfile)) return <LoadingScreen />;
   if (currentUser) return <Navigate to={currentUser.emailVerified && userProfile?.onboardingStatus === 'complete' ? '/browse' : '/auth/verify'} replace />;
   return <>{children}</>;
+};
+
+const VerifyEmailRoute: React.FC = () => {
+  const { currentUser, userProfile, loading } = useAuth();
+  if (loading || (currentUser && !userProfile)) return <LoadingScreen />;
+  if (!currentUser) return <VerifyEmail />;
+  if (currentUser.emailVerified && userProfile?.onboardingStatus === 'complete') return <Navigate to="/browse" replace />;
+  if (currentUser.emailVerified && userProfile?.onboardingStatus === 'password_required') return <VerifyEmail />;
+  return <Navigate to="/login" replace />;
 };
 
 const AppContent: React.FC = () => {
@@ -235,7 +244,7 @@ const AppContent: React.FC = () => {
         <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
         <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
         <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPassword /></PublicOnlyRoute>} />
-        <Route path="/auth/verify" element={<VerifyEmail />} />
+        <Route path="/auth/verify" element={<VerifyEmailRoute />} />
         <Route path="/verify-email" element={<Navigate to="/auth/verify" replace />} />
         <Route path="/set-password" element={<SetPassword />} />
         <Route
