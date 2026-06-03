@@ -1,28 +1,34 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   onAuthStateChanged,
-  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithRedirect,
   getRedirectResult,
   GoogleAuthProvider,
-  sendEmailVerification,
   sendPasswordResetEmail,
+  sendSignInLinkToEmail,
+  signInWithEmailLink,
+  isSignInWithEmailLink,
   signOut,
   updateProfile,
   setPersistence,
   browserLocalPersistence,
+  type ActionCodeSettings,
   type User
 } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import type { UserProfile } from '../types';
 
+const PENDING_SIGNUP_EMAIL_KEY = 'reshelved:pendingSignUpEmail';
+const PENDING_SIGNUP_NAME_KEY = 'reshelved:pendingSignUpName';
+const PENDING_SIGNUP_LOCATION_KEY = 'reshelved:pendingSignUpLocation';
+
 interface AuthContextType {
   currentUser: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
-  register: (email: string, password: string, displayName: string, location?: string) => Promise<void>;
+  register: (email: string, displayName: string, location?: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   sendVerificationEmail: () => Promise<void>;
@@ -35,6 +41,23 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export const useAuth = () => useContext(AuthContext);
+
+const getSignInLinkSettings = (): ActionCodeSettings => ({
+  url: `${window.location.origin}/register`,
+  handleCodeInApp: true
+});
+
+const savePendingSignUp = (email: string, displayName: string, location = '') => {
+  window.localStorage.setItem(PENDING_SIGNUP_EMAIL_KEY, email.trim().toLowerCase());
+  window.localStorage.setItem(PENDING_SIGNUP_NAME_KEY, displayName.trim());
+  window.localStorage.setItem(PENDING_SIGNUP_LOCATION_KEY, location.trim());
+};
+
+const clearPendingSignUp = () => {
+  window.localStorage.removeItem(PENDING_SIGNUP_EMAIL_KEY);
+  window.localStorage.removeItem(PENDING_SIGNUP_NAME_KEY);
+  window.localStorage.removeItem(PENDING_SIGNUP_LOCATION_KEY);
+};
 
 const getIsAdminFromClaims = async (user: User | null, forceRefresh = false) => {
   if (!user) return false;
@@ -126,7 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const normalizedProfile = {
         ...existingProfile,
         uid: existingProfile.uid || user.uid,
-        displayName: existingProfile.displayName || displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
+        displayName: displayName || existingProfile.displayName || user.displayName || user.email?.split('@')[0] || 'Reshelved User',
         email: user.email || existingProfile.email || '',
         photoURL: existingProfile.photoURL || user.photoURL || '',
         location: existingProfile.location || location || '',
@@ -224,22 +247,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (email: string, password: string, displayName: string, location = '') => {
+  const register = async (email: string, displayName: string, location = '') => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = displayName.trim();
     const cleanLocation = location.trim();
 
     await setPersistence(auth, browserLocalPersistence);
-    const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
-    await updateProfile(cred.user, { displayName: cleanName });
-    const adminStatus = await getIsAdminFromClaims(cred.user, true);
-
-    const profile = buildUserProfile(cred.user, cleanName, cleanLocation, adminStatus);
-
-    await setDoc(doc(db, 'users', cred.user.uid), profile, { merge: true });
-    await sendEmailVerification(cred.user).catch((err) => console.error('Verification email failed to send:', err));
-    setCurrentUser(cred.user);
-    setUserProfile(profile);
+    savePendingSignUp(cleanEmail, cleanName, cleanLocation);
+    await sendSignInLinkToEmail(auth, cleanEmail, getSignInLinkSettings());
   };
 
   const login = async (email: string, password: string) => {
@@ -259,8 +274,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const sendVerificationEmail = async () => {
-    if (!auth.currentUser) throw new Error('You must be logged in to verify your email.');
-    await sendEmailVerification(auth.currentUser);
+    const pendingEmail = window.localStorage.getItem(PENDING_SIGNUP_EMAIL_KEY) || '';
+    const pendingName = window.localStorage.getItem(PENDING_SIGNUP_NAME_KEY) || '';
+    const pendingLocation = window.localStorage.getItem(PENDING_SIGNUP_LOCATION_KEY) || '';
+    if (!pendingEmail) throw new Error('Enter your email address again to request a new link.');
+    await register(pendingEmail, pendingName, pendingLocation);
   };
 
   const refreshAuthUser = async () => {
@@ -285,6 +303,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await signOut(auth);
     setCurrentUser(null);
     setUserProfile(null);
+  };
+
+  const completeEmailLinkSignIn = async () => {
+    if (!isSignInWithEmailLink(auth, window.location.href)) return false;
+
+    const pendingEmail = window.localStorage.getItem(PENDING_SIGNUP_EMAIL_KEY) || '';
+    const pendingName = window.localStorage.getItem(PENDING_SIGNUP_NAME_KEY) || '';
+    const pendingLocation = window.localStorage.getItem(PENDING_SIGNUP_LOCATION_KEY) || '';
+
+    if (!pendingEmail) {
+      window.history.replaceState({}, document.title, '/register');
+      return false;
+    }
+
+    await setPersistence(auth, browserLocalPersistence);
+    const cred = await signInWithEmailLink(auth, pendingEmail, window.location.href);
+    if (pendingName && cred.user.displayName !== pendingName) {
+      await updateProfile(cred.user, { displayName: pendingName });
+    }
+    await cred.user.reload().catch(() => undefined);
+    await cred.user.getIdToken(true).catch(() => undefined);
+    const profile = await ensureUserProfile(cred.user, pendingName, pendingLocation);
+    setCurrentUser(cred.user);
+    setUserProfile(profile);
+    clearPendingSignUp();
+    window.history.replaceState({}, document.title, '/browse');
+    return true;
   };
 
   const completeAuthenticatedSession = async (user: User | null) => {
@@ -325,8 +370,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     };
 
-    getRedirectResult(auth)
-      .then(async (result) => {
+    completeEmailLinkSignIn()
+      .then(async (completedEmailLink) => {
+        if (completedEmailLink) {
+          setLoading(false);
+          return;
+        }
+        const result = await getRedirectResult(auth);
         if (result?.user) {
           await completeIfMounted(result.user);
           return;
@@ -334,7 +384,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         startAuthListener();
       })
       .catch((err) => {
-        console.error('Google redirect sign-in failed:', err);
+        console.error('Auth redirect/link sign-in failed:', err);
         startAuthListener();
       });
 
