@@ -117,7 +117,7 @@ const AuthSplitCard: React.FC<{ title: string; subtitle: string; children: React
         <div className="w-full max-w-[388px]">
           <div className="text-center">
             <div className="mb-7 md:hidden"><AuthLogo /></div>
-            <h1 className="text-2xl font-bold tracking-tight text-stone-950">{title}</h1>
+            <h5 className="text-stone-950">{title}</h5>
             <p className="mt-3 text-sm text-stone-500">{subtitle}</p>
           </div>
           {children}
@@ -425,7 +425,7 @@ export const Register: React.FC = () => {
   }
 
   return (
-    <AuthSplitCard title="Create your account" subtitle="Join Reshelved and start finding books near you.">
+    <AuthSplitCard title="Create your Reshelved account" subtitle="Join Reshelved and start finding books near you.">
       {error && <p className={errorClass}>{error}</p>}
       <GoogleAuthButton label="Sign up with Google" disabled={loading || authLoading} onError={setError} />
       <div className="my-7 flex items-center gap-5 text-sm text-stone-400"><span className="h-px flex-1 bg-stone-200" />or<span className="h-px flex-1 bg-stone-200" /></div>
