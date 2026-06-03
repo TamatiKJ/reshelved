@@ -161,9 +161,9 @@ const Home: React.FC = () => {
 
           {/* Section heading */}
           <div className="mt-10 flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-stone-950">
-              {showingSearch ? `Search results for "${search.trim()}"` : 'Latest Books'}
-            </h2>
+            <h5 className="text-stone-950">
+              {showingSearch ? `Search results for "${search.trim()}"` : 'Latest Listings'}
+            </h5>
             {!showingSearch && (
               <Link to="/browse" className="text-sm font-semibold text-primary-600 hover:text-primary-700">
                 View all
@@ -500,5 +500,3 @@ const Home: React.FC = () => {
 };
 
 export default Home;
-
-
