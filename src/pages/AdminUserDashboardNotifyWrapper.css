@@ -307,6 +307,58 @@
   font-size: 18px;
 }
 
+.admin-tiktok-shell header.sticky h1 {
+  font-family: 'Work Sans', ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 30px !important;
+  line-height: 1.08 !important;
+  letter-spacing: -0.035em !important;
+}
+
+.admin-tiktok-shell section.rounded-2xl > h3 {
+  font-family: 'Work Sans', ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 20px !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.035em !important;
+}
+
+.restore-listing-card h5 {
+  margin: 0;
+  color: #1c1917;
+}
+
+.restore-listing-card p {
+  margin: 10px 0 0;
+  color: #57534e;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.restore-listing-icon {
+  display: flex;
+  width: 52px;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  background: #fff4e2;
+  color: #FC5647;
+}
+
+.restore-listing-icon i {
+  font-size: 30px;
+}
+
+@media (min-width: 768px) {
+  .admin-tiktok-shell header.sticky h1 {
+    font-size: 40px !important;
+  }
+
+  .admin-tiktok-shell section.rounded-2xl > h3 {
+    font-size: 24px !important;
+  }
+}
+
 @media (max-width: 640px) {
   .send-update-backdrop {
     padding: 12px;
