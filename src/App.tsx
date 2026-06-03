@@ -197,13 +197,14 @@ const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
 };
 
 const AppContent: React.FC = () => {
-  const { loading, userProfile } = useAuth();
+  const { currentUser, loading, userProfile } = useAuth();
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isAdminEnabled = isAdminRoute && Boolean(userProfile?.isAdmin);
   const isMessagesRoute = location.pathname.startsWith('/messages');
   const isOpenChatRoute = /^\/messages\/[^/]+/.test(location.pathname);
   const hideMobileBottomNav = isAdminRoute || isOpenChatRoute || (location.pathname.startsWith('/listing/') && location.pathname.endsWith('/edit'));
+  const shouldShowMobileBottomNav = Boolean(currentUser) && !hideMobileBottomNav;
   const pageScopeClass = getPageScopeClass(location.pathname);
 
   if (loading) {
@@ -235,7 +236,7 @@ const AppContent: React.FC = () => {
         <Route
           path="*"
           element={
-            <div className={`app-shell min-h-screen bg-stone-50 flex flex-col ${isMessagesRoute ? 'max-md:h-[100dvh] max-md:min-h-0 max-md:overflow-hidden' : 'max-md:pb-24'}`}>
+            <div className={`app-shell min-h-screen bg-stone-50 flex flex-col ${isMessagesRoute ? 'max-md:h-[100dvh] max-md:min-h-0 max-md:overflow-hidden' : shouldShowMobileBottomNav ? 'max-md:pb-24' : ''}`}>
               {!isAdminRoute && <Navbar />}
               <main className={`app-page ${pageScopeClass} flex-1 ${isMessagesRoute ? 'max-md:min-h-0 max-md:overflow-hidden' : ''}`}>
                 <Routes>
@@ -260,7 +261,7 @@ const AppContent: React.FC = () => {
                 </Routes>
               </main>
               {!isAdminRoute && !isMessagesRoute && <Footer />}
-              {!hideMobileBottomNav && <MobileBottomNav />}
+              {shouldShowMobileBottomNav && <MobileBottomNav />}
             </div>
           }
         />
