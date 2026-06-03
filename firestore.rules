@@ -3,6 +3,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ─── Auth helpers ────────────────────────────────────────────────────────
+
     function signedIn() {
       return request.auth != null;
     }
@@ -25,6 +27,7 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.onboardingStatus == "complete";
     }
 
+    // isAdmin checks the JWT custom claim first, then falls back to the user doc.
     function isAdmin() {
       return signedIn()
         && hasVerifiedEmail()
@@ -37,6 +40,7 @@ service cloud.firestore {
         );
     }
 
+    // Guard user state checks behind userDocExists() to avoid failed reads for new users.
     function isBanned(userId) {
       return userDocExists(userId)
         && (
@@ -46,6 +50,7 @@ service cloud.firestore {
         );
     }
 
+    // Main platform gate. Protected writes require email verification and full onboarding.
     function canUsePlatform() {
       return signedIn()
         && hasVerifiedEmail()
@@ -53,9 +58,13 @@ service cloud.firestore {
         && !isBanned(request.auth.uid);
     }
 
+    // ─── Blog helpers ────────────────────────────────────────────────────────
+
     function validBlogStatus() {
       return request.resource.data.status in ["published", "draft", "pending"];
     }
+
+    // ─── Messaging relationship helpers ──────────────────────────────────────
 
     function otherParticipantId(participants) {
       return participants[0] == request.auth.uid ? participants[1] : participants[0];
@@ -102,6 +111,8 @@ service cloud.firestore {
           || resource.data.recipientId == request.auth.uid
         );
     }
+
+    // ─── Listing helpers ─────────────────────────────────────────────────────
 
     function validListingImages(images) {
       return images is list
@@ -264,6 +275,8 @@ service cloud.firestore {
         ]);
     }
 
+    // ─── Report helpers ──────────────────────────────────────────────────────
+
     function validReportCreate() {
       return canUsePlatform()
         && request.resource.data.keys().hasAll([
@@ -279,6 +292,8 @@ service cloud.firestore {
         && request.resource.data.createdAt >= request.time.toMillis() - 600000
         && request.resource.data.createdAt <= request.time.toMillis() + 60000;
     }
+
+    // ─── Rating helpers ──────────────────────────────────────────────────────
 
     function validRatingCreate() {
       return canUsePlatform()
@@ -297,6 +312,8 @@ service cloud.firestore {
         && request.resource.data.createdAt >= request.time.toMillis() - 600000
         && request.resource.data.createdAt <= request.time.toMillis() + 60000;
     }
+
+    // ─── Message mutation helpers ────────────────────────────────────────────
 
     function isSafeMessageMetaUpdate() {
       return canUsePlatform()
@@ -363,6 +380,8 @@ service cloud.firestore {
         ]);
     }
 
+    // ─── Notification helpers ────────────────────────────────────────────────
+
     function validNotificationBase() {
       return canUsePlatform()
         && request.resource.data.keys().hasAll([
@@ -396,6 +415,8 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.userId == request.resource.data.userId
         && request.auth.uid != request.resource.data.userId;
     }
+
+    // ─── Pending signup / onboarding helpers ────────────────────────────────
 
     function validPendingSignupCreate(sessionId) {
       return request.resource.data.keys().hasOnly([
@@ -470,6 +491,8 @@ service cloud.firestore {
           "uid"
         ]);
     }
+
+    // ─── Collection rules ────────────────────────────────────────────────────
 
     match /users/{userId} {
       allow create: if isOwner(userId)
