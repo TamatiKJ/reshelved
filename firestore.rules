@@ -235,6 +235,24 @@ service cloud.firestore {
         && request.resource.data.renewedAt <= request.time.toMillis() + 60000;
     }
 
+    function isOwnerListingDeactivation() {
+      return signedIn()
+        && hasVerifiedEmail()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.expiresAt == resource.data.expiresAt
+        && request.resource.data.listingDays == resource.data.listingDays
+        && request.resource.data.flagged == resource.data.flagged
+        && request.resource.data.flagCount == resource.data.flagCount
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "active",
+          "deactivatedOwner"
+        ])
+        && request.resource.data.active == false
+        && request.resource.data.deactivatedOwner == true;
+    }
+
     function isListingReportFlagUpdate() {
       return canUsePlatform()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly([
@@ -380,6 +398,18 @@ service cloud.firestore {
         ]);
     }
 
+    function isAccountCleanupConversationUpdate() {
+      return signedIn()
+        && request.auth.uid in resource.data.participants
+        && request.resource.data.participants == resource.data.participants
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "participantNames",
+          "participantPhotos"
+        ])
+        && request.resource.data.participantNames[request.auth.uid] == "Deleted account"
+        && request.resource.data.participantPhotos[request.auth.uid] == "";
+    }
+
     // ─── Notification helpers ────────────────────────────────────────────────
 
     function validNotificationBase() {
@@ -520,7 +550,8 @@ service cloud.firestore {
             "email",
             "createdAt",
             "isAdmin",
-            "deactivated"
+            "deactivated",
+            "deletedAt"
           ])
           && (
             request.resource.data.onboardingStatus == resource.data.onboardingStatus
@@ -557,8 +588,8 @@ service cloud.firestore {
 
     match /publicProfiles/{userId} {
       allow read: if true;
-      allow create, update: if (isOwner(userId) && canUsePlatform()) || isAdmin();
-      allow delete: if (isOwner(userId) && canUsePlatform()) || isAdmin();
+      allow create, update: if (isOwner(userId) && hasVerifiedEmail()) || isAdmin();
+      allow delete: if (isOwner(userId) && hasVerifiedEmail()) || isAdmin();
     }
 
     match /listings/{listingId} {
@@ -567,6 +598,7 @@ service cloud.firestore {
 
       allow update: if isOwnerListingEdit()
         || isOwnerListingRenewal()
+        || isOwnerListingDeactivation()
         || isListingReportFlagUpdate()
         || isAdminListingUpdate();
 
@@ -609,7 +641,7 @@ service cloud.firestore {
         && request.resource.data.participants[0] != request.resource.data.participants[1]
         && !isBlockedByAnyParticipant(request.resource.data.participants);
 
-      allow update: if isAdmin() || isSafeConversationUpdate();
+      allow update: if isAdmin() || isSafeConversationUpdate() || isAccountCleanupConversationUpdate();
       allow delete: if isAdmin();
     }
 
