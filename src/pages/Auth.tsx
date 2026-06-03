@@ -154,6 +154,7 @@ const SetPasswordForm: React.FC<{ sessionId?: string; compact?: boolean }> = ({ 
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [created, setCreated] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,13 +164,26 @@ const SetPasswordForm: React.FC<{ sessionId?: string; compact?: boolean }> = ({ 
     setSaving(true);
     try {
       await setAccountPassword(password, sessionId);
-      navigate('/browse', { replace: true });
+      setCreated(true);
+      window.setTimeout(() => navigate('/profile', { replace: true }), 1500);
     } catch (err: any) {
       setError(getAuthErrorMessage(err, 'Could not set your password.'));
     } finally {
       setSaving(false);
     }
   };
+
+  if (created) {
+    return (
+      <section className={`${compact ? 'mx-auto mt-8 w-full max-w-md' : 'w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9'} text-center`}>
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50 text-green-600">
+          <i className="las la-check text-4xl" />
+        </div>
+        <h1 className="mt-6 text-3xl font-bold text-stone-950">Account created successfully.</h1>
+        <p className="mt-3 text-sm text-stone-500">Taking you to your profile.</p>
+      </section>
+    );
+  }
 
   return (
     <section className={`${compact ? 'mx-auto mt-8 w-full max-w-md' : 'w-full max-w-md rounded-xl border border-stone-300 bg-white px-7 py-8 shadow-sm sm:px-9'}`}>
@@ -240,8 +254,8 @@ const EmailVerificationFlow: React.FC<{ email: string; sessionId: string; onRese
         {passwordRequired && <SetPasswordForm sessionId={sessionId} compact />}
         {completed && <>
           <h1 className="mt-8 text-4xl font-black leading-tight tracking-tight text-stone-950 sm:text-6xl">Account complete.</h1>
-          <p className="mx-auto mt-8 max-w-md text-xl font-bold leading-snug text-stone-800">You can now log in and use Reshelved.</p>
-          <Link to="/login" className="mt-10 inline-flex w-full max-w-2xl items-center justify-center rounded-md bg-primary-600 px-4 py-5 text-lg font-bold text-white hover:bg-primary-700">Go to login</Link>
+          <p className="mx-auto mt-8 max-w-md text-xl font-bold leading-snug text-stone-800">Your account is ready.</p>
+          <Link to="/profile" className="mt-10 inline-flex w-full max-w-2xl items-center justify-center rounded-md bg-primary-600 px-4 py-5 text-lg font-bold text-white hover:bg-primary-700">Go to profile</Link>
         </>}
       </section>
     </AuthShell>
@@ -259,8 +273,8 @@ export const Login: React.FC = () => {
   const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && currentUser) navigate(userProfile?.onboardingStatus === 'complete' ? '/browse' : '/auth/verify', { replace: true });
-  }, [authLoading, currentUser, userProfile?.onboardingStatus, navigate]);
+    if (!authLoading && currentUser && userProfile) navigate(userProfile.onboardingStatus === 'complete' ? '/browse' : '/auth/verify', { replace: true });
+  }, [authLoading, currentUser, userProfile, navigate]);
 
   const handlePasswordReset = async () => {
     setError(''); setMessage('');
@@ -310,8 +324,8 @@ export const VerifyEmail: React.FC = () => {
   }, [sessionId]);
 
   useEffect(() => {
-    if (!authLoading && userProfile?.onboardingStatus === 'complete') navigate('/browse', { replace: true });
-  }, [authLoading, userProfile?.onboardingStatus, navigate]);
+    if (!authLoading && userProfile?.onboardingStatus === 'complete' && !sessionId) navigate('/browse', { replace: true });
+  }, [authLoading, userProfile?.onboardingStatus, sessionId, navigate]);
 
   const email = session?.email || getPendingSignUpEmail() || currentUser?.email || '';
 
@@ -399,8 +413,8 @@ export const Register: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && currentUser) navigate(userProfile?.onboardingStatus === 'complete' ? '/browse' : `/auth/verify${sessionId ? `?sessionId=${sessionId}` : ''}`, { replace: true });
-  }, [authLoading, currentUser, userProfile?.onboardingStatus, sessionId, navigate]);
+    if (!authLoading && currentUser && userProfile) navigate(userProfile.onboardingStatus === 'complete' ? '/browse' : `/auth/verify${sessionId ? `?sessionId=${sessionId}` : ''}`, { replace: true });
+  }, [authLoading, currentUser, userProfile, sessionId, navigate]);
 
   const sendSignUpLink = async () => {
     setError('');
