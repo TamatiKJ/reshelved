@@ -3,6 +3,7 @@ export interface UserProfile {
   displayName: string;
   email: string;
   emailVerified?: boolean;
+  onboardingStatus?: 'pending' | 'verified' | 'password_required' | 'complete';
   photoURL?: string;
   bio?: string;
   location?: string;
@@ -157,5 +158,3 @@ export const KENYAN_CITIES = [
   'Kahawa',
   'Other'
 ];
-
-export const CONDITIONS: Listing['condition'][] = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
