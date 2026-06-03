@@ -74,7 +74,11 @@
 
 .page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) a.bg-\[\#FF5F57\],
 .page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) button.bg-\[\#FF5F57\],
-.page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) .bg-\[\#FF5F57\] {
+.page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) .bg-\[\#FF5F57\],
+.page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) a.bg-primary-600,
+.page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) button.bg-primary-600,
+.page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) a.bg-\[\#1665CC\],
+.page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) button.bg-\[\#1665CC\] {
   background: var(--rs-color-brand) !important;
   border: 1px solid var(--rs-color-brand) !important;
   color: #ffffff !important;
@@ -83,7 +87,11 @@
 }
 
 .page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) a.bg-\[\#FF5F57\]:hover,
-.page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) button.bg-\[\#FF5F57\]:hover {
+.page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) button.bg-\[\#FF5F57\]:hover,
+.page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) a.bg-primary-600:hover,
+.page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) button.bg-primary-600:hover,
+.page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) a.bg-\[\#1665CC\]:hover,
+.page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) button.bg-\[\#1665CC\]:hover {
   background: var(--rs-color-brand-hover) !important;
   border-color: var(--rs-color-brand-hover) !important;
 }
@@ -116,9 +124,16 @@
 
 .page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main section > div.mb-6 h2 {
   font-family: 'Work Sans','Source Sans 3',system-ui,sans-serif !important;
-  font-size: 32px !important;
-  line-height: 1.05 !important;
-  letter-spacing: -0.045em !important;
+  font-size: 20px !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.035em !important;
+}
+
+.page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main .rounded-\[28px\] > h3 {
+  font-family: 'Work Sans','Source Sans 3',system-ui,sans-serif !important;
+  font-size: 20px !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.035em !important;
 }
 
 .page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main .rounded-\[28px\].border.border-stone-200.bg-white,
@@ -165,6 +180,13 @@
   background: var(--rs-color-surface) !important;
 }
 
+@media (min-width: 768px) {
+  .page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main section > div.mb-6 h2,
+  .page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main .rounded-\[28px\] > h3 {
+    font-size: 24px !important;
+  }
+}
+
 @media (max-width: 1023px) {
   .page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) { padding-top: 18px !important; }
   .page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) > div.grid.gap-8 { gap: 20px !important; }
@@ -173,5 +195,4 @@
 @media (max-width: 639px) {
   .page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) { padding-left: 16px !important; padding-right: 16px !important; }
   .page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) aside.lg\:sticky > div.rounded-\[32px\] { border-radius: 28px !important; padding: 22px !important; }
-  .page-profile div.mx-auto.max-w-\[1180px\]:has(> div.grid.gap-8 > aside.lg\:sticky) main section > div.mb-6 h2 { font-size: 27px !important; }
 }
