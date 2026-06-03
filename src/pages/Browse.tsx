@@ -115,7 +115,7 @@ const Browse: React.FC = () => {
             <span className="font-semibold text-stone-900">Browse</span>
           </nav>
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-            <div className="w-full">
+            <div className="w-full lg:w-2/3">
               <h1 className="w-full text-3xl sm:text-5xl font-bold text-stone-950">Find free & affordable books near you</h1>
               <p className="text-stone-600 mt-4 text-lg">Search by title, author, genre, condition, and location.</p>
             </div>
