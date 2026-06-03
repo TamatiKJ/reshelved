@@ -132,8 +132,8 @@ const HeroVisual = () => (
 const BenefitsSection = () => (
   <section className="bg-white py-16 sm:py-24">
     <div className="mx-auto max-w-7xl px-4 sm:px-6">
-      <div className="mx-auto max-w-4xl text-center">
-        <h2 className="font-[Work_Sans] text-4xl font-black leading-tight tracking-[-0.03em] text-stone-950 sm:text-6xl">
+      <div className="w-full text-center">
+        <h2 className="w-full font-[Work_Sans] text-4xl font-black leading-tight tracking-[-0.03em] text-stone-950 sm:text-6xl">
           Swap Books, Read More, Spend Less
         </h2>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
