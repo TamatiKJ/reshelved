@@ -9,7 +9,7 @@ import MobileBottomNav from './components/MobileBottomNav';
 import Home from './pages/Home';
 import Browse from './pages/Browse';
 import HowItWorks from './pages/HowItWorks';
-import { Login, Register, ForgotPassword } from './pages/Auth';
+import { Login, Register, ForgotPassword, VerifyEmail } from './pages/Auth';
 import CreateListing from './pages/CreateListing';
 import EditListing from './pages/EditListing';
 import ListingDetail from './pages/ListingDetail';
@@ -75,7 +75,7 @@ const ReviewAuthorNameSync: React.FC = () => {
   const syncingRef = useRef(false);
 
   const syncCurrentUserReviews = async (forcedName?: string) => {
-    if (!currentUser?.uid || syncingRef.current) return;
+    if (!currentUser?.uid || syncingRef.current || !currentUser.emailVerified) return;
     const nextName = normalizeReviewAuthorName(forcedName || userProfile?.displayName, userProfile?.deactivated);
     syncingRef.current = true;
     try {
@@ -93,12 +93,12 @@ const ReviewAuthorNameSync: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!currentUser?.uid || !userProfile) return;
+    if (!currentUser?.uid || !currentUser.emailVerified || !userProfile) return;
     syncCurrentUserReviews();
-  }, [currentUser?.uid, userProfile?.displayName, userProfile?.deactivated]);
+  }, [currentUser?.uid, currentUser?.emailVerified, userProfile?.displayName, userProfile?.deactivated]);
 
   useEffect(() => {
-    if (!currentUser?.uid) return undefined;
+    if (!currentUser?.uid || !currentUser.emailVerified) return undefined;
 
     const handleDeleteClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -110,7 +110,7 @@ const ReviewAuthorNameSync: React.FC = () => {
 
     document.addEventListener('click', handleDeleteClick, true);
     return () => document.removeEventListener('click', handleDeleteClick, true);
-  }, [currentUser?.uid, userProfile?.displayName]);
+  }, [currentUser?.uid, currentUser?.emailVerified, userProfile?.displayName]);
 
   return null;
 };
@@ -186,13 +186,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const { currentUser, loading } = useAuth();
   if (loading) return <LoadingScreen />;
   if (!currentUser) return <Navigate to="/login" replace />;
+  if (!currentUser.emailVerified) return <Navigate to="/verify-email" replace />;
   return <>{children}</>;
 };
 
 const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, loading } = useAuth();
   if (loading) return <LoadingScreen />;
-  if (currentUser) return <Navigate to="/browse" replace />;
+  if (currentUser) return <Navigate to={currentUser.emailVerified ? '/browse' : '/verify-email'} replace />;
   return <>{children}</>;
 };
 
@@ -200,11 +201,11 @@ const AppContent: React.FC = () => {
   const { currentUser, loading, userProfile } = useAuth();
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
-  const isAdminEnabled = isAdminRoute && Boolean(userProfile?.isAdmin);
+  const isAdminEnabled = isAdminRoute && Boolean(userProfile?.isAdmin) && Boolean(currentUser?.emailVerified);
   const isMessagesRoute = location.pathname.startsWith('/messages');
   const isOpenChatRoute = /^\/messages\/[^/]+/.test(location.pathname);
   const hideMobileBottomNav = isAdminRoute || isOpenChatRoute || (location.pathname.startsWith('/listing/') && location.pathname.endsWith('/edit'));
-  const shouldShowMobileBottomNav = Boolean(currentUser) && !hideMobileBottomNav;
+  const shouldShowMobileBottomNav = Boolean(currentUser?.emailVerified) && !hideMobileBottomNav;
   const pageScopeClass = getPageScopeClass(location.pathname);
 
   if (loading) {
@@ -233,6 +234,7 @@ const AppContent: React.FC = () => {
         <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
         <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
         <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPassword /></PublicOnlyRoute>} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route
           path="*"
           element={
