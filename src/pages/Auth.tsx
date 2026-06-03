@@ -4,10 +4,19 @@ import { useAuth } from '../contexts/AuthContext';
 
 const LINK_BLUE = '#1665CC';
 const RESEND_COOLDOWN_SECONDS = 60;
+const PENDING_SIGNUP_EMAIL_KEY = 'reshelved:pendingSignUpEmail';
+const PENDING_SIGNUP_NAME_KEY = 'reshelved:pendingSignUpName';
 const inputClass = 'w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm outline-none transition focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
 const passwordInputClass = 'w-full rounded-md border border-stone-300 px-3 py-2.5 pr-10 text-sm outline-none transition focus:border-[#1665CC] focus:ring-2 focus:ring-[#1665CC]/10';
 const labelClass = 'text-sm font-bold text-stone-800';
 const errorClass = 'mt-6 text-sm font-medium text-red-600';
+
+const getPendingSignUpEmail = () => window.localStorage.getItem(PENDING_SIGNUP_EMAIL_KEY) || '';
+const getPendingSignUpName = () => window.localStorage.getItem(PENDING_SIGNUP_NAME_KEY) || '';
+const clearPendingSignUp = () => {
+  window.localStorage.removeItem(PENDING_SIGNUP_EMAIL_KEY);
+  window.localStorage.removeItem(PENDING_SIGNUP_NAME_KEY);
+};
 
 const getAuthErrorMessage = (error: any, fallback: string) => {
   switch (error?.code) {
@@ -121,6 +130,50 @@ const GoogleAuthButton: React.FC<{ label: string; disabled?: boolean; onError: (
   );
 };
 
+const EmailLinkSentScreen: React.FC<{ email: string; onResend: () => Promise<void>; onChangeEmail: () => void }> = ({ email, onResend, onChangeEmail }) => {
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [resending, setResending] = useState(false);
+  const [cooldownRemaining, setCooldownRemaining] = useState(RESEND_COOLDOWN_SECONDS);
+
+  useEffect(() => {
+    if (cooldownRemaining <= 0) return undefined;
+    const timer = window.setInterval(() => setCooldownRemaining((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [cooldownRemaining]);
+
+  const resend = async () => {
+    if (cooldownRemaining > 0) return;
+    setError('');
+    setMessage('');
+    setResending(true);
+    try {
+      await onResend();
+      setMessage('Verification link sent again.');
+      setCooldownRemaining(RESEND_COOLDOWN_SECONDS);
+    } catch (err: any) {
+      setError(getAuthErrorMessage(err, 'Could not resend the verification link.'));
+    } finally {
+      setResending(false);
+    }
+  };
+
+  return (
+    <AuthShell showLegal={false}>
+      <section className="w-full max-w-3xl px-4 text-center">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center text-primary-600"><i className="las la-envelope text-7xl" /></div>
+        <h1 className="mt-8 text-4xl font-black leading-tight tracking-tight text-stone-950 sm:text-6xl">Verify your email to create your account.</h1>
+        <p className="mx-auto mt-8 max-w-md text-xl font-bold leading-snug text-stone-800">We sent a secure sign-up link to<br />{email}.</p>
+        <p className="mt-10 text-lg font-bold text-stone-950">Check your <span style={{ color: LINK_BLUE }}>spam folder</span> if the email is missing.</p>
+        {error && <p className={errorClass}>{error}</p>}
+        {message && <div className="mx-auto mt-6 max-w-xl rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>}
+        <button onClick={resend} disabled={resending || cooldownRemaining > 0} className="mt-10 w-full max-w-2xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-5 text-lg font-bold text-stone-950 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">{resending ? 'Sending...' : cooldownRemaining > 0 ? `Resend verification link in ${cooldownRemaining}s` : 'Resend verification link'}</button>
+        <button onClick={onChangeEmail} className="mt-8 block w-full cursor-pointer text-lg font-bold text-stone-800 hover:underline">Change email address</button>
+      </section>
+    </AuthShell>
+  );
+};
+
 export const Login: React.FC = () => {
   const { login, resetPassword, currentUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -146,10 +199,8 @@ export const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setMessage(''); setLoading(true);
-    try {
-      await login(email, password);
-      navigate('/browse', { replace: true });
-    } catch (err: any) { setError(getAuthErrorMessage(err, 'Failed to log in')); }
+    try { await login(email, password); navigate('/browse', { replace: true }); }
+    catch (err: any) { setError(getAuthErrorMessage(err, 'Failed to log in')); }
     finally { setLoading(false); }
   };
 
@@ -172,46 +223,31 @@ export const Login: React.FC = () => {
 export const VerifyEmail: React.FC = () => {
   const { currentUser, loading: authLoading, sendVerificationEmail, refreshAuthUser, logout } = useAuth();
   const navigate = useNavigate();
+  const pendingEmail = getPendingSignUpEmail();
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
   const [checking, setChecking] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [cooldownRemaining, setCooldownRemaining] = useState(RESEND_COOLDOWN_SECONDS);
 
   useEffect(() => {
-    if (!authLoading && !currentUser) navigate('/login', { replace: true });
     if (!authLoading && currentUser?.emailVerified) navigate('/browse', { replace: true });
-  }, [authLoading, currentUser, navigate]);
-
-  useEffect(() => {
-    if (cooldownRemaining <= 0) return undefined;
-    const timer = window.setInterval(() => setCooldownRemaining((seconds) => Math.max(0, seconds - 1)), 1000);
-    return () => window.clearInterval(timer);
-  }, [cooldownRemaining]);
-
-  const handleResend = async () => {
-    if (cooldownRemaining > 0) return;
-    setError(''); setMessage(''); setResending(true);
-    try {
-      await sendVerificationEmail();
-      setMessage('Verification email sent again.');
-      setCooldownRemaining(RESEND_COOLDOWN_SECONDS);
-    } catch (err: any) { setError(getAuthErrorMessage(err, 'Could not resend the verification email.')); }
-    finally { setResending(false); }
-  };
+    if (!authLoading && !currentUser && !pendingEmail) navigate('/login', { replace: true });
+  }, [authLoading, currentUser, pendingEmail, navigate]);
 
   const handleVerified = async () => {
-    setError(''); setMessage(''); setChecking(true);
+    setError(''); setChecking(true);
     try {
       const user = await refreshAuthUser();
       if (user?.emailVerified) {
         navigate('/browse', { replace: true });
         return;
       }
-      setError('Your email is not verified yet. Open the link in your email, then try again.');
+      setError('Open the secure link in your email to finish signing up.');
     } catch (err: any) { setError(getAuthErrorMessage(err, 'Could not check verification status.')); }
     finally { setChecking(false); }
   };
+
+  if (pendingEmail) {
+    return <EmailLinkSentScreen email={pendingEmail} onResend={sendVerificationEmail} onChangeEmail={() => { clearPendingSignUp(); navigate('/register', { replace: true }); }} />;
+  }
 
   return (
     <AuthShell showLegal={false}>
@@ -219,12 +255,10 @@ export const VerifyEmail: React.FC = () => {
         <AuthLogo className="mx-auto h-7 w-auto" />
         <div className="mx-auto mt-10 flex h-28 w-28 items-center justify-center rounded-3xl border-4 border-stone-500 text-primary-600"><i className="las la-envelope-open-text text-6xl" /></div>
         <h1 className="mt-8 text-4xl font-bold leading-tight text-stone-900 sm:text-5xl">Check your email.</h1>
-        <p className="mx-auto mt-5 max-w-md text-lg font-semibold leading-snug text-stone-800">We sent a verification link to<br />{currentUser?.email || 'your email address'}.</p>
-        <p className="mt-6 text-base font-bold text-stone-900">Don&apos;t see it? <span style={{ color: LINK_BLUE }}>Check your SPAM folder.</span></p>
+        <p className="mx-auto mt-5 max-w-md text-lg font-semibold leading-snug text-stone-800">Open the secure link sent to<br />{currentUser?.email || 'your email address'}.</p>
+        <p className="mt-6 text-base font-bold text-stone-900">Don&apos;t see it? <span style={{ color: LINK_BLUE }}>Check your spam folder.</span></p>
         {error && <p className={errorClass}>{error}</p>}
-        {message && <div className="mx-auto mt-6 max-w-xl rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>}
         <button onClick={handleVerified} disabled={checking || authLoading} className="mt-8 w-full max-w-xl cursor-pointer rounded-md bg-primary-600 px-4 py-4 text-base font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60">{checking ? 'Checking...' : "I've verified"}</button>
-        <button onClick={handleResend} disabled={resending || cooldownRemaining > 0} className="mt-4 w-full max-w-xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-4 text-base font-semibold text-stone-900 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60">{resending ? 'Sending...' : cooldownRemaining > 0 ? `Resend email in ${cooldownRemaining}s` : 'Resend email'}</button>
         <button onClick={() => logout()} className="mt-4 w-full max-w-xl cursor-pointer rounded-md border border-stone-300 bg-white px-4 py-4 text-base font-semibold text-stone-900 hover:bg-stone-50">Use another account</button>
       </section>
     </AuthShell>
@@ -292,10 +326,9 @@ export const ForgotPassword: React.FC = () => {
 export const Register: React.FC = () => {
   const { register, currentUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [displayName, setDisplayName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [displayName, setDisplayName] = useState(getPendingSignUpName());
+  const [email, setEmail] = useState(getPendingSignUpEmail());
+  const [sentEmail, setSentEmail] = useState(getPendingSignUpEmail());
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -303,18 +336,27 @@ export const Register: React.FC = () => {
     if (!authLoading && currentUser) navigate(currentUser.emailVerified ? '/browse' : '/verify-email', { replace: true });
   }, [authLoading, currentUser, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setError('');
-    if (password !== confirmPassword) { setError('Passwords do not match'); return; }
-    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+  const sendSignUpLink = async () => {
+    setError('');
+    if (!displayName.trim()) { setError('Enter your full name.'); return; }
+    if (!email.trim()) { setError('Enter your email address.'); return; }
     setLoading(true);
     try {
-      await register(email, password, displayName, '');
-      navigate('/verify-email', { replace: true });
+      await register(email, displayName, '');
+      setSentEmail(email.trim().toLowerCase());
     }
-    catch (err: any) { setError(getAuthErrorMessage(err, 'Failed to create account')); }
+    catch (err: any) { setError(getAuthErrorMessage(err, 'Failed to send verification link.')); }
     finally { setLoading(false); }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendSignUpLink();
+  };
+
+  if (sentEmail) {
+    return <EmailLinkSentScreen email={sentEmail} onResend={sendSignUpLink} onChangeEmail={() => { clearPendingSignUp(); setSentEmail(''); setError(''); }} />;
+  }
 
   return (
     <AuthSplitCard title="Create your account" subtitle="Join Reshelved and start finding books near you.">
@@ -322,11 +364,9 @@ export const Register: React.FC = () => {
       <GoogleAuthButton label="Sign up with Google" disabled={loading || authLoading} onError={setError} />
       <div className="my-7 flex items-center gap-5 text-sm text-stone-400"><span className="h-px flex-1 bg-stone-200" />or<span className="h-px flex-1 bg-stone-200" /></div>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div><label className={`mb-1 block ${labelClass}`}>Full name</label><input type="text" required value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputClass} autoComplete="name" /></div>
-        <div><label className={`mb-1 block ${labelClass}`}>Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" /></div>
-        <div><label className={`mb-1 block ${labelClass}`}>Password</label><PasswordField value={password} onChange={setPassword} autoComplete="new-password" /></div>
-        <div><label className={`mb-1 block ${labelClass}`}>Confirm password</label><PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" /></div>
-        <button type="submit" disabled={loading || authLoading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Creating account...' : 'Create account'}</button>
+        <div><label className={`mb-1 block ${labelClass}`}>Full name</label><input type="text" required value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputClass} autoComplete="name" placeholder="Full name" /></div>
+        <div><label className={`mb-1 block ${labelClass}`}>Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} autoComplete="email" placeholder="Email" /></div>
+        <button type="submit" disabled={loading || authLoading} className="w-full cursor-pointer rounded-md bg-primary-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Sending link...' : 'Continue with email'}</button>
       </form>
       <p className="mt-6 text-center text-sm text-stone-600">Already have an account? <Link to="/login" className="font-semibold hover:underline" style={{ color: LINK_BLUE }}>Log in</Link></p>
     </AuthSplitCard>
