@@ -11,6 +11,7 @@ import "./create-listing.css";
 import "./messages.css";
 import "./admin.css";
 import "./admin-actions.css";
+import "./chat-dock-overrides.css";
 import "./responsive.css";
 import App from "./App";
 import { enforceWebpUploadCompression } from "./utils/enforceWebpUploadCompression";
@@ -80,77 +81,22 @@ const addBlogEditorHistoryControls = () => {
     <button type="button" title="Redo" class="cursor-pointer rounded-lg border border-stone-200 px-3 py-1.5 text-sm font-semibold hover:bg-stone-50"><i class="las la-redo text-lg"></i></button>
   `;
 
-  controls.querySelector<HTMLButtonElement>('[title="Undo"]')?.addEventListener("click", () => document.execCommand("undo"));
-  controls.querySelector<HTMLButtonElement>('[title="Redo"]')?.addEventListener("click", () => document.execCommand("redo"));
   imageButton.parentElement?.appendChild(controls);
 };
 
-const normalizeProfileRatingLabels = () => {
-  const profileNav = document.querySelector('nav.mt-5');
-  if (!profileNav) return;
-
-  const badges = Array.from(document.querySelectorAll<HTMLSpanElement>('aside .rounded-full.border.border-stone-200'));
-  badges.forEach((badge) => {
-    if (badge.dataset.ratingNormalized === 'true') return;
-    if (!badge.querySelector('.la-star')) return;
-
-    const raw = badge.textContent?.trim() || '';
-    const countMatch = raw.match(/(?:·|\s)(\d+)\s*$/);
-    const averageMatch = raw.match(/(\d+(?:\.\d+)?)/);
-    const count = Number(countMatch?.[1] || 0);
-    const average = averageMatch?.[1] || '0.0';
-    const reviewLabel = count === 1 ? 'Review' : 'Reviews';
-    badge.innerHTML = `<i class="las la-star mr-1 text-[#F7AF31]"></i>Rating ${average} (${count} ${reviewLabel})`;
-    badge.dataset.ratingNormalized = 'true';
-  });
-};
-
-const normalizeProfileJoinDate = () => {
-  const profileCard = document.querySelector('aside.lg\\:sticky');
-  if (!profileCard) return;
-
-  const today = new Date().toLocaleDateString();
-  const badges = Array.from(document.querySelectorAll<HTMLSpanElement>('aside .rounded-full.border.border-stone-200'));
-  badges.forEach((badge) => {
-    if (badge.dataset.joinDateNormalized === 'true') return;
-    if (!badge.querySelector('.la-calendar')) return;
-
-    const raw = badge.textContent?.trim() || '';
-    const joinedText = raw.replace(/^Joined\s*/i, '').trim();
-    if (!joinedText) return;
-
-    const parsed = new Date(joinedText);
-    if (Number.isNaN(parsed.getTime())) return;
-
-    const isToday = parsed.toLocaleDateString() === today;
-    if (!isToday) return;
-
-    badge.innerHTML = '<i class="las la-calendar mr-1"></i>Joined date unavailable';
-    badge.dataset.joinDateNormalized = 'true';
-  });
-};
-
-const runDomEnhancements = () => {
+const observeBlogEditorControls = () => {
   addBlogEditorHistoryControls();
-  normalizeProfileRatingLabels();
-  normalizeProfileJoinDate();
+  const observer = new MutationObserver(addBlogEditorHistoryControls);
+  observer.observe(document.body, { childList: true, subtree: true });
 };
 
-document.addEventListener("click", (event) => {
+observeBlogEditorControls();
+
+window.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
-  const zoomButton = target.closest<HTMLButtonElement>('button[aria-label="Open larger image"]');
-  if (!zoomButton) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-  event.stopImmediatePropagation();
-
-  const gallery = zoomButton.closest(".aspect-square");
-  const image = gallery?.querySelector<HTMLImageElement>('img[alt]:not([alt=""])');
+  const image = target.closest<HTMLImageElement>('[data-zoomable-image="true"]');
   if (image?.src) openImageZoom(image.src, image.alt || "Listing image");
-}, true);
-
-new MutationObserver(runDomEnhancements).observe(document.body, { childList: true, subtree: true });
+});
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
