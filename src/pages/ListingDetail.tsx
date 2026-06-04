@@ -18,6 +18,7 @@ const REVIEWS_STEP = 4;
 
 const getShareUrl = () => encodeURIComponent(window.location.href);
 const getShareText = (title: string) => encodeURIComponent(`Check out ${title} on Reshelved`);
+const isDesktopViewport = () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
 
 const ListingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -132,7 +133,12 @@ const ListingDetail: React.FC = () => {
         sellerPhoto,
         listingImage: listingImages[0] || normalizeImages(listing.images)[0] || ''
       });
-      navigate(`/messages/${conversationId}`);
+      if (isDesktopViewport()) {
+        window.dispatchEvent(new CustomEvent('reshelved:open-chat', { detail: { conversationId } }));
+        flashMessage('Chat opened.');
+      } else {
+        navigate(`/messages/${conversationId}`);
+      }
     } catch (err) {
       console.error(err);
       flashMessage('Failed to start conversation. Check your Firestore rules.');
@@ -317,163 +323,99 @@ const ListingDetail: React.FC = () => {
           <div className="lg:col-span-1 space-y-5">
             <div>
               <div className="mb-4 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-2 rounded-md border border-[#1665CC] bg-white px-3 py-1.5 text-sm font-bold text-[#1665CC]"><i className="las la-exchange-alt text-lg" />{typeLabels[listing.type]}</span>
-                <span className="inline-flex items-center gap-2 rounded-md bg-[#1665CC]/10 px-3 py-1.5 text-sm font-bold text-[#1665CC]"><i className="las la-book-open text-lg" />{listing.condition}</span>
-                {ratings.length > 0 && <span className="inline-flex items-center gap-2 rounded-md bg-stone-100 px-3 py-1.5 text-sm font-bold text-stone-700"><i className="las la-star text-lg text-amber-400" />{averageRating.toFixed(1)} seller rating</span>}
+                <span className="inline-flex items-center rounded-full bg-[#1665CC]/10 px-3 py-1 text-xs font-bold uppercase tracking-[1.5px] text-[#1665CC]">{typeLabels[listing.type] || listing.type}</span>
+                {isExpired && <span className="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-bold uppercase tracking-[1.5px] text-red-700">Expired</span>}
               </div>
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 leading-tight">{listing.title}</h1>
-              <p className="text-stone-500 mt-2">by {listing.author}</p>
+              <h1 className="text-4xl font-bold tracking-tight text-stone-950 sm:text-5xl">{listing.title}</h1>
+              <p className="mt-3 text-xl font-medium text-stone-500">by {listing.author}</p>
             </div>
-
-            {listing.type === 'sell' && listing.price && (
-              <div className="text-2xl font-bold text-primary-700">KSh {listing.price.toLocaleString()}</div>
-            )}
 
             <div className="inline-flex w-fit max-w-full flex-wrap items-center rounded-xl border border-stone-200 bg-white text-sm text-stone-700">
-              <div className="flex items-center gap-2 px-4 py-3"><i className="las la-map-marker-alt text-lg text-stone-400" /><span>{listing.location}</span></div>
+              <div className="flex items-center gap-2 px-3 py-2"><i className="las la-check-circle text-stone-500" /><span>{listing.condition}</span></div>
               <div className="h-6 w-px bg-stone-200" />
-              <div className="flex items-center gap-2 px-4 py-3"><i className="las la-layer-group text-lg text-stone-400" /><span>{listing.category}</span></div>
+              <div className="flex items-center gap-2 px-3 py-2"><i className="las la-map-marker text-stone-500" /><span>{listing.location}</span></div>
               <div className="h-6 w-px bg-stone-200" />
-              <div className="flex items-center gap-2 px-4 py-3"><i className="las la-clock text-lg text-stone-400" /><span>{isExpired ? 'Expired' : `${Math.ceil((listing.expiresAt - Date.now()) / (1000 * 60 * 60 * 24))} Days Left`}</span></div>
+              <div className="flex items-center gap-2 px-3 py-2"><i className="las la-folder text-stone-500" /><span>{listing.category}</span></div>
             </div>
 
-            {listing.description && (
-              <div>
-                <h3 className="font-semibold text-stone-700 mb-1">Description</h3>
-                <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap">{listing.description}</p>
-              </div>
-            )}
-
-            <SellerCard
-              sellerId={listing.userId}
-              sellerName={listing.userName}
-              sellerPhoto={sellerPhoto}
-              listingId={listing.id}
-              listingTitle={listing.title}
-              ratingsCount={ratings.length}
-              averageRating={averageRating}
-            />
-
-            <div className="space-y-2">
-              {!isOwner && currentUser && !isExpired && (
-                <button onClick={handleContact} disabled={actionLoading} className="cursor-pointer w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition disabled:cursor-not-allowed disabled:opacity-50">
-                  {actionLoading ? 'Please wait...' : `Contact ${listing.userName}`}
-                </button>
-              )}
-              {!currentUser && (
-                <Link to="/login" className="block w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl transition text-center">Log in to Contact</Link>
-              )}
-              {!isOwner && currentUser && (
-                <div className="flex gap-2">
-                  <button onClick={() => setShowRating(true)} className="cursor-pointer flex-1 py-2.5 border border-stone-200 text-stone-600 hover:bg-stone-50 rounded-xl transition text-sm font-medium">★ Leave Review</button>
-                  <button onClick={() => setShowReport(true)} className="cursor-pointer flex-1 py-2.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl transition text-sm font-medium">⚑ Report</button>
-                </div>
-              )}
-              {canEdit && <Link to={`/listing/${listing.id}/edit`} className="block w-full py-2.5 border border-primary-200 text-primary-700 hover:bg-primary-50 rounded-xl transition text-sm font-medium text-center">Edit Listing</Link>}
-              {canEdit && <button onClick={handleDelete} className="cursor-pointer w-full py-2.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl transition text-sm font-medium">Delete Listing</button>}
+            <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+              {listing.type === 'sell' && listing.price > 0 && <p className="text-3xl font-bold text-stone-950">KSh {listing.price.toLocaleString()}</p>}
+              {listing.type === 'donate' && <p className="text-3xl font-bold text-green-700">Free</p>}
+              {listing.type === 'swap' && <p className="text-3xl font-bold text-[#1665CC]">Swap</p>}
+              <p className="mt-2 text-sm text-stone-500">Listed {new Date(listing.createdAt).toLocaleDateString()}</p>
+              {!isOwner && currentUser && !isExpired && <button onClick={handleContact} disabled={actionLoading} className="mt-5 w-full cursor-pointer rounded-xl bg-primary-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-primary-700 disabled:opacity-50">{actionLoading ? 'Opening chat...' : 'Contact Owner'}</button>}
+              {!currentUser && <Link to="/login" className="mt-5 flex w-full items-center justify-center rounded-xl bg-primary-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-primary-700">Log in to Contact</Link>}
+              {canEdit && <Link to={`/listing/${listing.id}/edit`} className="mt-3 flex w-full items-center justify-center rounded-xl border border-stone-200 px-5 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-50"><i className="las la-pen mr-2" /> Edit Listing</Link>}
+              {canEdit && <button onClick={handleDelete} className="mt-3 w-full cursor-pointer rounded-xl border border-red-200 px-5 py-3 text-sm font-bold text-red-700 transition hover:bg-red-50">Delete Listing</button>}
             </div>
 
-            <div className="pt-3">
-              <h2 className="text-xl font-bold text-stone-900 mb-3">Share link</h2>
-              <div className="flex flex-wrap gap-3">
-                {shareItems.map((item) => (
-                  <a key={item.label} href={item.href} target="_blank" rel="noreferrer" aria-label={`Share on ${item.label}`} className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl transition hover:-translate-y-0.5 ${item.className}`}><i className={item.icon} /></a>
-                ))}
-                <button type="button" onClick={copyLink} aria-label="Copy link" className="cursor-pointer w-12 h-12 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center text-2xl hover:bg-stone-200 transition"><i className="las la-link" /></button>
+            <SellerCard listing={listing} sellerPhoto={sellerPhoto} averageRating={averageRating} ratingsCount={ratings.length} />
+
+            <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+              <h3 className="text-base font-bold text-stone-950">Share this book</h3>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {shareItems.map((item) => <a key={item.label} href={item.href} target="_blank" rel="noreferrer" aria-label={`Share on ${item.label}`} className={`flex h-10 w-10 items-center justify-center rounded-full ${item.className}`}><i className={`${item.icon} text-lg`} /></a>)}
+                <button onClick={copyLink} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-stone-100 text-stone-700"><i className="las la-link text-lg" /></button>
               </div>
             </div>
           </div>
         </div>
 
-        {ratings.length > 0 && (
-          <section className="mt-12 border-t border-stone-200 pt-8">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="text-2xl font-bold text-stone-900">Seller ratings & reviews</h2>
-              {canDeleteReviews && <span className="text-xs font-semibold uppercase tracking-wide text-red-500">Admin review controls active</span>}
+        <section className="mt-12 border-t border-stone-200 pt-8">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div>
+              <h2 className="text-2xl font-bold text-stone-950">About this book</h2>
+              <p className="mt-4 whitespace-pre-line text-base leading-8 text-stone-700">{listing.description}</p>
             </div>
+            <aside className="rounded-2xl border border-stone-200 bg-stone-50 p-5">
+              <h3 className="text-base font-bold text-stone-950">Safety tips</h3>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-stone-600">
+                <li>Meet in a public place.</li>
+                <li>Check the book before payment or exchange.</li>
+                <li>Use Reshelved messages before sharing private details.</li>
+              </ul>
+              {!isOwner && currentUser && <button onClick={() => setShowReport(true)} className="mt-5 cursor-pointer text-sm font-bold text-red-600">Report this listing</button>}
+            </aside>
+          </div>
+        </section>
 
-            <div className="mt-8 grid gap-8 lg:grid-cols-[280px_1fr]">
-              <div>
-                <div className="text-5xl font-black tracking-tight text-stone-950">{averageRating.toFixed(1)} out of 5</div>
-                <div className="mt-3 flex items-center gap-2"><RatingStars rating={averageRating} className="text-lg" /><span className="text-sm text-stone-600">{ratings.length} review{ratings.length !== 1 ? 's' : ''}</span></div>
-                <p className="mt-5 text-sm font-semibold text-stone-600">Based on seller interactions</p>
+        <section className="mt-12 border-t border-stone-200 pt-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-stone-950">Seller reviews</h2>
+              <p className="mt-2 text-sm text-stone-500">See what other readers say about this seller.</p>
+            </div>
+            {!isOwner && currentUser && <button onClick={() => setShowRating(true)} className="w-fit cursor-pointer rounded-xl bg-[#1665CC] px-5 py-3 text-sm font-bold text-white">Leave a review</button>}
+          </div>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-[280px_1fr]">
+            <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+              <p className="text-4xl font-bold text-stone-950">{averageRating.toFixed(1)}</p>
+              <RatingStars rating={averageRating} size="md" />
+              <p className="mt-2 text-sm text-stone-500">Based on {ratings.length} reviews</p>
+              <div className="mt-5 space-y-2">
+                {ratingBreakdown.map((item) => <button key={item.star} onClick={() => setReviewFilter(item.star as 1 | 2 | 3 | 4 | 5)} className="flex w-full cursor-pointer items-center gap-2 text-sm"><span className="w-10 text-left font-semibold">{item.star} ★</span><span className="h-2 flex-1 overflow-hidden rounded-full bg-stone-100"><span className="block h-full bg-amber-400" style={{ width: `${item.percent}%` }} /></span><span className="w-8 text-right text-stone-500">{item.count}</span></button>)}
               </div>
-              <div className="space-y-3">
-                {ratingBreakdown.map((item) => (
-                  <button key={item.star} type="button" onClick={() => { setReviewFilter(item.star as 1 | 2 | 3 | 4 | 5); setVisibleReviews(REVIEWS_STEP); }} className="grid w-full cursor-pointer grid-cols-[64px_1fr_70px] items-center gap-3 text-sm text-left">
-                    <span className="font-medium text-stone-600 underline underline-offset-2">{item.star} star{item.star !== 1 ? 's' : ''}</span>
-                    <span className="h-2.5 overflow-hidden rounded-full bg-stone-200"><span className="block h-full rounded-full bg-[#1665CC]" style={{ width: `${item.percent}%` }} /></span>
-                    <span className="text-right text-stone-600">{item.percent}% ({item.count})</span>
-                  </button>
-                ))}
+            </div>
+
+            <div>
+              <div className="mb-4 flex flex-wrap gap-2">
+                {reviewFilters.map((filter) => <button key={filter.label} onClick={() => setReviewFilter(filter.value)} className={`cursor-pointer rounded-full px-3 py-1 text-sm font-semibold ${reviewFilter === filter.value ? 'bg-[#1665CC] text-white' : 'bg-stone-100 text-stone-600'}`}>{filter.label} ({filter.count})</button>)}
               </div>
+              <div className="space-y-4">
+                {shownRatings.length === 0 && <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm text-stone-500">No reviews yet.</div>}
+                {shownRatings.map((rating) => <article key={rating.id} className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-4"><div><RatingStars rating={rating.rating} size="sm" /><h3 className="mt-2 text-base font-bold text-stone-950">{rating.title || 'Review'}</h3><p className="mt-1 text-sm text-stone-500">{rating.fromUserName} · {new Date(rating.createdAt).toLocaleDateString()}</p></div>{canDeleteReviews && <button onClick={() => handleDeleteReview(rating.id)} className="cursor-pointer text-sm font-bold text-red-600">Delete</button>}</div>{rating.review && <p className="mt-3 text-sm leading-6 text-stone-700">{rating.review}</p>}</article>)}
+              </div>
+              {filteredRatings.length > visibleReviews && <button onClick={() => setVisibleReviews((current) => current + REVIEWS_STEP)} className="mt-5 cursor-pointer rounded-xl border border-stone-200 px-5 py-3 text-sm font-bold text-stone-700">Load more reviews</button>}
             </div>
+          </div>
+        </section>
 
-            <div className="mt-8 flex flex-wrap gap-2 border-t border-stone-200 pt-5">
-              {reviewFilters.map((item) => (
-                <button key={String(item.value)} type="button" onClick={() => { setReviewFilter(item.value); setVisibleReviews(REVIEWS_STEP); }} className={`cursor-pointer rounded-full border px-4 py-2 text-sm font-bold transition ${reviewFilter === item.value ? 'border-[#1665CC] bg-[#1665CC] text-white' : 'border-stone-300 bg-white text-stone-700 hover:border-[#1665CC] hover:text-[#1665CC]'}`}>
-                  {item.label} <span className={reviewFilter === item.value ? 'text-white/80' : 'text-stone-400'}>({item.count})</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-8 space-y-0">
-              {shownRatings.length > 0 ? shownRatings.map((rating) => (
-                <article key={rating.id} className="border-t border-stone-200 py-6">
-                  <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
-                    <div>
-                      <p className="text-sm text-stone-500">{new Date(rating.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                      <p className="mt-6 font-semibold text-stone-700">{rating.fromUserName}</p>
-                    </div>
-                    <div>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="text-amber-400">{'★'.repeat(rating.rating)}{'☆'.repeat(5 - rating.rating)}</div>
-                        {canDeleteReviews && <button type="button" onClick={() => handleDeleteReview(rating.id)} disabled={actionLoading} className="shrink-0 cursor-pointer rounded-full border border-red-200 px-3 py-1 text-xs font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">Delete</button>}
-                      </div>
-                      <h3 className="mt-4 text-xl font-extrabold text-stone-800">{rating.title || rating.listingTitle || 'Book exchange review'}</h3>
-                      {rating.review && <p className="mt-2 max-w-3xl text-sm leading-relaxed text-stone-700">{rating.review}</p>}
-                      <p className="mt-3 text-xs text-stone-500">Review for {rating.listingTitle}</p>
-                    </div>
-                  </div>
-                </article>
-              )) : <div className="rounded-xl border border-stone-200 bg-stone-50 p-5 text-sm text-stone-500">No reviews match this filter.</div>}
-            </div>
-
-            {visibleReviews < filteredRatings.length && (
-              <button onClick={() => setVisibleReviews((current) => current + REVIEWS_STEP)} className="cursor-pointer mt-4 rounded-full border border-stone-800 px-5 py-2.5 text-sm font-bold text-stone-900 hover:bg-stone-50">View more reviews</button>
-            )}
-          </section>
-        )}
-
-        <RecentListings excludeId={listing.id} limit={3} />
-
-        {showReport && (
-          <ReportModal
-            reason={reportReason}
-            details={reportDetails}
-            loading={actionLoading}
-            onReasonChange={setReportReason}
-            onDetailsChange={setReportDetails}
-            onClose={() => setShowReport(false)}
-            onSubmit={handleReport}
-          />
-        )}
-
-        {showRating && (
-          <RatingModal
-            sellerName={listing.userName}
-            rating={ratingValue}
-            title={reviewTitle}
-            review={reviewText}
-            loading={actionLoading}
-            onRatingChange={setRatingValue}
-            onTitleChange={setReviewTitle}
-            onReviewChange={setReviewText}
-            onClose={() => setShowRating(false)}
-            onSubmit={handleRating}
-          />
-        )}
+        <RecentListings excludeId={listing.id} />
       </div>
+
+      {showReport && <ReportModal reason={reportReason} details={reportDetails} loading={actionLoading} onReasonChange={setReportReason} onDetailsChange={setReportDetails} onClose={() => setShowReport(false)} onSubmit={handleReport} />}
+      {showRating && <RatingModal rating={ratingValue} title={reviewTitle} review={reviewText} loading={actionLoading} onRatingChange={setRatingValue} onTitleChange={setReviewTitle} onReviewChange={setReviewText} onClose={() => setShowRating(false)} onSubmit={handleRating} />}
     </div>
   );
 };
