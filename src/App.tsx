@@ -6,6 +6,7 @@ import { db } from './firebase';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import MobileBottomNav from './components/MobileBottomNav';
+import FloatingMessagesButton from './components/FloatingMessagesButton';
 import Home from './pages/Home';
 import Browse from './pages/Browse';
 import HowItWorks from './pages/HowItWorks';
@@ -214,8 +215,10 @@ const AppContent: React.FC = () => {
   const isAdminEnabled = isAdminRoute && Boolean(userProfile?.isAdmin) && isFullyOnboarded;
   const isMessagesRoute = location.pathname.startsWith('/messages');
   const isOpenChatRoute = /^\/messages\/[^/]+/.test(location.pathname);
-  const hideMobileBottomNav = isAdminRoute || isOpenChatRoute || (location.pathname.startsWith('/listing/') && location.pathname.endsWith('/edit'));
+  const isListingEditRoute = location.pathname.startsWith('/listing/') && location.pathname.endsWith('/edit');
+  const hideMobileBottomNav = isAdminRoute || isOpenChatRoute || isListingEditRoute;
   const shouldShowMobileBottomNav = isFullyOnboarded && !hideMobileBottomNav;
+  const shouldShowFloatingMessages = isFullyOnboarded && !isAdminRoute && !isMessagesRoute && !isListingEditRoute;
   const pageScopeClass = getPageScopeClass(location.pathname);
 
   if (loading) {
@@ -276,6 +279,7 @@ const AppContent: React.FC = () => {
               </main>
               {!isAdminRoute && !isMessagesRoute && <Footer />}
               {shouldShowMobileBottomNav && <MobileBottomNav />}
+              {shouldShowFloatingMessages && <FloatingMessagesButton />}
             </div>
           }
         />
@@ -284,14 +288,12 @@ const AppContent: React.FC = () => {
   );
 };
 
-const App: React.FC = () => {
-  return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </BrowserRouter>
-  );
-};
+const App: React.FC = () => (
+  <BrowserRouter>
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  </BrowserRouter>
+);
 
 export default App;
