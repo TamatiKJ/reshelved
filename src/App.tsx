@@ -7,6 +7,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import MobileBottomNav from './components/MobileBottomNav';
 import FloatingMessagesButton from './components/FloatingMessagesButton';
+import AdminUploadedMediaBridge from './components/AdminUploadedMediaBridge';
 import Home from './pages/Home';
 import Browse from './pages/Browse';
 import HowItWorks from './pages/HowItWorks';
@@ -243,6 +244,7 @@ const AppContent: React.FC = () => {
       <ScrollToTop />
       <ReviewAuthorNameSync />
       <PlatformListingDurationSync enabled={isAdminEnabled} />
+      {isAdminEnabled && <AdminUploadedMediaBridge />}
       <Routes>
         <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
         <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
