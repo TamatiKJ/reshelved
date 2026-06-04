@@ -1,0 +1,112 @@
+@media (min-width: 768px) {
+  button[aria-label="Open messages"] {
+    background: #FC5647 !important;
+    box-shadow: 0 14px 35px rgba(252, 86, 71, 0.28) !important;
+  }
+
+  button[aria-label="Open messages"]:hover {
+    background: #e4493c !important;
+  }
+
+  button[aria-label="Open messages"] > span {
+    background: #1c1917 !important;
+  }
+
+  section[aria-label="Messages dock"] {
+    bottom: 0 !important;
+    right: 1.5rem !important;
+    width: 660px !important;
+    height: 440px !important;
+    border-bottom: 0 !important;
+  }
+
+  section[aria-label="Messages dock"] aside {
+    width: 255px !important;
+  }
+
+  section[aria-label="Messages dock"] header {
+    height: 44px !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  section[aria-label="Messages dock"] header p,
+  section[aria-label="Messages dock"] header div,
+  section[aria-label="Messages dock"] aside span,
+  section[aria-label="Messages dock"] aside p,
+  section[aria-label="Messages dock"] aside button,
+  section[aria-label="Messages dock"] input,
+  section[aria-label="Messages dock"] .whitespace-pre-wrap {
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+  }
+
+  section[aria-label="Messages dock"] aside .mt-3 {
+    margin-top: 0.5rem !important;
+  }
+
+  section[aria-label="Messages dock"] aside .px-4 {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  section[aria-label="Messages dock"] aside .py-3 {
+    padding-top: 0.625rem !important;
+    padding-bottom: 0.625rem !important;
+  }
+
+  section[aria-label="Messages dock"] aside .h-10,
+  section[aria-label="Messages dock"] header .h-9 {
+    height: 2rem !important;
+  }
+
+  section[aria-label="Messages dock"] aside .w-10,
+  section[aria-label="Messages dock"] header .w-9 {
+    width: 2rem !important;
+  }
+
+  section[aria-label="Messages dock"] aside button[style],
+  section[aria-label="Messages dock"] aside [style*="background"] {
+    background: #1c1917 !important;
+    border-color: #1c1917 !important;
+  }
+
+  section[aria-label="Messages dock"] header [style*="background"] {
+    background: #1c1917 !important;
+  }
+
+  section[aria-label="Messages dock"] .h-16.w-16[style*="background"] {
+    background: #f5f5f4 !important;
+    color: #57534e !important;
+  }
+
+  section[aria-label="Messages dock"] form button {
+    background: #FC5647 !important;
+  }
+
+  section[aria-label="Messages dock"] form button:hover:not(:disabled) {
+    background: #e4493c !important;
+  }
+
+  section[aria-label="Messages dock"] .border-red-200.bg-red-50 {
+    animation: chatDockNoticeFade 3s ease forwards;
+  }
+}
+
+@keyframes chatDockNoticeFade {
+  0%, 78% {
+    opacity: 1;
+    max-height: 80px;
+    margin-top: 0.75rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+  100% {
+    opacity: 0;
+    max-height: 0;
+    margin-top: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+}
