@@ -8,7 +8,7 @@ import {
   where,
   writeBatch
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { auth, db } from '../firebase';
 import type { Conversation, Message } from '../types';
 
 export type ChatMessagePayload = Record<string, unknown> & {
@@ -41,6 +41,10 @@ export const sendChatMessage = async ({
   lastMessage: string;
   messageId?: string;
 }) => {
+  if (auth.currentUser?.uid === senderId) {
+    await auth.currentUser.getIdToken(true).catch(() => undefined);
+  }
+
   const now = Date.now();
   const recipientIds = getConversationRecipientIds(conversation, senderId);
   const primaryRecipientId = recipientIds[0] || '';
