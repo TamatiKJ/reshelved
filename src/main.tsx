@@ -12,6 +12,7 @@ import "./messages.css";
 import "./admin.css";
 import "./admin-actions.css";
 import "./chat-dock-overrides.css";
+import "./messages-fixes.css";
 import "./responsive.css";
 import App from "./App";
 import { enforceWebpUploadCompression } from "./utils/enforceWebpUploadCompression";
@@ -84,19 +85,16 @@ const addBlogEditorHistoryControls = () => {
   imageButton.parentElement?.appendChild(controls);
 };
 
-const observeBlogEditorControls = () => {
-  addBlogEditorHistoryControls();
-  const observer = new MutationObserver(addBlogEditorHistoryControls);
-  observer.observe(document.body, { childList: true, subtree: true });
-};
-
-observeBlogEditorControls();
-
 window.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
-  const image = target.closest<HTMLImageElement>('[data-zoomable-image="true"]');
-  if (image?.src) openImageZoom(image.src, image.alt || "Listing image");
+  const image = target.closest("img") as HTMLImageElement | null;
+  if (!image) return;
+  if (!image.closest(".page-listing-detail")) return;
+  if (image.closest("a, button")) return;
+  openImageZoom(image.currentSrc || image.src, image.alt || "Listing image");
 });
+
+window.setInterval(addBlogEditorHistoryControls, 1000);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
