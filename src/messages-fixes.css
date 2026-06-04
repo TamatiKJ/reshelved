@@ -1,0 +1,28 @@
+.page-messages [class*="mx-3"][class*="mb-3"][class*="rounded-2xl"][class*="font-medium"] {
+  animation: messageNoticeAutoDismiss 3s ease forwards;
+}
+
+@keyframes messageNoticeAutoDismiss {
+  0%, 82% {
+    opacity: 1;
+    max-height: 120px;
+    margin-bottom: 0.75rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  100% {
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+}
+
+.page-messages [class*="bg-emerald-500"],
+.page-messages [class*="text-emerald-600"] {
+  display: none !important;
+}
