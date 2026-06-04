@@ -126,7 +126,7 @@ const AdminUserDashboardNotifyWrapper: React.FC = () => {
         active: true,
         listingDays,
         expiresAt: now + listingDays * DAY_MS,
-        restoredAt: now,
+        durationAdjustedAt: now,
       });
       setRestorePrompt(null);
       window.alert(`Listing restored for ${listingDays} days.`);
