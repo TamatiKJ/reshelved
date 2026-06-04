@@ -21,7 +21,6 @@ type PendingSignup = {
 };
 
 const getPendingSignUpEmail = () => window.localStorage.getItem(PENDING_SIGNUP_EMAIL_KEY) || '';
-const getPendingSignUpName = () => window.localStorage.getItem(PENDING_SIGNUP_NAME_KEY) || '';
 const getStoredSessionId = () => window.localStorage.getItem(SIGNUP_SESSION_ID_KEY) || '';
 const getSessionIdFromUrl = () => new URLSearchParams(window.location.search).get('sessionId') || '';
 const clearPendingSignUp = () => {
@@ -173,9 +172,9 @@ const EmailVerificationFlow: React.FC<{ email: string; sessionId: string; onRese
   const [cooldownRemaining, setCooldownRemaining] = useState(RESEND_COOLDOWN_SECONDS);
 
   useEffect(() => {
-    if (!sessionId) return undefined;
-    return onSnapshot(doc(db, 'pendingSignups', sessionId), (snapshot) => setSession(snapshot.exists() ? snapshot.data() as PendingSignup : null), (err) => setError(getAuthErrorMessage(err, 'Could not read verification status.')));
-  }, [sessionId]);
+    if (!sessionId || !currentUser) return undefined;
+    return onSnapshot(doc(db, 'pendingSignups', sessionId), (snapshot) => setSession(snapshot.exists() ? snapshot.data() as PendingSignup : null), () => undefined);
+  }, [sessionId, currentUser]);
 
   useEffect(() => {
     if (cooldownRemaining <= 0) return undefined;
@@ -266,13 +265,12 @@ export const VerifyEmail: React.FC = () => {
   const navigate = useNavigate();
   const sessionId = useMemo(() => getSessionIdFromUrl() || getStoredSessionId(), []);
   const [session, setSession] = useState<PendingSignup | null>(null);
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!sessionId) return undefined;
+    if (!sessionId || !currentUser) return undefined;
     window.localStorage.setItem(SIGNUP_SESSION_ID_KEY, sessionId);
-    return onSnapshot(doc(db, 'pendingSignups', sessionId), (snapshot) => setSession(snapshot.exists() ? snapshot.data() as PendingSignup : null), (err) => setError(getAuthErrorMessage(err, 'Could not read verification status.')));
-  }, [sessionId]);
+    return onSnapshot(doc(db, 'pendingSignups', sessionId), (snapshot) => setSession(snapshot.exists() ? snapshot.data() as PendingSignup : null), () => undefined);
+  }, [sessionId, currentUser]);
 
   useEffect(() => { if (!authLoading && userProfile?.onboardingStatus === 'complete' && !sessionId) navigate('/browse', { replace: true }); }, [authLoading, userProfile?.onboardingStatus, sessionId, navigate]);
 
@@ -355,9 +353,9 @@ export const ForgotPassword: React.FC = () => {
 export const Register: React.FC = () => {
   const { register, currentUser, userProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [displayName, setDisplayName] = useState(getPendingSignUpName());
-  const [email, setEmail] = useState(getPendingSignUpEmail());
-  const [sessionId, setSessionId] = useState(getStoredSessionId());
+  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
+  const [sessionId, setSessionId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -376,7 +374,7 @@ export const Register: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); await sendSignUpLink(); };
 
   if (sessionId) {
-    return <EmailVerificationFlow email={email || getPendingSignUpEmail()} sessionId={sessionId} onResend={sendSignUpLink} onChangeEmail={() => { clearPendingSignUp(); setSessionId(''); setError(''); }} />;
+    return <EmailVerificationFlow email={email} sessionId={sessionId} onResend={sendSignUpLink} onChangeEmail={() => { clearPendingSignUp(); setSessionId(''); setError(''); }} />;
   }
 
   return (
