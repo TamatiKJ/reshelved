@@ -352,12 +352,12 @@ const CreateListing: React.FC = () => {
   const livePreview = (
     <aside className="lg:sticky lg:top-24">
       <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
-        <h2 className="text-xl font-bold text-stone-950 sm:text-2xl">Live Preview</h2>
+        <h5 className="text-stone-950">Live Preview</h5>
         <p className="mt-1 text-sm text-stone-500">See how it looks before you publish.</p>
         <div className="mt-4 aspect-[4/3] overflow-hidden rounded-2xl bg-stone-100">
           {previews[0] ? <img src={previews[0]} alt="Book cover preview" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center bg-stone-100 text-center text-sm font-semibold text-stone-400">Cover image will appear here</div>}
         </div>
-        <h3 className="mt-4 text-xl font-bold leading-tight text-stone-950">{previewTitle}</h3>
+        <p className="body-text mt-4 font-bold text-stone-950">{previewTitle}</p>
         <p className="mt-1 text-sm text-stone-500">by {previewAuthor}</p>
         <div className="mt-5 grid grid-cols-3 gap-2 text-xs font-bold text-stone-600">
           <span className="min-w-0 truncate"><i className="las la-check-circle mr-1 text-primary-600" />{previewCondition}</span>
@@ -406,7 +406,7 @@ const CreateListing: React.FC = () => {
             <div className="p-4 sm:p-6 lg:p-8">
               {step === 1 && (
                 <div>
-                  <h2 className="text-2xl font-bold text-stone-950">Photos</h2>
+                  <h5 className="text-stone-950">Photos</h5>
                   <p className="mt-1 text-sm leading-6 text-stone-500">Add up to 4 photos. The first photo becomes the cover.</p>
                   <div className="mt-6 grid gap-3 sm:grid-cols-[240px_1fr]">
                     <label className={`flex min-h-[210px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-200 bg-[#FAFAF9] text-center transition hover:border-primary-600 hover:bg-primary-50/40 ${loading || previews.length >= MAX_IMAGES ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
@@ -421,7 +421,7 @@ const CreateListing: React.FC = () => {
                     </div>
                   </div>
                   <p className="mt-3 text-xs leading-5 text-stone-500">Upload JPG, PNG, or WebP images up to 5MB each.</p>
-                  <h2 className="mt-8 text-2xl font-bold text-stone-950">Listing Type</h2>
+                  <h5 className="mt-8 text-stone-950">Listing Type</h5>
                   <div className="mt-5 grid gap-3 sm:grid-cols-3">
                     {listingTypes.map((item) => <button key={item.value} type="button" disabled={loading} onClick={() => setType(item.value)} className={`cursor-pointer rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${type === item.value ? 'border-primary-600 bg-primary-50/60 ring-1 ring-primary-600/10' : 'border-stone-200 bg-white hover:border-primary-600'}`}><i className={`${item.icon} text-3xl text-stone-950`} /><div className="mt-3 text-sm font-bold text-stone-950">{item.label}</div><div className="mt-1 text-xs leading-5 text-stone-500">{item.desc}</div></button>)}
                   </div>
