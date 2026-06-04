@@ -9,6 +9,17 @@
   /* Homepage hero: tighter mobile entry spacing while preserving desktop layout. */
   .page-home section:first-of-type > .relative {
     padding-top: 4rem !important;
+    padding-bottom: 5.25rem !important;
+  }
+
+  .page-home section:first-of-type p {
+    font-size: 16px !important;
+    line-height: 1.6 !important;
+    margin-top: 1.25rem !important;
+  }
+
+  .page-home section:first-of-type .mt-9 {
+    margin-top: 1.5rem !important;
   }
 
   #root > div.min-h-screen.flex.items-center.justify-center.bg-stone-50:has(> div img[src="/reshelved-logo.svg"]) {
