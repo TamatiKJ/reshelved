@@ -466,6 +466,39 @@ a[aria-label^="Share on"]:hover {
   filter: brightness(0.85) !important;
 }
 
+/* Create and edit listing image remove button. */
+.group.relative.aspect-square button[class*="bg-red-500"][class*="rounded-full"] {
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  border: 2px solid #ffffff !important;
+  background: rgba(28, 25, 23, 0.9) !important;
+  color: #ffffff !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+  opacity: 1 !important;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22) !important;
+  transform: none !important;
+}
+
+.group.relative.aspect-square button[class*="bg-red-500"][class*="rounded-full"]::before {
+  content: "×";
+  display: block;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 18px;
+  transform: translateY(-1px);
+}
+
+.group.relative.aspect-square button[class*="bg-red-500"][class*="rounded-full"]:hover {
+  background: #111827 !important;
+}
+
+.group.relative.aspect-square button[class*="bg-red-500"][class*="rounded-full"]:disabled {
+  opacity: 0.45 !important;
+}
+
 @media (max-width: 639px) {
   button[aria-label="Conversation actions"] {
     display: flex !important;
