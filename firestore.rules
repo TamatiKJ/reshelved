@@ -7,13 +7,17 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function hasVerifiedEmail() {
-      return signedIn() && request.auth.token.email_verified == true;
-    }
-
-    function isOwner(userId) {
+    function isSelf(userId) {
       return signedIn() && request.auth.uid == userId;
     }
 
     function userDocExists(userId) {
-      return exists(/databases/$(database)/documents/users/
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && (
+          request.auth.token.admin == true
+          || (
+            user
