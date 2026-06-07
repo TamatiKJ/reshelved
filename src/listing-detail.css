@@ -7,4 +7,36 @@
     overflow: hidden !important;
     justify-content: flex-start !important;
     align-items: center !important;
-    font-size: 12px !important
+    font-size: 12px !important;
+  }
+
+  .page-listing-detail .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 > div.flex.items-center.gap-2 {
+    padding: 10px !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
+  }
+
+  .page-listing-detail .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 > div.flex.items-center.gap-2 span {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 90px !important;
+  }
+
+  .page-listing-detail .inline-flex.w-fit.max-w-full.flex-wrap.items-center.rounded-xl.border.border-stone-200.bg-white.text-sm.text-stone-700 > div.flex.items-center.gap-2 i {
+    flex-shrink: 0 !important;
+    font-size: 15px !important;
+  }
+}
+
+.page-listing-detail h3.font-semibold.text-stone-700.mb-1,
+.page-listing-detail h2.text-xl.font-bold.text-stone-900.mb-3,
+.page-listing-detail section.mt-12 > h2.text-xl.font-bold.text-stone-900.mb-5 {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.75 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}

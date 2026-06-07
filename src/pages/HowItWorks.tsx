@@ -1,119 +1,132 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 const processSteps = [
   {
-    number: '1',
-    title: 'Create your free account',
-    description: 'Sign up so you can save books, list your own books, message other readers, and manage your exchanges from one place.',
+    number: "1",
+    title: "Create your free account",
+    description:
+      "Sign up so you can save books, list your own books, message other readers, and manage your exchanges from one place.",
   },
   {
-    number: '2',
-    title: 'Find books near you',
-    description: 'Search by title, author, category, condition, price, exchange type, and Nairobi location instead of scrolling through scattered posts.',
+    number: "2",
+    title: "Find books near you",
+    description:
+      "Search by title, author, category, condition, price, exchange type, and Nairobi location instead of scrolling through scattered posts.",
   },
   {
-    number: '3',
-    title: 'Check the listing details',
-    description: 'Review the book photos, condition, seller details, location, price, and whether the owner wants to sell, swap, or donate.',
+    number: "3",
+    title: "Check the listing details",
+    description:
+      "Review the book photos, condition, seller details, location, price, and whether the owner wants to sell, swap, or donate.",
   },
   {
-    number: '4',
-    title: 'Message and arrange the exchange',
-    description: 'Use the in-app chat to ask questions, agree on terms, and arrange a safe handover directly with the book owner.',
+    number: "4",
+    title: "Message and arrange the exchange",
+    description:
+      "Use the in-app chat to ask questions, agree on terms, and arrange a safe handover directly with the book owner.",
   },
 ];
 
 const platformFeatures = [
   {
-    title: 'Verified accounts',
-    description: 'Every user signs in before they list, save, or message.',
+    title: "Verified accounts",
+    description: "Every user signs in before they list, save, or message.",
   },
   {
-    title: 'Book photos',
-    description: 'See real book photos before you talk to the owner.',
+    title: "Book photos",
+    description: "See real book photos before you talk to the owner.",
   },
   {
-    title: 'Smart filters',
-    description: 'Find books by title, author, type, price, and location.',
+    title: "Smart filters",
+    description: "Find books by title, author, type, price, and location.",
   },
   {
-    title: 'In-app messages',
-    description: 'Talk about the book without moving to many apps first.',
+    title: "In-app messages",
+    description: "Talk about the book without moving to many apps first.",
   },
   {
-    title: 'Ratings and reviews',
-    description: 'Check what other readers say before you agree to meet.',
+    title: "Ratings and reviews",
+    description: "Check what other readers say before you agree to meet.",
   },
   {
-    title: 'Report controls',
-    description: 'Report bad listings so the platform can stay clean.',
+    title: "Report controls",
+    description: "Report bad listings so the platform can stay clean.",
   },
 ];
 
 const benefitSections = [
   {
-    label: 'Start Swapping',
-    title: 'Post the books you want to swap, sell, or give away',
-    body: 'Start by listing the books sitting on your shelf. Add the title, author, photos, condition, exchange type, and your Nairobi location. You also choose where you are comfortable meeting, so nearby readers know what you have and how the exchange can happen before they message you.',
-    imageSrc: '/how-it-works/how it works 1.webp',
-    imageAlt: 'Reshelved listing creation preview',
-    imagePosition: 'right',
+    label: "Start Swapping",
+    title: "Post the books you want to swap, sell, or give away",
+    body: "Start by listing the books sitting on your shelf. Add the title, author, photos, condition, exchange type, and your Nairobi location. You also choose where you are comfortable meeting, so nearby readers know what you have and how the exchange can happen before they message you.",
+    imageSrc: "/how-it-works/how it works 1.webp",
+    imageAlt: "Reshelved listing creation preview",
+    imagePosition: "right",
   },
   {
-    label: 'Find a Book',
-    title: 'Look for the books you actually want to read',
-    body: 'Once books are listed, you can search for what you need by title, author, category, condition, price, exchange type, or location. Reshelved helps you avoid scattered posts and random groups by showing organized book listings from readers near you, so you can find better options faster and spend less.',
-    imageSrc: '/how-it-works/how it works 2.webp',
-    imageAlt: 'Reshelved book search preview',
-    imagePosition: 'left',
+    label: "Find a Book",
+    title: "Look for the books you actually want to read",
+    body: "Once books are listed, you can search for what you need by title, author, category, condition, price, exchange type, or location. Reshelved helps you avoid scattered posts and random groups by showing organized book listings from readers near you, so you can find better options faster and spend less.",
+    imageSrc: "/how-it-works/how it works 2.webp",
+    imageAlt: "Reshelved book search preview",
+    imagePosition: "left",
   },
   {
-    label: 'Make the Exchange',
-    title: 'Message the owner, agree, and meet safely',
-    body: 'When you find the right book, message the owner inside Reshelved. Ask questions, confirm the condition, agree on whether you are swapping, buying, or receiving it for free, then meet at the selected location. After the exchange, leave a quick rating so other readers know who they can trust.',
-    imageSrc: '/how-it-works/how it works 3.webp',
-    imageAlt: 'Reshelved messaging and exchange preview',
-    imagePosition: 'right',
+    label: "Make the Exchange",
+    title: "Message the owner, agree, and meet safely",
+    body: "When you find the right book, message the owner inside Reshelved. Ask questions, confirm the condition, agree on whether you are swapping, buying, or receiving it for free, then meet at the selected location. After the exchange, leave a quick rating so other readers know who they can trust.",
+    imageSrc: "/how-it-works/how it works 3.webp",
+    imageAlt: "Reshelved messaging and exchange preview",
+    imagePosition: "right",
   },
 ] as const;
 
 const faqs = [
   {
-    question: 'Where can I buy cheap second-hand books in Nairobi?',
-    answer: 'You can use Reshelved to search for affordable second-hand books in Nairobi by title, author, category, condition, price, exchange type, and location, then message the book owner directly.',
+    question: "Where can I buy cheap second-hand books in Nairobi?",
+    answer:
+      "You can use Reshelved to search for affordable second-hand books in Nairobi by title, author, category, condition, price, exchange type, and location, then message the book owner directly.",
   },
   {
-    question: 'How can I sell my second-hand books in Nairobi?',
-    answer: 'You can list your book on Reshelved by adding the title, author, photos, condition, price, category, and location. Readers can then find your listing and contact you through the platform.',
+    question: "How can I sell my second-hand books in Nairobi?",
+    answer:
+      "You can list your book on Reshelved by adding the title, author, photos, condition, price, category, and location. Readers can then find your listing and contact you through the platform.",
   },
   {
-    question: 'How can I find second-hand books near me?',
-    answer: 'Use location filters on Reshelved to search for second-hand books near your preferred Nairobi area. You can also filter by title, author, category, condition, price, and exchange type.',
+    question: "How can I find second-hand books near me?",
+    answer:
+      "Use location filters on Reshelved to search for second-hand books near your preferred Nairobi area. You can also filter by title, author, category, condition, price, and exchange type.",
   },
   {
-    question: 'How can I swap books with other readers in Nairobi?',
-    answer: 'When listing a book on Reshelved, choose the swap option so other readers know you are open to exchanging it for another book.',
+    question: "How can I swap books with other readers in Nairobi?",
+    answer:
+      "When listing a book on Reshelved, choose the swap option so other readers know you are open to exchanging it for another book.",
   },
   {
-    question: 'How can I donate books in Nairobi?',
-    answer: 'Mark your listing as a donation if you want to give the book away for free. This helps unused books reach readers who need them.',
+    question: "How can I donate books in Nairobi?",
+    answer:
+      "Mark your listing as a donation if you want to give the book away for free. This helps unused books reach readers who need them.",
   },
   {
-    question: 'Is it free to buy and sell second-hand books online?',
-    answer: 'Reshelved lets you browse books, create an account, list books, and message other users for free. If a book is being sold, payment is agreed directly between the buyer and seller.',
+    question: "Is it free to buy and sell second-hand books online?",
+    answer:
+      "Reshelved lets you browse books, create an account, list books, and message other users for free. If a book is being sold, payment is agreed directly between the buyer and seller.",
   },
   {
-    question: 'Does Reshelved deliver books?',
-    answer: 'No. Reshelved does not handle delivery at this stage. Users communicate through the platform and agree on their own pickup, meet-up, or delivery arrangement.',
+    question: "Does Reshelved deliver books?",
+    answer:
+      "No. Reshelved does not handle delivery at this stage. Users communicate through the platform and agree on their own pickup, meet-up, or delivery arrangement.",
   },
   {
-    question: 'How do I know if a second-hand book seller is trustworthy?',
-    answer: 'Check the seller profile, book photos, condition labels, ratings, reviews, and messages before agreeing to meet. You should still confirm the book and meet in a safe public place before completing an exchange.',
+    question: "How do I know if a second-hand book seller is trustworthy?",
+    answer:
+      "Check the seller profile, book photos, condition labels, ratings, reviews, and messages before agreeing to meet. You should still confirm the book and meet in a safe public place before completing an exchange.",
   },
   {
-    question: 'What types of second-hand books can I find in Nairobi?',
-    answer: 'You can find academic books, novels, business books, self-development books, children’s books, and other physical books listed by readers, students, parents, and book owners in Nairobi.',
+    question: "What types of second-hand books can I find in Nairobi?",
+    answer:
+      "You can find academic books, novels, business books, self-development books, children’s books, and other physical books listed by readers, students, parents, and book owners in Nairobi.",
   },
 ];
 
@@ -133,17 +146,21 @@ const BenefitsSection = () => (
           Swap Books, Read More, Spend Less
         </h2>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
-          Reshelved helps you find cheaper second-hand books in Nairobi, so you can reach your reading goals without stretching your budget.
+          Reshelved helps you find cheaper second-hand books in Nairobi, so you
+          can reach your reading goals without stretching your budget.
         </p>
       </div>
 
       <div className="mt-16 space-y-20 sm:mt-20 sm:space-y-24">
         {benefitSections.map((section) => {
-          const imageFirst = section.imagePosition === 'left';
+          const imageFirst = section.imagePosition === "left";
 
           return (
-            <article key={section.title} className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-              <div className={`${imageFirst ? 'lg:order-2' : 'lg:order-1'}`}>
+            <article
+              key={section.title}
+              className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16"
+            >
+              <div className={`${imageFirst ? "lg:order-2" : "lg:order-1"}`}>
                 <p className="font-[Inter] text-[14px] font-bold uppercase tracking-normal text-primary-600">
                   {section.label}
                 </p>
@@ -155,7 +172,7 @@ const BenefitsSection = () => (
                 </p>
               </div>
 
-              <div className={`${imageFirst ? 'lg:order-1' : 'lg:order-2'}`}>
+              <div className={`${imageFirst ? "lg:order-1" : "lg:order-2"}`}>
                 <img
                   src={section.imageSrc}
                   alt={section.imageAlt}
@@ -177,9 +194,17 @@ const ProcessSection = () => (
       <div className="grid gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
         <div className="lg:sticky lg:top-28 lg:self-start">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-            <h2 className="font-[Work_Sans] text-2xl font-black tracking-tight">Ready to start?</h2>
-            <p className="mt-3 text-sm leading-6 text-white/75">Create your account, find a book, and message the owner. Reshelved keeps the process simple.</p>
-            <Link to="/register" className="mt-6 inline-flex rounded-md bg-primary-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-primary-700">
+            <h2 className="font-[Work_Sans] text-2xl font-black tracking-tight">
+              Ready to start?
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-white/75">
+              Create your account, find a book, and message the owner. Reshelved
+              keeps the process simple.
+            </p>
+            <Link
+              to="/register"
+              className="mt-6 inline-flex rounded-md bg-primary-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-primary-700"
+            >
               Join Free
             </Link>
           </div>
@@ -187,13 +212,18 @@ const ProcessSection = () => (
 
         <div className="space-y-0">
           {processSteps.map((step, index) => (
-            <div key={step.number} className={`grid gap-5 py-8 sm:grid-cols-[64px_1fr] ${index !== processSteps.length - 1 ? 'border-b border-white/10' : ''}`}>
+            <div
+              key={step.number}
+              className={`grid gap-5 py-8 sm:grid-cols-[64px_1fr] ${index !== processSteps.length - 1 ? "border-b border-white/10" : ""}`}
+            >
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-600 text-base font-black text-white">
                 {step.number}
               </div>
               <div>
                 <h5 className="font-[Work_Sans] text-white">{step.title}</h5>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">{step.description}</p>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">
+                  {step.description}
+                </p>
               </div>
             </div>
           ))}
@@ -205,7 +235,9 @@ const ProcessSection = () => (
           <i className="las la-shield-alt text-2xl" />
         </div>
         <p className="max-w-2xl text-sm leading-6 text-white/75">
-          Your account information and conversations stay inside the platform. You remain in control of what you list, who you message, and when you remove a book from circulation.
+          Your account information and conversations stay inside the platform.
+          You remain in control of what you list, who you message, and when you
+          remove a book from circulation.
         </p>
       </div>
     </div>
@@ -228,7 +260,9 @@ const PlatformFeaturesSection = () => (
               </span>
               <h5 className="text-stone-950">{feature.title}</h5>
             </div>
-            <p className="mt-3 text-base leading-7 text-stone-600">{feature.description}</p>
+            <p className="mt-3 text-base leading-7 text-stone-600">
+              {feature.description}
+            </p>
           </article>
         ))}
       </div>
@@ -255,7 +289,8 @@ const FooterStartFree = () => (
             </div>
           </div>
           <p className="text-white/80 text-lg max-w-md lg:pb-8">
-            Built with feedback from readers across Nairobi. Try Reshelved and see why they love it.
+            Built with feedback from readers across Nairobi. Try Reshelved and
+            see why they love it.
           </p>
         </div>
       </div>
@@ -268,34 +303,38 @@ const HowItWorks: React.FC = () => {
 
   useEffect(() => {
     const previousTitle = document.title;
-    const nextTitle = 'How Reshelved Works | Buy, Sell, Swap and Donate Books in Nairobi';
-    const description = 'Learn how Reshelved helps readers in Nairobi find affordable second-hand books, verify listings, message sellers, and arrange safe book exchanges.';
+    const nextTitle =
+      "How Reshelved Works | Buy, Sell, Swap and Donate Books in Nairobi";
+    const description =
+      "Learn how Reshelved helps readers in Nairobi find affordable second-hand books, verify listings, message sellers, and arrange safe book exchanges.";
     document.title = nextTitle;
 
     const upsertMeta = (name: string, content: string) => {
-      let element = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+      let element = document.querySelector<HTMLMetaElement>(
+        `meta[name="${name}"]`,
+      );
       if (!element) {
-        element = document.createElement('meta');
-        element.setAttribute('name', name);
+        element = document.createElement("meta");
+        element.setAttribute("name", name);
         document.head.appendChild(element);
       }
-      element.setAttribute('content', content);
+      element.setAttribute("content", content);
     };
 
-    upsertMeta('description', description);
-    upsertMeta('robots', 'index, follow');
+    upsertMeta("description", description);
+    upsertMeta("robots", "index, follow");
 
-    const schema = document.createElement('script');
-    schema.type = 'application/ld+json';
-    schema.id = 'reshelved-how-it-works-faq-schema';
+    const schema = document.createElement("script");
+    schema.type = "application/ld+json";
+    schema.id = "reshelved-how-it-works-faq-schema";
     schema.text = JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'FAQPage',
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
       mainEntity: faqs.map((faq) => ({
-        '@type': 'Question',
+        "@type": "Question",
         name: faq.question,
         acceptedAnswer: {
-          '@type': 'Answer',
+          "@type": "Answer",
           text: faq.answer,
         },
       })),
@@ -304,7 +343,7 @@ const HowItWorks: React.FC = () => {
 
     return () => {
       document.title = previousTitle;
-      document.getElementById('reshelved-how-it-works-faq-schema')?.remove();
+      document.getElementById("reshelved-how-it-works-faq-schema")?.remove();
     };
   }, []);
 
@@ -317,13 +356,21 @@ const HowItWorks: React.FC = () => {
               Reach your reading goals without overspending
             </h1>
             <p className="mt-7 max-w-2xl text-xl leading-8 text-white/75">
-              Books are expensive, and finding the right one is frustrating. Reshelved helps you find affordable second-hand books near you, message the owner, and keep reading without overspending.
+              Books are expensive, and finding the right one is frustrating.
+              Reshelved helps you find affordable second-hand books near you,
+              message the owner, and keep reading without overspending.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link to="/browse" className="inline-flex items-center justify-center rounded-md bg-primary-600 px-5 py-3 text-base font-bold text-white transition hover:bg-primary-700">
+              <Link
+                to="/browse"
+                className="inline-flex items-center justify-center rounded-md bg-primary-600 px-5 py-3 text-base font-bold text-white transition hover:bg-primary-700"
+              >
                 Start Finding Books
               </Link>
-              <Link to="/create" className="inline-flex items-center justify-center rounded-md border border-white/60 px-5 py-3 text-base font-bold text-white transition hover:bg-white hover:text-stone-950">
+              <Link
+                to="/create"
+                className="inline-flex items-center justify-center rounded-md border border-white/60 px-5 py-3 text-base font-bold text-white transition hover:bg-white hover:text-stone-950"
+              >
                 List a Book <i className="las la-angle-right ml-1" />
               </Link>
             </div>
@@ -351,19 +398,32 @@ const HowItWorks: React.FC = () => {
               const isOpen = openFaqIndex === index;
 
               return (
-                <div key={faq.question} className={`p-6 ${isOpen ? 'bg-stone-50' : 'bg-white'}`}>
+                <div
+                  key={faq.question}
+                  className={`p-6 ${isOpen ? "bg-stone-50" : "bg-white"}`}
+                >
                   <button
                     type="button"
-                    onClick={() => setOpenFaqIndex((current) => (current === index ? null : index))}
+                    onClick={() =>
+                      setOpenFaqIndex((current) =>
+                        current === index ? null : index,
+                      )
+                    }
                     className="flex w-full cursor-pointer items-center justify-between gap-4 text-left font-[Work_Sans] text-lg font-black text-stone-950"
                     aria-expanded={isOpen}
                   >
                     {faq.question}
-                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4E2]/50 text-primary-600 transition ${isOpen ? 'rotate-45' : ''}`}>
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFF4E2]/50 text-primary-600 transition ${isOpen ? "rotate-45" : ""}`}
+                    >
                       <i className="las la-plus text-xl" />
                     </span>
                   </button>
-                  {isOpen && <p className="mt-3 max-w-3xl text-base leading-8 text-stone-600">{faq.answer}</p>}
+                  {isOpen && (
+                    <p className="mt-3 max-w-3xl text-base leading-8 text-stone-600">
+                      {faq.answer}
+                    </p>
+                  )}
                 </div>
               );
             })}

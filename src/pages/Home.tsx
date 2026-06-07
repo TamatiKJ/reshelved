@@ -1,26 +1,41 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { Link } from 'react-router-dom';
-import { db } from '../firebase';
-import BookCard from '../components/BookCard';
-import type { Listing } from '../types';
-import { parseListingSnapshot } from '../services/listingValidation';
-import { safeLower } from '../utils/stringGuards';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { Link } from "react-router-dom";
+import { db } from "../firebase";
+import BookCard from "../components/BookCard";
+import type { Listing } from "../types";
+import { parseListingSnapshot } from "../services/listingValidation";
+import { safeLower } from "../utils/stringGuards";
 
 const publisherLogos = [
-  { name: 'Penguin Random House', src: '/publishers/penguin-random-house-logo.svg' },
-  { name: 'Epsilon', src: '/publishers/epsilon.png' },
-  { name: 'Longhorn', src: '/publishers/longhorn.png' },
-  { name: 'Harper Collins', src: '/publishers/harper-collins.avif' },
-  { name: 'Oxford Press', src: '/publishers/oxford-press.svg' },
-  { name: 'Thames & Hudson', src: '/publishers/thames-hudson.png' }
+  {
+    name: "Penguin Random House",
+    src: "/publishers/penguin-random-house-logo.svg",
+  },
+  { name: "Epsilon", src: "/publishers/epsilon.png" },
+  { name: "Longhorn", src: "/publishers/longhorn.png" },
+  { name: "Harper Collins", src: "/publishers/harper-collins.avif" },
+  { name: "Oxford Press", src: "/publishers/oxford-press.svg" },
+  { name: "Thames & Hudson", src: "/publishers/thames-hudson.png" },
 ];
 
 const solutionItems = [
-  { icon: 'la-book-open', text: 'Find the right book without the long search or stress.' },
-  { icon: 'la-sync-alt', text: 'Swap old books and feel happy they matter again.' },
-  { icon: 'la-wallet', text: 'Save more money while still getting books you love.' },
-  { icon: 'la-check-circle', text: 'Meet trusted readers and trade with peace of mind.' }
+  {
+    icon: "la-book-open",
+    text: "Find the right book without the long search or stress.",
+  },
+  {
+    icon: "la-sync-alt",
+    text: "Swap old books and feel happy they matter again.",
+  },
+  {
+    icon: "la-wallet",
+    text: "Save more money while still getting books you love.",
+  },
+  {
+    icon: "la-check-circle",
+    text: "Meet trusted readers and trade with peace of mind.",
+  },
 ];
 
 type BookCategoryCard = {
@@ -30,43 +45,73 @@ type BookCategoryCard = {
 };
 
 const bookCategoryCards: BookCategoryCard[] = [
-  { title: 'Fiction', icon: '📖', href: '/browse?category=Fiction' },
-  { title: 'Fantasy', icon: '🧙', href: '/browse?category=Fantasy' },
-  { title: 'Children', icon: '🧸', href: '/browse?category=Children' },
-  { title: 'Academic', icon: '🎓', href: '/browse?category=Academic' },
-  { title: 'Business', icon: '💼', href: '/browse?category=Business%20%26%20Economics' },
-  { title: 'Self-Help', icon: '🌱', href: '/browse?category=Self-Help' }
+  { title: "Fiction", icon: "📖", href: "/browse?category=Fiction" },
+  { title: "Fantasy", icon: "🧙", href: "/browse?category=Fantasy" },
+  { title: "Children", icon: "🧸", href: "/browse?category=Children" },
+  { title: "Academic", icon: "🎓", href: "/browse?category=Academic" },
+  {
+    title: "Business",
+    icon: "💼",
+    href: "/browse?category=Business%20%26%20Economics",
+  },
+  { title: "Self-Help", icon: "🌱", href: "/browse?category=Self-Help" },
 ];
 
 const testimonials = [
-  { stars: 5, text: 'Finding affordable novels in Nairobi is genuinely hard. I stumbled on Reshelved looking for something to read over the weekend and ended up swapping two books I had already finished. The person I swapped with was lovely and we even recommended titles to each other. I keep coming back.', name: 'Amina Waweru', location: 'Kileleshwa, Nairobi', image: '/reviewer-1.png' },
-  { stars: 5, text: 'I had three textbooks sitting on my shelf gathering dust after finishing uni. Listed them on Reshelved and within two days someone from Kasarani had already reached out. The messaging was simple and we sorted everything out quickly. Did not expect it to be this easy.', name: 'Brian Otieno', location: 'Kasarani, Nairobi', image: '/reviewer-2.png' },
-  { stars: 5, text: "I donated a whole stack of children's books my kids had outgrown and the response was almost immediate. Knowing they went to a family nearby instead of a box somewhere felt really good. The platform is clean and signing up took me less than a minute. Would tell every parent in Nairobi about this.", name: 'Faith Ndegwa', location: 'South B, Nairobi', image: '/reviewer-3.png' }
+  {
+    stars: 5,
+    text: "Finding affordable novels in Nairobi is genuinely hard. I stumbled on Reshelved looking for something to read over the weekend and ended up swapping two books I had already finished. The person I swapped with was lovely and we even recommended titles to each other. I keep coming back.",
+    name: "Amina Waweru",
+    location: "Kileleshwa, Nairobi",
+    image: "/reviewer-1.png",
+  },
+  {
+    stars: 5,
+    text: "I had three textbooks sitting on my shelf gathering dust after finishing uni. Listed them on Reshelved and within two days someone from Kasarani had already reached out. The messaging was simple and we sorted everything out quickly. Did not expect it to be this easy.",
+    name: "Brian Otieno",
+    location: "Kasarani, Nairobi",
+    image: "/reviewer-2.png",
+  },
+  {
+    stars: 5,
+    text: "I donated a whole stack of children's books my kids had outgrown and the response was almost immediate. Knowing they went to a family nearby instead of a box somewhere felt really good. The platform is clean and signing up took me less than a minute. Would tell every parent in Nairobi about this.",
+    name: "Faith Ndegwa",
+    location: "South B, Nairobi",
+    image: "/reviewer-3.png",
+  },
 ];
 
 const Home: React.FC = () => {
   const [allListings, setAllListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const categoryScrollRef = useRef<HTMLDivElement>(null);
   const [canScrollCategoriesLeft, setCanScrollCategoriesLeft] = useState(false);
-  const [canScrollCategoriesRight, setCanScrollCategoriesRight] = useState(true);
+  const [canScrollCategoriesRight, setCanScrollCategoriesRight] =
+    useState(true);
 
-  useEffect(() => { fetchListings(); }, []);
+  useEffect(() => {
+    fetchListings();
+  }, []);
   useEffect(() => {
     updateCategoryScrollButtons();
-    window.addEventListener('resize', updateCategoryScrollButtons);
-    return () => window.removeEventListener('resize', updateCategoryScrollButtons);
+    window.addEventListener("resize", updateCategoryScrollButtons);
+    return () =>
+      window.removeEventListener("resize", updateCategoryScrollButtons);
   }, []);
 
   const fetchListings = async () => {
     try {
       setLoading(true);
-      const snap = await getDocs(collection(db, 'listings'));
-      const items = parseListingSnapshot(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-      setAllListings(items.filter((item) => item.active && item.expiresAt > Date.now()));
+      const snap = await getDocs(collection(db, "listings"));
+      const items = parseListingSnapshot(snap).sort(
+        (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
+      );
+      setAllListings(
+        items.filter((item) => item.active && item.expiresAt > Date.now()),
+      );
     } catch (err) {
-      console.error('Error fetching listings:', err);
+      console.error("Error fetching listings:", err);
     } finally {
       setLoading(false);
     }
@@ -80,11 +125,14 @@ const Home: React.FC = () => {
     setCanScrollCategoriesRight(el.scrollLeft < maxScroll - 6);
   };
 
-  const scrollCategories = (direction: 'left' | 'right') => {
+  const scrollCategories = (direction: "left" | "right") => {
     const el = categoryScrollRef.current;
     if (!el) return;
     const distance = Math.max(160, Math.round(el.clientWidth * 0.72));
-    el.scrollBy({ left: direction === 'right' ? distance : -distance, behavior: 'smooth' });
+    el.scrollBy({
+      left: direction === "right" ? distance : -distance,
+      behavior: "smooth",
+    });
     window.setTimeout(updateCategoryScrollButtons, 350);
   };
 
@@ -92,9 +140,11 @@ const Home: React.FC = () => {
   const liveSearchTerm = safeLower(search.trim());
   const searchResults = useMemo(() => {
     if (!liveSearchTerm) return [];
-    return allListings.filter((listing) => (
-      safeLower(listing.title).includes(liveSearchTerm) || safeLower(listing.author).includes(liveSearchTerm)
-    ));
+    return allListings.filter(
+      (listing) =>
+        safeLower(listing.title).includes(liveSearchTerm) ||
+        safeLower(listing.author).includes(liveSearchTerm),
+    );
   }, [allListings, liveSearchTerm]);
 
   const showingSearch = liveSearchTerm.length > 0;
@@ -102,7 +152,6 @@ const Home: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-
       {/* ── Hero ── */}
       <section className="relative bg-[#121212] bg-[url('/woman%20reading%20hero%20image.webp')] bg-cover bg-center bg-no-repeat text-white">
         <div className="absolute inset-0 bg-black/45" />
@@ -112,8 +161,9 @@ const Home: React.FC = () => {
               Find The Books You Need Without Overpaying
             </h1>
             <p className="mt-8 text-xl text-white/85 leading-relaxed max-w-2xl">
-              Search by title, author, genre, condition, and location. Swap a book you have, message
-              readers directly, or compare prices from sellers near you.
+              Search by title, author, genre, condition, and location. Swap a
+              book you have, message readers directly, or compare prices from
+              sellers near you.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               <Link
@@ -136,7 +186,6 @@ const Home: React.FC = () => {
       {/* ── Search + Latest Books ── */}
       <section className="relative -mt-[60px] bg-white rounded-t-[42px] sm:rounded-t-[56px] pt-12 pb-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-
           {/* Search bar */}
           <div className="flex flex-col lg:flex-row gap-4 items-stretch">
             <div className="flex-1 relative">
@@ -151,7 +200,7 @@ const Home: React.FC = () => {
             {showingSearch && (
               <button
                 type="button"
-                onClick={() => setSearch('')}
+                onClick={() => setSearch("")}
                 className="inline-flex items-center justify-center px-8 py-3 rounded-lg border border-stone-200 text-stone-700 text-sm font-bold transition hover:bg-stone-50 self-start lg:self-auto"
               >
                 Clear
@@ -162,10 +211,15 @@ const Home: React.FC = () => {
           {/* Section heading */}
           <div className="mt-10 flex items-center justify-between">
             <h5 className="text-stone-950">
-              {showingSearch ? `Search results for "${search.trim()}"` : 'Latest Listings'}
+              {showingSearch
+                ? `Search results for "${search.trim()}"`
+                : "Latest Listings"}
             </h5>
             {!showingSearch && (
-              <Link to="/browse" className="text-sm font-semibold text-[#1665CC] hover:text-[#0f4fa3]">
+              <Link
+                to="/browse"
+                className="text-sm font-semibold text-[#1665CC] hover:text-[#0f4fa3]"
+              >
                 View all
               </Link>
             )}
@@ -175,7 +229,10 @@ const Home: React.FC = () => {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="rounded-2xl border border-stone-200 overflow-hidden animate-pulse bg-white">
+                <div
+                  key={i}
+                  className="rounded-2xl border border-stone-200 overflow-hidden animate-pulse bg-white"
+                >
                   <div className="aspect-[4/3] bg-stone-200" />
                   <div className="p-4 space-y-3">
                     <div className="h-4 bg-stone-200 rounded w-3/4" />
@@ -200,9 +257,12 @@ const Home: React.FC = () => {
           ) : (
             <div className="mt-6 rounded-3xl border border-stone-200 bg-stone-50 px-6 py-12 text-center">
               <i className="las la-book-open text-6xl text-stone-300" />
-              <h3 className="mt-3 text-xl font-bold text-stone-900">No books listed yet</h3>
+              <h3 className="mt-3 text-xl font-bold text-stone-900">
+                No books listed yet
+              </h3>
               <p className="mt-2 text-stone-500">
-                Once users publish books, the latest listings will appear here automatically.
+                Once users publish books, the latest listings will appear here
+                automatically.
               </p>
               <Link
                 to="/create"
@@ -218,7 +278,10 @@ const Home: React.FC = () => {
             {/* Desktop grid */}
             <div className="hidden sm:grid grid-cols-3 lg:grid-cols-6 gap-5 items-center">
               {publisherLogos.map((publisher) => (
-                <div key={publisher.name} className="h-20 flex items-center justify-center px-5">
+                <div
+                  key={publisher.name}
+                  className="h-20 flex items-center justify-center px-5"
+                >
                   <img
                     src={publisher.src}
                     alt={`${publisher.name} logo`}
@@ -232,19 +295,21 @@ const Home: React.FC = () => {
             {/* Mobile marquee */}
             <div className="sm:hidden relative left-1/2 right-1/2 -mx-[50vw] w-screen overflow-hidden">
               <div className="flex w-max animate-[publisher-scroll_22s_linear_infinite]">
-                {[...publisherLogos, ...publisherLogos].map((publisher, index) => (
-                  <div
-                    key={`${publisher.name}-${index}`}
-                    className="mx-2 h-20 w-40 shrink-0 flex items-center justify-center px-4"
-                  >
-                    <img
-                      src={publisher.src}
-                      alt={`${publisher.name} logo`}
-                      className="max-h-10 max-w-[120px] object-contain"
-                      loading="lazy"
-                    />
-                  </div>
-                ))}
+                {[...publisherLogos, ...publisherLogos].map(
+                  (publisher, index) => (
+                    <div
+                      key={`${publisher.name}-${index}`}
+                      className="mx-2 h-20 w-40 shrink-0 flex items-center justify-center px-4"
+                    >
+                      <img
+                        src={publisher.src}
+                        alt={`${publisher.name} logo`}
+                        className="max-h-10 max-w-[120px] object-contain"
+                        loading="lazy"
+                      />
+                    </div>
+                  ),
+                )}
               </div>
             </div>
 
@@ -253,21 +318,24 @@ const Home: React.FC = () => {
             </p>
             <div className="mt-4 border-b border-stone-200" />
           </div>
-
         </div>
       </section>
 
       {/* ── Pain Points ── */}
-      <section id="how-it-works" className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-24">
+      <section
+        id="how-it-works"
+        className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-24"
+      >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div className="max-w-xl">
             <h2 className="text-4xl sm:text-5xl font-bold text-stone-950 leading-tight">
               Book Hunting Should Not Be This Hard
             </h2>
             <p className="mt-8 text-stone-600 leading-relaxed">
-              The book you need is probably sitting on someone's shelf right now. But finding it means
-              asking around, scrolling through old posts, comparing prices, and hoping you do not get
-              ignored or overcharged.
+              The book you need is probably sitting on someone's shelf right
+              now. But finding it means asking around, scrolling through old
+              posts, comparing prices, and hoping you do not get ignored or
+              overcharged.
             </p>
             <Link
               to="/browse"
@@ -301,13 +369,19 @@ const Home: React.FC = () => {
                 <div
                   key={item.text}
                   className={`flex items-center gap-6 py-7 ${
-                    index !== solutionItems.length - 1 ? 'border-b border-stone-200' : ''
+                    index !== solutionItems.length - 1
+                      ? "border-b border-stone-200"
+                      : ""
                   }`}
                 >
                   <div className="w-16 h-16 rounded-full bg-[#FFF4E2]/50 flex items-center justify-center shrink-0">
-                    <i className={`las ${item.icon} text-primary-600 text-3xl`} />
+                    <i
+                      className={`las ${item.icon} text-primary-600 text-3xl`}
+                    />
                   </div>
-                  <p className="text-[18px] font-normal leading-[1.45] text-stone-950">{item.text}</p>
+                  <p className="text-[18px] font-normal leading-[1.45] text-stone-950">
+                    {item.text}
+                  </p>
                 </div>
               ))}
             </div>
@@ -319,7 +393,10 @@ const Home: React.FC = () => {
       <section className="bg-white pt-0 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <picture className="block w-full">
-            <source media="(max-width: 767px)" srcSet="/homepage%20personas%20active%20mobile.webp" />
+            <source
+              media="(max-width: 767px)"
+              srcSet="/homepage%20personas%20active%20mobile.webp"
+            />
             <img
               src="/homepage%20personas%20active.webp"
               alt="Different types of Reshelved readers and book traders"
@@ -334,9 +411,7 @@ const Home: React.FC = () => {
       <section className="bg-white pt-10 sm:pt-16 pb-[220px] sm:pb-[340px]">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-3xl mx-auto">
-            <h3 className="text-stone-950">
-              Find your next read faster
-            </h3>
+            <h3 className="text-stone-950">Find your next read faster</h3>
           </div>
 
           <div className="relative mt-10 mb-10 sm:mb-0 -mx-4 sm:mx-0">
@@ -349,7 +424,7 @@ const Home: React.FC = () => {
                 <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-white/55 via-white/30 to-transparent sm:hidden" />
                 <button
                   type="button"
-                  onClick={() => scrollCategories('left')}
+                  onClick={() => scrollCategories("left")}
                   aria-label="Scroll categories left"
                   className="absolute left-4 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-stone-700/95 text-white shadow-lg sm:hidden"
                 >
@@ -362,7 +437,7 @@ const Home: React.FC = () => {
             {canScrollCategoriesRight && (
               <button
                 type="button"
-                onClick={() => scrollCategories('right')}
+                onClick={() => scrollCategories("right")}
                 aria-label="Scroll categories right"
                 className="absolute right-4 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-stone-700/95 text-white shadow-lg sm:hidden"
               >
@@ -405,14 +480,15 @@ const Home: React.FC = () => {
 
       {/* ── CTA + Testimonials ── */}
       <section className="relative bg-[#121212] text-white pt-0 pb-0">
-
         {/* CTA card */}
         <div className="max-w-5xl mx-auto px-4 sm:px-6 -translate-y-1/2 mb-[-100px] sm:mb-[-120px] relative z-10">
           <div className="bg-[#FFF4E2] text-stone-950 rounded-[28px] sm:rounded-[36px] px-6 sm:px-16 py-16 sm:py-24 text-center">
             <h2 className="text-4xl sm:text-6xl font-bold leading-tight">
               Swap your finished reads with readers near you
             </h2>
-            <p className="mt-5 sm:mt-8 text-stone-700">Someone needs what you already have.</p>
+            <p className="mt-5 sm:mt-8 text-stone-700">
+              Someone needs what you already have.
+            </p>
             <div className="mt-5 sm:mt-6 flex flex-wrap justify-center gap-3">
               <Link
                 to="/create"
@@ -427,7 +503,9 @@ const Home: React.FC = () => {
                 Find Books
               </Link>
             </div>
-            <p className="mt-3 text-xs text-stone-500">Quick Sign Up | It's 100% Free!</p>
+            <p className="mt-3 text-xs text-stone-500">
+              Quick Sign Up | It's 100% Free!
+            </p>
           </div>
         </div>
 
@@ -444,15 +522,25 @@ const Home: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
             {testimonials.map((review, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-stone-200 p-6 flex flex-col gap-4">
+              <div
+                key={i}
+                className="bg-white rounded-2xl border border-stone-200 p-6 flex flex-col gap-4"
+              >
                 <div className="flex items-center gap-0.5">
                   {[...Array(review.stars)].map((_, s) => (
-                    <svg key={s} className="w-5 h-5 text-accent-500" viewBox="0 0 20 20" fill="currentColor">
+                    <svg
+                      key={s}
+                      className="w-5 h-5 text-accent-500"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
                       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                     </svg>
                   ))}
                 </div>
-                <p className="text-[17px] leading-[1.4] text-black flex-1">"{review.text}"</p>
+                <p className="text-[17px] leading-[1.4] text-black flex-1">
+                  "{review.text}"
+                </p>
                 <div className="flex items-center gap-3 pt-2">
                   <img
                     src={review.image}
@@ -461,8 +549,12 @@ const Home: React.FC = () => {
                     loading="lazy"
                   />
                   <div>
-                    <p className="font-semibold text-stone-800 text-sm">{review.name}</p>
-                    <p className="text-[#898A88] text-xs mt-0.5">{review.location}</p>
+                    <p className="font-semibold text-stone-800 text-sm">
+                      {review.name}
+                    </p>
+                    <p className="text-[#898A88] text-xs mt-0.5">
+                      {review.location}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -486,11 +578,11 @@ const Home: React.FC = () => {
                 </div>
               </div>
               <p className="text-white/80 text-lg max-w-md lg:pb-8">
-                Built with feedback from readers across Nairobi. Try Reshelved and see why they love it.
+                Built with feedback from readers across Nairobi. Try Reshelved
+                and see why they love it.
               </p>
             </div>
           </div>
-
         </div>
       </section>
 

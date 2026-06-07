@@ -1,49 +1,54 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebase";
 
 const pageDefaults: Record<string, { title: string; content: string }> = {
-  'privacy-policy': {
-    title: 'Privacy Policy',
-    content: '<p>This page will be updated by the Reshelved team.</p>'
+  "privacy-policy": {
+    title: "Privacy Policy",
+    content: "<p>This page will be updated by the Reshelved team.</p>",
   },
   terms: {
-    title: 'Terms of Service',
-    content: '<p>This page will be updated by the Reshelved team.</p>'
+    title: "Terms of Service",
+    content: "<p>This page will be updated by the Reshelved team.</p>",
   },
   cookies: {
-    title: 'Cookie Policy',
-    content: '<p>This page will be updated by the Reshelved team.</p>'
+    title: "Cookie Policy",
+    content: "<p>This page will be updated by the Reshelved team.</p>",
   },
   contact: {
-    title: 'Contact',
-    content: '<p>This page will be updated by the Reshelved team.</p>'
-  }
+    title: "Contact",
+    content: "<p>This page will be updated by the Reshelved team.</p>",
+  },
 };
 
 const getPageDocId = (slug: string) => `legal-${slug}`;
 
 const LegalPage: React.FC<{ slug: string }> = ({ slug }) => {
-  const [title, setTitle] = useState(pageDefaults[slug]?.title || 'Page');
-  const [content, setContent] = useState(pageDefaults[slug]?.content || '<p>This page is not available yet.</p>');
+  const [title, setTitle] = useState(pageDefaults[slug]?.title || "Page");
+  const [content, setContent] = useState(
+    pageDefaults[slug]?.content || "<p>This page is not available yet.</p>",
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPage = async () => {
       setLoading(true);
       try {
-        const snap = await getDoc(doc(db, 'platform', getPageDocId(slug)));
+        const snap = await getDoc(doc(db, "platform", getPageDocId(slug)));
         if (snap.exists()) {
           const data = snap.data();
-          setTitle(data.title || pageDefaults[slug]?.title || 'Page');
-          setContent(data.content || pageDefaults[slug]?.content || '');
+          setTitle(data.title || pageDefaults[slug]?.title || "Page");
+          setContent(data.content || pageDefaults[slug]?.content || "");
         } else {
-          setTitle(pageDefaults[slug]?.title || 'Page');
-          setContent(pageDefaults[slug]?.content || '<p>This page is not available yet.</p>');
+          setTitle(pageDefaults[slug]?.title || "Page");
+          setContent(
+            pageDefaults[slug]?.content ||
+              "<p>This page is not available yet.</p>",
+          );
         }
       } catch (error) {
-        console.error('Could not load legal page:', error);
+        console.error("Could not load legal page:", error);
       } finally {
         setLoading(false);
       }
@@ -55,8 +60,13 @@ const LegalPage: React.FC<{ slug: string }> = ({ slug }) => {
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 bg-transparent">
-        <nav className="mb-6 flex items-center gap-2 text-sm text-stone-500" aria-label="Breadcrumb">
-          <Link to="/" className="font-semibold hover:text-primary-700">Home</Link>
+        <nav
+          className="mb-6 flex items-center gap-2 text-sm text-stone-500"
+          aria-label="Breadcrumb"
+        >
+          <Link to="/" className="font-semibold hover:text-primary-700">
+            Home
+          </Link>
           <span className="text-stone-300">/</span>
           <span className="font-semibold text-stone-900">Loading...</span>
         </nav>
@@ -72,12 +82,19 @@ const LegalPage: React.FC<{ slug: string }> = ({ slug }) => {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 bg-transparent">
-      <nav className="mb-6 flex items-center gap-2 text-sm text-stone-500" aria-label="Breadcrumb">
-        <Link to="/" className="font-semibold hover:text-primary-700">Home</Link>
+      <nav
+        className="mb-6 flex items-center gap-2 text-sm text-stone-500"
+        aria-label="Breadcrumb"
+      >
+        <Link to="/" className="font-semibold hover:text-primary-700">
+          Home
+        </Link>
         <span className="text-stone-300">/</span>
         <span className="font-semibold text-stone-900">{title}</span>
       </nav>
-      <h1 className="text-4xl font-bold tracking-tight text-stone-950 bg-transparent">{title}</h1>
+      <h1 className="text-4xl font-bold tracking-tight text-stone-950 bg-transparent">
+        {title}
+      </h1>
       <article
         className="mt-8 max-w-none bg-transparent text-stone-700 leading-7 [&_*]:!bg-transparent [&_blockquote]:my-5 [&_blockquote]:border-l-4 [&_blockquote]:border-stone-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-stone-600 [&_p]:mb-4 [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:text-2xl [&_h2]:font-bold [&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:text-xl [&_h3]:font-bold [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-primary-700 [&_a]:font-semibold [&_a]:underline"
         dangerouslySetInnerHTML={{ __html: content }}
