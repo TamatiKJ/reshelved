@@ -109,7 +109,7 @@ const Home: React.FC = () => {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-[116px] sm:pt-32 sm:pb-[148px]">
           <div className="max-w-3xl">
             <h1 className="text-5xl sm:text-7xl font-bold leading-[1.08] tracking-tight">
-              Find The Books You Need Without Overpaying
+              Where Nairobi Readers Buy, Sell, Swap, and Share Books
             </h1>
             <p className="mt-8 text-xl text-white/85 leading-relaxed max-w-2xl">
               Search by title, author, genre, condition, and location. Swap a book you have, message
