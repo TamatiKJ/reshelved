@@ -20,12 +20,14 @@ import { enableSwapCompletionEnhancements } from "./utils/swapCompletionEnhancem
 import { enableMobileErrorAutoScroll } from "./utils/mobileErrorAutoScroll";
 import { initializeRuntimeUiEnhancements } from "./utils/runtimeUiEnhancements";
 import { enableConversationWarmup } from "./utils/conversationWarmup";
+import { enableGoogleAuthButtons } from "./utils/enableGoogleAuthButtons";
 
 enforceWebpUploadCompression();
 enableSwapCompletionEnhancements();
 enableMobileErrorAutoScroll();
 initializeRuntimeUiEnhancements();
 enableConversationWarmup();
+enableGoogleAuthButtons();
 
 const openImageZoom = (src: string, alt: string) => {
   const existing = document.getElementById("listing-image-zoom-modal");
